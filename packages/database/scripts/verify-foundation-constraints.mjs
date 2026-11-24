@@ -381,6 +381,181 @@ try {
       [curriculumVersionId],
     ),
   );
+  // Rubric publication, Council isolation and assessment snapshot immutability.
+  const rubricId = id();
+  const rubricVersionId = id();
+  const rubricBandA = id();
+  const rubricBandB = id();
+  const assessmentId = id();
+  const assessmentLearningAreaId = id();
+  const assessmentRubricBandA = id();
+  const assessmentRubricBandB = id();
+
+  await client.query(
+    `UPDATE "CouncilGradeLearningArea"
+     SET "enabled" = TRUE, "assessmentEligible" = TRUE, "updatedAt" = NOW()
+     WHERE "id" = $1`,
+    [councilGradeLearningAreaId],
+  );
+  await client.query(
+    `INSERT INTO "GradingRubric" ("id", "councilId", "code", "name", "updatedAt")
+     VALUES ($1, $2, 'TEST_NUMERIC', 'Synthetic Numeric Rubric', NOW())`,
+    [rubricId, ids.councilA],
+  );
+  await client.query(
+    `INSERT INTO "GradingRubricVersion"
+      ("id", "rubricId", "councilId", "versionLabel", "scaleType", "minScore", "maxScore", "createdByAccountId", "updatedAt")
+     VALUES ($1, $2, $3, 'v1', 'NUMERIC_BANDS', 0, 100, $4, NOW())`,
+    [rubricVersionId, rubricId, ids.councilA, ids.accountA],
+  );
+  await client.query(
+    `INSERT INTO "RubricBand"
+      ("id", "rubricVersionId", "code", "label", "lowerBound", "upperBound", "sortOrder", "updatedAt")
+     VALUES ($1, $3, 'BAND_1', 'Beginning', 0, 50, 0, NOW()),
+            ($2, $3, 'BAND_2', 'Developing', 50, 100, 1, NOW())`,
+    [rubricBandA, rubricBandB, rubricVersionId],
+  );
+  await client.query(
+    `UPDATE "GradingRubricVersion" SET "status" = 'IN_REVIEW', "updatedAt" = NOW() WHERE "id" = $1`,
+    [rubricVersionId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "GradingRubricVersion"
+       SET "status" = 'PUBLISHED', "reviewedByAccountId" = $1, "publishedAt" = NOW(), "updatedAt" = NOW()
+       WHERE "id" = $2`,
+      [ids.accountA, rubricVersionId],
+    ),
+  );
+  await client.query(
+    `UPDATE "GradingRubricVersion"
+     SET "status" = 'PUBLISHED', "reviewedByAccountId" = $1, "publishedAt" = NOW(), "updatedAt" = NOW()
+     WHERE "id" = $2`,
+    [ids.accountB, rubricVersionId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "RubricBand" SET "label" = 'Tampered' WHERE "id" = $1`,
+      [rubricBandA],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `INSERT INTO "RubricBand"
+        ("id", "rubricVersionId", "code", "label", "sortOrder", "updatedAt")
+       VALUES ($1, $2, 'LATE_BAND', 'Late band', 2, NOW())`,
+      [id(), rubricVersionId],
+    ),
+  );
+
+  await client.query(
+    `INSERT INTO "Assessment"
+      ("id", "councilId", "councilCurriculumId", "curriculumVersionId", "rubricVersionId",
+       "name", "code", "academicYear", "grade", "type", "createdByAccountId", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, 'Synthetic Grade 4 Assessment', 'SYNTH-2026', 2026,
+       'GRADE_4', 'SUMMATIVE', $6, NOW())`,
+    [assessmentId, ids.councilA, councilCurriculumId, curriculumVersionId, rubricVersionId, ids.accountA],
+  );
+  await expectConstraintFailure("Assessment_councilCurriculumId_councilId_curriculumVersionId_fkey", () =>
+    client.query(
+      `INSERT INTO "Assessment"
+        ("id", "councilId", "councilCurriculumId", "curriculumVersionId", "rubricVersionId",
+         "name", "code", "academicYear", "grade", "type", "createdByAccountId", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, 'Cross Council Assessment', 'CROSS-2026', 2026,
+         'GRADE_4', 'SUMMATIVE', $6, NOW())`,
+      [id(), ids.councilB, councilCurriculumId, curriculumVersionId, rubricVersionId, ids.accountA],
+    ),
+  );
+  await client.query(
+    `INSERT INTO "AssessmentLearningArea"
+      ("id", "assessmentId", "councilId", "curriculumVersionId", "councilGradeLearningAreaId",
+       "grade", "learningAreaCode", "canonicalName", "sourceLabel", "maxMarks", "decimalPlaces", "sortOrder")
+     VALUES ($1, $2, $3, $4, $5, 'GRADE_4', 'TEST_MATHEMATICS', 'Mathematics',
+       'Mathematics', 100, 2, 0)`,
+    [assessmentLearningAreaId, assessmentId, ids.councilA, curriculumVersionId, councilGradeLearningAreaId],
+  );
+  await expectConstraintFailure("AssessmentLearningArea_councilGradeLearningAreaId_councilId_curriculumVersionId_fkey", () =>
+    client.query(
+      `INSERT INTO "AssessmentLearningArea"
+        ("id", "assessmentId", "councilId", "curriculumVersionId", "councilGradeLearningAreaId",
+         "grade", "learningAreaCode", "canonicalName", "sourceLabel", "maxMarks")
+       VALUES ($1, $2, $3, $4, $5, 'GRADE_4', 'TEST_MATHEMATICS', 'Mathematics',
+         'Mathematics', 100)`,
+      [id(), assessmentId, ids.councilA, curriculumVersionId, id()],
+    ),
+  );
+  await client.query(
+    `INSERT INTO "AssessmentRubricBand"
+      ("id", "assessmentId", "rubricVersionId", "sourceRubricBandId", "code", "label",
+       "lowerBound", "upperBound", "sortOrder")
+     VALUES ($1, $2, $3, $4, 'BAND_1', 'Beginning', 0, 50, 0),
+            ($5, $2, $3, $6, 'BAND_2', 'Developing', 50, 100, 1)`,
+    [assessmentRubricBandA, assessmentId, rubricVersionId, rubricBandA, assessmentRubricBandB, rubricBandB],
+  );
+  await client.query(
+    `UPDATE "Assessment" SET "opensAt" = NOW() + INTERVAL '1 day',
+       "closesAt" = NOW() + INTERVAL '2 days', "status" = 'SCHEDULED', "updatedAt" = NOW()
+     WHERE "id" = $1`,
+    [assessmentId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "Assessment" SET "name" = 'Tampered Assessment' WHERE "id" = $1`,
+      [assessmentId],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "AssessmentLearningArea" SET "sourceLabel" = 'Tampered Learning Area' WHERE "id" = $1`,
+      [assessmentLearningAreaId],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `DELETE FROM "AssessmentRubricBand" WHERE "id" = $1`,
+      [assessmentRubricBandA],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "Assessment" SET "status" = 'RELEASED', "updatedAt" = NOW() WHERE "id" = $1`,
+      [assessmentId],
+    ),
+  );
+
+  const overlappingRubricId = id();
+  const overlappingVersionId = id();
+  await client.query(
+    `INSERT INTO "GradingRubric" ("id", "councilId", "code", "name", "updatedAt")
+     VALUES ($1, $2, 'TEST_OVERLAP', 'Synthetic Overlap Rubric', NOW())`,
+    [overlappingRubricId, ids.councilA],
+  );
+  await client.query(
+    `INSERT INTO "GradingRubricVersion"
+      ("id", "rubricId", "councilId", "versionLabel", "scaleType", "minScore", "maxScore", "createdByAccountId", "updatedAt")
+     VALUES ($1, $2, $3, 'v1', 'NUMERIC_BANDS', 0, 100, $4, NOW())`,
+    [overlappingVersionId, overlappingRubricId, ids.councilA, ids.accountA],
+  );
+  await client.query(
+    `INSERT INTO "RubricBand"
+      ("id", "rubricVersionId", "code", "label", "lowerBound", "upperBound", "sortOrder", "updatedAt")
+     VALUES ($1, $3, 'OVERLAP_A', 'Overlap A', 0, 60, 0, NOW()),
+            ($2, $3, 'OVERLAP_B', 'Overlap B', 50, 100, 1, NOW())`,
+    [id(), id(), overlappingVersionId],
+  );
+  await client.query(
+    `UPDATE "GradingRubricVersion" SET "status" = 'IN_REVIEW', "updatedAt" = NOW() WHERE "id" = $1`,
+    [overlappingVersionId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "GradingRubricVersion"
+       SET "status" = 'PUBLISHED', "reviewedByAccountId" = $1, "publishedAt" = NOW(), "updatedAt" = NOW()
+       WHERE "id" = $2`,
+      [ids.accountB, overlappingVersionId],
+    ),
+  );
+
   await client.query(
     `UPDATE "CouncilCurriculum" SET "status" = 'SUPERSEDED', "effectiveTo" = NOW(), "updatedAt" = NOW() WHERE "id" = $1`,
     [councilCurriculumId],
