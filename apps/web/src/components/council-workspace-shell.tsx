@@ -1,11 +1,12 @@
 import { WorkspaceShell, type WorkspaceNavItem } from "./workspace-shell";
+import type { ReactNode } from "react";
 
-type CouncilSection = "curriculum" | "assessments" | "rubrics" | "rubric-review" | "results";
+type CouncilSection = "curriculum" | "assessments" | "rubrics" | "rubric-review";
 
 interface CouncilWorkspaceShellProps {
   councilId: string;
   active: CouncilSection;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function CouncilWorkspaceShell({ councilId, active, children }: CouncilWorkspaceShellProps) {
