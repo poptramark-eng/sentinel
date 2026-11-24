@@ -144,6 +144,7 @@ export class LearnerEnrollmentService {
     registrationId: string,
     enrollmentId: string,
     status: "TRANSFERRED" | "WITHDRAWN" | "COMPLETED",
+    reason: string,
   ) {
     return this.prisma.client.$transaction(async (tx) => {
       const scope = await this.resolveAdminScope(tx, actor, registrationId);
