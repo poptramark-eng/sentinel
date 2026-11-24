@@ -14,7 +14,7 @@ export class CouncilAdministratorGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const accountId = request.auth?.accountId;
-    const councilId = (request.params as Record<string, string | undefined>)?.councilId;
+    const councilId = (request as AuthenticatedRequest & { params?: Record<string, string | undefined> }).params?.councilId;
     if (!accountId || !councilId) {
       throw new ForbiddenException("Council administrator access is required.");
     }
