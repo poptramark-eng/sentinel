@@ -7,10 +7,11 @@ import { LearnerEnrollmentController } from "./learner-enrollment.controller";
 import { LearnerEnrollmentService } from "./learner-enrollment.service";
 import { SchoolAssessmentMarksController } from "./school-assessment-marks.controller";
 import { SchoolAssessmentMarkService } from "./school-assessment-mark.service";
+import { SchoolTeachingController } from "./school-teaching.controller";
 
 @Module({
   imports: [AuthModule, DatabaseModule],
-  controllers: [SchoolClassesController, LearnerEnrollmentController, SchoolAssessmentMarksController],
+  controllers: [SchoolClassesController, LearnerEnrollmentController, SchoolAssessmentMarksController, SchoolTeachingController],
   providers: [SchoolClassService, LearnerEnrollmentService, SchoolAssessmentMarkService],
 })
 export class SchoolClassesModule {}
