@@ -300,15 +300,31 @@ try {
     ),
   );
   await client.query(
+    `UPDATE "CurriculumVersion" SET "status" = 'IN_REVIEW', "updatedAt" = NOW() WHERE "id" = $1`,
+    [curriculumVersionId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "CurriculumVersion"
+       SET "status" = 'PUBLISHED', "reviewedByAccountId" = $2, "publishedAt" = NOW(), "updatedAt" = NOW()
+       WHERE "id" = $1`,
+      [curriculumVersionId, ids.accountB],
+    ),
+  );
+  await client.query(
     `UPDATE "GradeLearningArea"
      SET "optionality" = 'CORE', "reviewStatus" = 'REVIEWED', "reviewNote" = 'Synthetic independent review',
          "updatedAt" = NOW()
      WHERE "id" = $1`,
     [gradeLearningAreaId],
   );
-  await client.query(
-    `UPDATE "CurriculumVersion" SET "status" = 'IN_REVIEW', "updatedAt" = NOW() WHERE "id" = $1`,
-    [curriculumVersionId],
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "CurriculumVersion"
+       SET "status" = 'PUBLISHED', "reviewedByAccountId" = $2, "publishedAt" = NOW(), "updatedAt" = NOW()
+       WHERE "id" = $1`,
+      [curriculumVersionId, ids.accountA],
+    ),
   );
   await client.query(
     `UPDATE "CurriculumVersion"
@@ -343,6 +359,13 @@ try {
       ("id", "councilCurriculumId", "councilId", "curriculumVersionId", "gradeLearningAreaId", "updatedAt")
      VALUES ($1, $2, $3, $4, $5, NOW())`,
     [councilGradeLearningAreaId, councilCurriculumId, ids.councilA, curriculumVersionId, gradeLearningAreaId],
+  );
+  await expectSqlStateFailure("23514", () =>
+    client.query(
+      `UPDATE "CouncilGradeLearningArea"
+       SET "enabled" = FALSE, "assessmentEligible" = TRUE WHERE "id" = $1`,
+      [councilGradeLearningAreaId],
+    ),
   );
   await expectConstraintFailure("CouncilGradeLearningArea_gradeLearningAreaId_curriculumVersionI", () =>
     client.query(
