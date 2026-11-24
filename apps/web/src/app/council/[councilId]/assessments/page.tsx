@@ -44,6 +44,12 @@ interface Assessment {
   learningAreas: { id: string; sourceLabel: string; displayLabel: string | null; maxMarks: string; decimalPlaces: number; sortOrder: number }[];
   rubricBands: { id: string; code: string; label: string; lowerBound: string | null; upperBound: string | null }[];
   rubricVersion: { id: string; versionLabel: string; scaleType: string; rubric: { code: string; name: string } };
+  candidates: {
+    id: string;
+    registrationId: string;
+    schoolClassId: string;
+    schoolClass: { displayName: string | null; streamCode: string; registration: { school: { name: string } } };
+  }[];
 }
 interface CurriculumResponse {
   council: { id: string; name: string };
@@ -73,6 +79,7 @@ export default function CouncilAssessmentsPage() {
   const [selectedAreas, setSelectedAreas] = useState<Record<string, { selected: boolean; maxMarks: string; decimalPlaces: number }>>({});
   const [form, setForm] = useState({ name: "", code: "", academicYear: String(new Date().getFullYear()), type: "SUMMATIVE" as AssessmentType, rubricVersionId: "" });
   const [schedule, setSchedule] = useState<Record<string, { opensAt: string; closesAt: string }>>({});
+  const [moderationReasons, setModerationReasons] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -185,6 +192,30 @@ export default function CouncilAssessmentsPage() {
     } finally { setBusy(false); }
   }
 
+  async function returnClassMarks(assessment: Assessment, classId: string) {
+    const key = `${assessment.id}:${classId}`;
+    const reason = moderationReasons[key]?.trim() ?? "";
+    if (reason.length < 10) {
+      setError("Provide a moderation reason of at least 10 characters.");
+      return;
+    }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await apiRequest(`/councils/${councilId}/assessments/${assessment.id}/classes/${classId}/return-marks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(messageOf(payload, "Class marks could not be returned."));
+      setModerationReasons((previous) => ({ ...previous, [key]: "" }));
+      await load();
+      setNotice("Class marks returned for correction. The assessment is open for the assigned teacher to make the requested changes.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Class marks could not be returned.");
+    } finally { setBusy(false); }
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f8fb]">
       <header className="border-b border-[#e5eaf1] bg-white">
@@ -244,7 +275,21 @@ export default function CouncilAssessmentsPage() {
                 {assessment.status === "DRAFT" ? <div className="mt-5 grid gap-3 border-t border-[#edf0f5] pt-4 sm:grid-cols-[1fr_1fr_auto]"><label className="text-[11px] font-medium text-[#64748b]">Opens at<input type="datetime-local" value={schedule[assessment.id]?.opensAt ?? ""} onChange={(event) => setSchedule((previous) => ({ ...previous, [assessment.id]: { opensAt: event.target.value, closesAt: previous[assessment.id]?.closesAt ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-2.5 py-2 text-sm text-[#172b4d]" /></label><label className="text-[11px] font-medium text-[#64748b]">Closes at<input type="datetime-local" value={schedule[assessment.id]?.closesAt ?? ""} onChange={(event) => setSchedule((previous) => ({ ...previous, [assessment.id]: { opensAt: previous[assessment.id]?.opensAt ?? "", closesAt: event.target.value } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-2.5 py-2 text-sm text-[#172b4d]" /></label><button disabled={busy || !schedule[assessment.id]?.opensAt || !schedule[assessment.id]?.closesAt} onClick={() => void transition(assessment, "schedule")} className="self-end rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#2457c5] disabled:opacity-40">Schedule</button></div> : null}
                 {assessment.status === "SCHEDULED" ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0f5] pt-4"><p className="text-xs text-[#64748b]">Opens {dateTime(assessment.opensAt)} · Closes {dateTime(assessment.closesAt)}</p><button disabled={busy} onClick={() => void transition(assessment, "open")} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40">Open assessment</button></div> : null}
                 {assessment.status === "OPEN" ? <div className="mt-4 flex justify-end border-t border-[#edf0f5] pt-4"><button disabled={busy} onClick={() => void transition(assessment, "close")} className="rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#52647d] disabled:opacity-40">Close assessment</button></div> : null}
-                {assessment.status === "CLOSED" ? <p className="mt-4 border-t border-[#edf0f5] pt-4 text-xs text-[#64748b]">Closed. Results publication is a separate governed action.</p> : null}
+                {assessment.status === "CLOSED" ? <div className="mt-4 border-t border-[#edf0f5] pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-[#172b4d]">Mark moderation</p><p className="text-[11px] text-[#64748b]">Return an entire class sheet with a reason; submitted marks remain locked otherwise.</p></div>
+                  {assessment.candidates.filter((candidate, index, all) => all.findIndex((item) => item.schoolClassId === candidate.schoolClassId) === index).length === 0
+                    ? <p className="mt-3 text-xs text-[#64748b]">No active class candidates remain in this assessment.</p>
+                    : <div className="mt-3 space-y-3">{assessment.candidates.filter((candidate, index, all) => all.findIndex((item) => item.schoolClassId === candidate.schoolClassId) === index).map((candidate) => {
+                      const key = `${assessment.id}:${candidate.schoolClassId}`;
+                      const candidateCount = assessment.candidates.filter((item) => item.schoolClassId === candidate.schoolClassId).length;
+                      const className = candidate.schoolClass.displayName || `${assessment.grade.replace("_", " ")} · ${candidate.schoolClass.streamCode}`;
+                      return <div key={candidate.schoolClassId} className="rounded-xl border border-[#e5eaf1] bg-[#fbfcfe] p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold text-[#172b4d]">{candidate.schoolClass.registration.school.name} · {className}</p><p className="mt-1 text-[11px] text-[#64748b]">{candidateCount} active candidates</p></div></div>
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={moderationReasons[key] ?? ""} onChange={(event) => setModerationReasons((previous) => ({ ...previous, [key]: event.target.value }))} minLength={10} maxLength={2000} placeholder="Explain what needs to be checked or corrected (minimum 10 characters)" className="min-w-0 flex-1 rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-xs text-[#172b4d]" /><button disabled={busy || (moderationReasons[key]?.trim().length ?? 0) < 10} onClick={() => void returnClassMarks(assessment, candidate.schoolClassId)} className="rounded-lg border border-[#d7a58d] px-3 py-2 text-xs font-semibold text-[#8b4b2b] disabled:opacity-40">Return class marks</button></div>
+                      </div>;
+                    })}</div>}
+                  <p className="mt-3 text-[11px] text-[#64748b]">Returning a class reopens correction entry for this assessment. Other submitted class sheets stay locked.</p>
+                </div> : null}
               </article>)}</div>}
           </section>
         </> : null}
