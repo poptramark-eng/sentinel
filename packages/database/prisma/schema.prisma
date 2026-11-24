@@ -600,7 +600,7 @@ model AssessmentMark {
   assessmentId             String              @db.Uuid
   candidateId              String              @db.Uuid
   assessmentLearningAreaId String              @db.Uuid
-  marks                    Decimal?            @db.Decimal(8, 2)
+  marks                    Decimal?            @db.Decimal(10, 4)
   status                   AssessmentMarkStatus @default(DRAFT)
   enteredByAccountId       String?             @db.Uuid
   submittedAt              DateTime?
@@ -624,8 +624,8 @@ model AssessmentMarkRevision {
   markId         String                     @db.Uuid
   actorAccountId String                     @db.Uuid
   action         AssessmentMarkRevisionAction
-  previousMarks  Decimal?                   @db.Decimal(8, 2)
-  newMarks       Decimal?                   @db.Decimal(8, 2)
+  previousMarks  Decimal?                   @db.Decimal(10, 4)
+  newMarks       Decimal?                   @db.Decimal(10, 4)
   reason         String?
   createdAt      DateTime                   @default(now())
 
