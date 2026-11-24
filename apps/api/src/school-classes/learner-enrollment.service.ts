@@ -130,6 +130,41 @@ export class LearnerEnrollmentService {
     };
   }
 
+  async endEnrollment(
+    actor: SchoolActor,
+    registrationId: string,
+    enrollmentId: string,
+    status: "TRANSFERRED" | "WITHDRAWN" | "COMPLETED",
+  ) {
+    return this.prisma.client.$transaction(async (tx) => {
+      const scope = await this.resolveAdminScope(tx, actor, registrationId);
+      const enrollment = await tx.schoolLearnerEnrollment.findFirst({
+        where: { id: enrollmentId, registrationId: scope.registrationId, councilId: scope.councilId, status: "ACTIVE", endedAt: null },
+        select: { id: true, learnerId: true, schoolClassId: true, learner: { select: { learnerNumber: true } } },
+      });
+      if (!enrollment) throw new NotFoundException("An active learner enrollment was not found in this school.");
+      const endedAt = new Date();
+      const updated = await tx.schoolLearnerEnrollment.update({
+        where: { id: enrollment.id },
+        data: { status, endedAt },
+        select: { id: true, status: true, endedAt: true },
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorAccountId: actor.accountId,
+          councilId: scope.councilId,
+          action: "LEARNER_ENROLLMENT_ENDED",
+          resourceType: "SchoolLearnerEnrollment",
+          resourceId: enrollment.id,
+          decision: "ALLOW",
+          reason: status,
+          metadata: { registrationId, schoolClassId: enrollment.schoolClassId, learnerId: enrollment.learnerId, learnerNumber: enrollment.learner.learnerNumber },
+        },
+      });
+      return updated;
+    }, { isolationLevel: "Serializable" });
+  }
+
   async enroll(actor: SchoolActor, registrationId: string, classId: string, input: EnrollLearnerDto) {
     try {
       return await this.prisma.client.$transaction(async (tx) => {
