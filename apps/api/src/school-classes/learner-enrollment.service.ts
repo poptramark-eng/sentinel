@@ -159,6 +159,14 @@ export class LearnerEnrollmentService {
         data: { status, endedAt },
         select: { id: true, status: true, endedAt: true },
       });
+      const withdrawnCandidates = await tx.assessmentCandidate.updateMany({
+        where: {
+          enrollmentId: enrollment.id,
+          status: "ACTIVE",
+          assessment: { is: { status: { in: ["SCHEDULED", "OPEN", "CLOSED"] } } },
+        },
+        data: { status: "WITHDRAWN" },
+      });
       await tx.auditEvent.create({
         data: {
           actorAccountId: actor.accountId,
@@ -168,7 +176,7 @@ export class LearnerEnrollmentService {
           resourceId: enrollment.id,
           decision: "ALLOW",
           reason: reason.trim(),
-          metadata: { registrationId, schoolClassId: enrollment.schoolClassId, learnerId: enrollment.learnerId, learnerNumber: enrollment.learner.learnerNumber },
+          metadata: { registrationId, schoolClassId: enrollment.schoolClassId, learnerId: enrollment.learnerId, learnerNumber: enrollment.learner.learnerNumber, withdrawnAssessmentCandidates: withdrawnCandidates.count },
         },
       });
       return updated;
