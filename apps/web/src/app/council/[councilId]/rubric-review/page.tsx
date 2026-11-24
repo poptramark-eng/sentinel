@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "../../../../lib/api";
+import { CouncilWorkspaceShell } from "../../../../components/council-workspace-shell";
 
 interface ReviewVersion {
   id: string;
@@ -77,11 +78,7 @@ export default function CouncilRubricReviewPage() {
     finally { setBusyId(""); }
   }
 
-  return <main className="min-h-screen bg-[#f6f8fb]">
-    <header className="border-b border-[#e5eaf1] bg-white"><div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-      <Link href="/workspace" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Council workspace</span></Link>
-      <Link href="/workspace" className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Back to workspace</Link>
-    </div></header>
+  return <CouncilWorkspaceShell councilId={councilId} active="rubric-review">
     <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Independent governance</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d] sm:text-3xl">Rubric review queue</h1>
@@ -95,5 +92,5 @@ export default function CouncilRubricReviewPage() {
           <div className="mt-5 space-y-3 border-t border-[#edf0f5] pt-4"><p className="text-[11px] text-[#64748b]">The author cannot approve their own rubric version. Return it with a reason if changes are needed.</p><textarea value={reasons[version.id] ?? ""} onChange={(event) => setReasons((previous) => ({ ...previous, [version.id]: event.target.value }))} maxLength={2000} rows={2} placeholder="Explain what needs to change (minimum 10 characters)…" className="w-full rounded-xl border border-[#dbe3ee] px-3 py-2.5 text-xs text-[#172b4d]" /><div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={Boolean(busyId)} onClick={() => void returnForChanges(version)} className="rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#52647d] disabled:opacity-50">Return for changes</button><button type="button" disabled={Boolean(busyId)} onClick={() => void publish(version)} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busyId === version.id ? "Processing…" : "Approve and publish"}</button></div></div>
         </article>)}</div>}
     </div>
-  </main>;
+  </CouncilWorkspaceShell>;
 }
