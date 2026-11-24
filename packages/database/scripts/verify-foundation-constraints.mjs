@@ -316,7 +316,7 @@ try {
      VALUES ($1, $2, $3, $4, $5, NOW())`,
     [councilGradeLearningAreaId, councilCurriculumId, ids.councilA, curriculumVersionId, gradeLearningAreaId],
   );
-  await expectConstraintFailure("CouncilGradeLearningArea_gradeLearningAreaId_curriculumVersionId_fkey", () =>
+  await expectConstraintFailure("CouncilGradeLearningArea_gradeLearningAreaId_curriculumVersionI", () =>
     client.query(
       `INSERT INTO "CouncilGradeLearningArea"
         ("id", "councilCurriculumId", "councilId", "curriculumVersionId", "gradeLearningAreaId", "updatedAt")

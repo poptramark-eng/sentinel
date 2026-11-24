@@ -159,6 +159,11 @@ BEGIN
     IF EXISTS (
       SELECT 1 FROM "CurriculumVersion" v
       WHERE v."id" = target_version_id AND v."status" IN ('PUBLISHED', 'RETIRED')
+    ) OR (
+      TG_OP = 'UPDATE' AND EXISTS (
+        SELECT 1 FROM "CurriculumVersion" v
+        WHERE v."id" = NEW."curriculumVersionId" AND v."status" IN ('PUBLISHED', 'RETIRED')
+      )
     ) THEN
       RAISE EXCEPTION 'Grade mappings for published curriculum versions are immutable' USING ERRCODE = '55000';
     END IF;
