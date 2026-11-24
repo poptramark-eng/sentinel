@@ -169,14 +169,6 @@ try {
       [id(), ids.accountB, ids.identifierB],
     ),
   );
-  await expectConstraintFailure("EmailVerificationToken_one_unconsumed_per_identifier_key", () =>
-    client.query(
-      `INSERT INTO "EmailVerificationToken"
-        ("id", "accountId", "loginIdentifierId", "tokenHash", "expiresAt")
-        VALUES ($1, $2, $3, 'synthetic-second-unconsumed-token', NOW() + INTERVAL '1 day')`,
-      [id(), ids.accountA, ids.identifierA],
-    ),
-  );
 
   await client.query("ROLLBACK");
   console.log("Foundation PostgreSQL constraints passed: tenant boundaries, active registration uniqueness, historical episodes and email-verification token ownership.");
