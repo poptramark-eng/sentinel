@@ -572,6 +572,35 @@ try {
     client.query(`UPDATE "AssessmentMark" SET "marks" = 70 WHERE "id" = $1`, [ids.markA]),
   );
   await client.query(
+    `UPDATE "Assessment" SET "status" = 'CLOSED', "updatedAt" = NOW() WHERE "id" = $1`,
+    [assessmentId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "AssessmentMark" SET "status" = 'RETURNED', "returnedReason" = 'short', "submittedAt" = NULL WHERE "id" = $1`,
+      [ids.markA],
+    ),
+  );
+  await client.query(
+    `UPDATE "AssessmentMark"
+       SET "status" = 'RETURNED', "returnedReason" = 'Please verify this mark against the source record.',
+           "submittedAt" = NULL, "updatedAt" = NOW()
+     WHERE "id" = $1`,
+    [ids.markA],
+  );
+  await client.query(
+    `UPDATE "Assessment" SET "status" = 'OPEN', "updatedAt" = NOW() WHERE "id" = $1`,
+    [assessmentId],
+  );
+  await client.query(
+    `UPDATE "AssessmentMark" SET "marks" = 76.25, "returnedReason" = NULL, "updatedAt" = NOW() WHERE "id" = $1`,
+    [ids.markA],
+  );
+  await client.query(
+    `UPDATE "AssessmentMark" SET "status" = 'SUBMITTED', "submittedAt" = NOW(), "updatedAt" = NOW() WHERE "id" = $1`,
+    [ids.markA],
+  );
+  await client.query(
     `UPDATE "AssessmentCandidate" SET "status" = 'WITHDRAWN' WHERE "id" = $1`,
     [ids.candidateA],
   );
