@@ -13,6 +13,57 @@ function prismaCode(error: unknown): string | undefined {
 export class SchoolAssessmentMarkService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listAssignedClasses(actor: TeacherActor) {
+    const now = new Date();
+    const memberships = await this.prisma.client.schoolMembership.findMany({
+      where: {
+        personId: actor.personId,
+        role: "TEACHER",
+        status: "ACTIVE",
+        endsAt: null,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        registration: { is: { status: "APPROVED", school: { is: { status: "ACTIVE" } }, council: { is: { status: "ACTIVE" } } } },
+        staffAssignments: {
+          some: { type: "CLASS_TEACHER", status: "ACTIVE", endsAt: null, startsAt: { lte: now }, schoolClass: { is: { status: "ACTIVE" } } },
+        },
+      },
+      select: {
+        id: true,
+        registrationId: true,
+        councilId: true,
+        registration: { select: { school: { select: { name: true } }, council: { select: { name: true } } } },
+        staffAssignments: {
+          where: { type: "CLASS_TEACHER", status: "ACTIVE", endsAt: null, startsAt: { lte: now }, schoolClass: { is: { status: "ACTIVE" } } },
+          select: {
+            schoolClass: { select: { id: true, grade: true, academicYear: true, streamCode: true, displayName: true } },
+          },
+        },
+      },
+    });
+    const assigned = memberships.flatMap((membership) => membership.staffAssignments.map((assignment) => ({
+      membershipId: membership.id,
+      registrationId: membership.registrationId,
+      councilId: membership.councilId,
+      schoolName: membership.registration.school.name,
+      councilName: membership.registration.council.name,
+      schoolClass: assignment.schoolClass,
+    })));
+    const unique = new Map(assigned.map((item) => [item.schoolClass.id, item]));
+    return Promise.all([...unique.values()].map(async (item) => {
+      const assessments = await this.prisma.client.assessment.findMany({
+        where: {
+          councilId: item.councilId,
+          grade: item.schoolClass.grade,
+          academicYear: item.schoolClass.academicYear,
+          status: "OPEN",
+        },
+        orderBy: [{ opensAt: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, code: true, opensAt: true, closesAt: true },
+      });
+      return { ...item, assessments };
+    }));
+  }
+
   private async resolveTeacherClass(actor: TeacherActor, registrationId: string, classId: string) {
     const now = new Date();
     const schoolClass = await this.prisma.client.schoolClass.findFirst({
