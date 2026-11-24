@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Headers,
   Post,
   Req,
   Res,
@@ -12,16 +11,13 @@ import {
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./auth.dto";
 import {
+  CookieReply,
   clearAuthCookies,
   getRefreshCookie,
   hasValidCsrf,
   setAuthCookies,
 } from "./cookie";
 import { AccessTokenGuard, AuthenticatedRequest } from "./access-token.guard";
-
-interface CookieReply {
-  header(name: string, value: string | string[]): unknown;
-}
 
 @Controller("auth")
 export class AuthController {
