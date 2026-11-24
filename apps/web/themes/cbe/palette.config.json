@@ -1,0 +1,83 @@
+{
+  "recipe": "astryx-oklch-v2",
+  "modeStrategy": "light-and-dark",
+  "families": [
+    {
+      "id": "accent",
+      "name": "Accent",
+      "seed": "#5368d5",
+      "anchors": [
+        {
+          "mode": "light",
+          "stop": 50,
+          "color": "#5368d5",
+          "policy": "exact"
+        },
+        {
+          "mode": "dark",
+          "stop": 50,
+          "color": "#5368d5",
+          "policy": "exact"
+        }
+      ]
+    },
+    {
+      "id": "neutral",
+      "name": "Neutral",
+      "seed": "#17243a",
+      "kind": "neutral",
+      "anchors": [
+        {
+          "mode": "light",
+          "stop": 15,
+          "color": "#17243a",
+          "policy": "exact"
+        },
+        {
+          "mode": "dark",
+          "stop": 15,
+          "color": "#17243a",
+          "policy": "exact"
+        }
+      ]
+    },
+    {
+      "id": "success",
+      "name": "Success",
+      "seed": "#159a83",
+      "anchors": [
+        {
+          "mode": "light",
+          "stop": 55,
+          "color": "#159a83",
+          "policy": "exact"
+        },
+        {
+          "mode": "dark",
+          "stop": 55,
+          "color": "#159a83",
+          "policy": "exact"
+        }
+      ]
+    },
+    {
+      "id": "warning",
+      "name": "Warning",
+      "seed": "#b48138",
+      "anchors": [
+        {
+          "mode": "light",
+          "stop": 60,
+          "color": "#b48138",
+          "policy": "exact"
+        },
+        {
+          "mode": "dark",
+          "stop": 60,
+          "color": "#b48138",
+          "policy": "exact"
+        }
+      ]
+    }
+  ]
+}

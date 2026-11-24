@@ -10,11 +10,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@astryxdesign/core": "0.7.17",
+    "@astryxdesign/theme-neutral": "0.7.17",
+    "@stylexjs/stylex": "0.19.2",
     "next": "16.4.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "0.7.17",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.15.30",
     "@types/react": "^19.2.0",

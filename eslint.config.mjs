@@ -14,5 +14,5 @@ export default defineConfig([
       "@next/next/no-html-link-for-pages": "off",
     },
   },
-  globalIgnores(["**/.next/**", "**/dist/**", "**/node_modules/**", "**/coverage/**"]),
+  globalIgnores(["**/.next/**", "**/dist/**", "**/node_modules/**", "**/coverage/**", "apps/web/src/themes/cbe/*.d.ts", "apps/web/src/themes/cbe/*.doc.mjs", "apps/web/themes/cbe/*.d.ts"]),
 ]);

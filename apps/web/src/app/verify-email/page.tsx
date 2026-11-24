@@ -1,7 +1,7 @@
 import { VerifyEmailClient } from "./verify-email-client";
 
 export const metadata = {
-  title: "Verify your email | Sentinel",
+  title: "Verify your email | CBE",
   referrer: "no-referrer" as const,
 };
 

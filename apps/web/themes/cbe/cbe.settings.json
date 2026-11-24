@@ -1,0 +1,78 @@
+{
+  "name": "cbe",
+  "like": "neutral",
+  "mode": "both",
+  "settings": [
+    {
+      "thing": "accent",
+      "value": "#5368D5",
+      "source": "dial"
+    },
+    {
+      "thing": "neutral",
+      "value": "#17243A",
+      "source": "dial"
+    },
+    {
+      "thing": "success",
+      "value": "#159A83",
+      "source": "dial"
+    },
+    {
+      "thing": "corners",
+      "value": "round",
+      "source": "dial"
+    },
+    {
+      "thing": "warning",
+      "value": "#b48138",
+      "source": "dial"
+    },
+    {
+      "thing": "background-color",
+      "value": "#8f9de4",
+      "source": "property",
+      "on": "progress-bar-fill",
+      "mode": "dark"
+    },
+    {
+      "thing": "background-color",
+      "value": "var(--color-accent-muted)",
+      "source": "property",
+      "on": "side-nav-item",
+      "state": "selected"
+    },
+    {
+      "thing": "background-color",
+      "value": "var(--color-accent-muted)",
+      "source": "property",
+      "on": "pagination-item",
+      "state": "selected"
+    },
+    {
+      "thing": "background-color",
+      "value": "var(--color-accent-muted)",
+      "source": "property",
+      "on": "top-nav-item",
+      "state": "selected"
+    },
+    {
+      "thing": "background-color",
+      "value": "var(--color-neutral)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:primary",
+      "state": "disabled"
+    },
+    {
+      "thing": "color",
+      "value": "var(--color-text-primary)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:primary",
+      "state": "disabled"
+    }
+  ],
+  "lifted": [],
+  "palette": "11130043e93e0460cdd87f48f7df29aa97a97ce3572fed7e8e0ade6b5094ae9d"
+}
