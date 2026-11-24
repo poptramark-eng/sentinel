@@ -1,6 +1,6 @@
 # Authentication and Authorization Architecture
 
-**Status:** Proposed technical design based on the current CBE requirements; full permission matrix and physical persistence are not yet approved.  
+**Status:** Working design. First-party login/refresh/logout/me foundation is implemented; account onboarding, verification, recovery, rate limiting, and complete authorization remain in progress.  
 **Implementation:** NestJS + Fastify API, PostgreSQL, Prisma, Next.js client.  
 **Identity provider:** First-party application authentication. No Auth0, Clerk, Firebase Auth, Cognito, Supabase Auth or other third-party identity provider.
 
@@ -51,15 +51,15 @@ Learner identifiers locate learner records only. They are not passwords, one-tim
 Use established cryptographic libraries. Do not invent cryptographic primitives.
 
 ### Passwords
-- Hash passwords with Argon2id using parameters benchmarked for the deployed runtime.
-- Use unique salts through the library; never store plaintext or reversible passwords.
-- Enforce reasonable password length and compromised-password checks where available.
-- Rehash after successful authentication when parameters become outdated.
+- Initial implementation uses Node.js scrypt with N=32768, r=8, p=1, a 16-byte random salt and a 64-byte derived key; max memory is bounded at 64 MiB.
+- Store the algorithm and parameters alongside the encoded salt/hash so future parameter upgrades can be versioned.
+- Never store plaintext or reversible passwords. Enforce a 12–128 character input range at the API boundary.
+- Benchmark the parameters on the production runtime before launch; add rehash-on-login when parameters change. Argon2id may replace scrypt later if a maintained native/WASM package and deployment support are selected.
 - Password reset is a one-time, short-lived, high-entropy token; persist only its hash.
 
 ### Access and refresh tokens
-- Issue short-lived signed JWT access tokens (target 5–10 minutes).
-- JWT claims include subject, issuer, audience, issued-at, expiry, token identifier, and an authentication-version value. Do not embed sensitive learner data or broad tenant privileges.
+- Issue short-lived signed JWT access tokens (10 minutes in the current implementation).
+- JWT claims include subject, issuer, audience, issued-at, expiry, unique token identifier, Person ID, and an authentication-version value. Do not embed sensitive learner data or broad tenant privileges. The current API verifies a fixed HS256 algorithm and fixed issuer/audience.
 - Issue a high-entropy opaque refresh token, stored only as a cryptographic hash with token-family metadata, expiry, used/revoked timestamps and account reference.
 - Rotate refresh tokens on every use. Reuse of an already-used token revokes the token family and triggers an audit/security event.
 - This is token-based authentication, not a server-side login session. PostgreSQL stores revocation/rotation evidence, not a session payload.
@@ -71,13 +71,13 @@ Use established cryptographic libraries. Do not invent cryptographic primitives.
 - Prefer frontend and API custom domains under the same registrable site so SameSite=Lax can be used. If deployment requires cross-site cookies, use SameSite=None; Secure and enforce strict CSRF controls.
 - Keep cookies host-only where possible; do not broaden Domain unnecessarily.
 - Use exact CORS origin allowlists and credentials only for trusted frontend origins.
-- Protect state-changing cookie-authenticated requests with CSRF tokens and Origin/Referer validation. SameSite alone is not the only CSRF control.
+- Protect state-changing cookie-authenticated refresh/logout requests with a double-submit CSRF token and exact Origin/Referer allowlist validation. SameSite alone is not the only CSRF control.
 - Never expose tokens to localStorage, sessionStorage, URL parameters or client logs.
 - Logout clears cookies and revokes the refresh-token family.
 
 ## 4. Authentication flows
 
-- Login: normalize identifier; rate-limit; verify account status; verify Argon2id hash; issue access + refresh cookies; record a security audit event.
+- Login: normalize email; verify account status and verified identifier; verify scrypt hash; issue access + refresh cookies; record a security audit event. Login throttling is not yet implemented and is a release blocker.
 - Refresh: validate refresh-token hash and family state; rotate transactionally; detect replay; issue new access token.
 - Logout: revoke current refresh token/family and clear cookies.
 - Logout all: increment authentication version, revoke all refresh families and clear current cookies.
@@ -150,7 +150,13 @@ The policy decision uses:
 - CSRF, CORS, cookie attributes, brute-force throttling and account enumeration are tested.
 - Every high-risk mutation emits the required immutable audit event.
 
-## 9. Decisions still required before implementation
+## 9. Current implementation boundary
+
+Implemented in the API foundation: email/password login for pre-provisioned active accounts, scrypt password verification, 10-minute HS256 access JWT in an HttpOnly cookie, opaque refresh token hash persistence and rotation, refresh-family replay response, account auth-version checks, CSRF double-submit plus exact origin allowlist for refresh/logout, logout, and a minimal current-user endpoint.
+
+Not yet implemented: account signup/invitation, email verification delivery, password reset, MFA/passkeys, rate limiting, brute-force protection, login alerting, platform-operator bootstrap tooling, complete role/permission guards, and school registration controllers. Do not expose this API to production users until these are completed and tested. The current implementation has not been penetration-tested.
+
+## 10. Decisions still required before production
 
 - Canonical account login identifier policy (email, phone, or both) and duplicate handling.
 - Whether one account can hold multiple people/persona relationships and the identity verification process.
@@ -161,4 +167,4 @@ The policy decision uses:
 - Support-access policy and whether it is needed.
 - Authentication audit retention and privacy schedule.
 
-No authentication migration or production credential setup is authorized by this design note. Resolve the data model and permission matrix first; use synthetic test identities only.
+The Prisma schema includes UserAccount, LoginIdentifier, PlatformOperator and RefreshToken persistence. No database migration has been generated or applied. Production credential setup is not authorized by this design note. Use synthetic test identities only.
