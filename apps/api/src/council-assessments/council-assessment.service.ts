@@ -387,6 +387,21 @@ export class CouncilAssessmentService {
         learningAreas: { orderBy: [{ sortOrder: "asc" }] },
         rubricBands: { orderBy: [{ sortOrder: "asc" }] },
         rubricVersion: { select: { id: true, versionLabel: true, scaleType: true, rubric: { select: { code: true, name: true } } } },
+        candidates: {
+          where: { status: "ACTIVE" },
+          select: {
+            id: true,
+            registrationId: true,
+            schoolClassId: true,
+            schoolClass: {
+              select: {
+                displayName: true,
+                streamCode: true,
+                registration: { select: { school: { select: { name: true } } } },
+              },
+            },
+          },
+        },
       },
     });
   }
