@@ -226,11 +226,11 @@ export default function CouncilCurriculumPage() {
                 <span className="rounded-full bg-[var(--surface-subtle)] px-3 py-1 text-[11px] font-medium text-[var(--muted)]">{catalogue.length} published versions</span>
               </div>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <label className="min-w-0 flex-1 text-xs font-semibold text-[var(--muted)]">Curriculum version<select aria-label="Published curriculum version" value={selectedVersionId} onChange={(event) => setSelectedVersionId(event.target.value)} className="mt-1.5 w-full min-w-0 rounded-xl border border-[var(--line-strong)] bg-white px-3 py-3 text-sm font-normal text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[#eaf1ff]" disabled={catalogue.length === 0}>
+                <label className="min-w-0 flex-1 text-xs font-semibold text-[var(--muted)]">Curriculum version<select aria-label="Published curriculum version" value={selectedVersionId} onChange={(event) => setSelectedVersionId(event.target.value)} className="mt-1.5 min-h-11 w-full min-w-0 rounded-xl border border-[var(--line-strong)] bg-white px-3 py-3 text-sm font-normal text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[#eaf1ff]" disabled={catalogue.length === 0}>
                   {catalogue.length === 0 ? <option value="">No published curriculum versions available</option> : null}
                   {catalogue.map((version) => <option key={version.id} value={version.id}>{version.curriculum.name} · {version.versionLabel} · {version._count.gradeLearningAreas} grade mappings</option>)}
                 </select></label>
-                <button type="button" onClick={() => void selectCurriculum()} disabled={busy || !selectedVersionId || selectedVersionId === activeVersionId} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Saving…" : activeVersionId ? "Switch curriculum" : "Select curriculum"}</button>
+                <button type="button" onClick={() => void selectCurriculum()} disabled={busy || !selectedVersionId || selectedVersionId === activeVersionId} className="min-h-11 rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Saving…" : activeVersionId ? "Switch curriculum" : "Select curriculum"}</button>
               </div>
               {catalogue.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--surface-subtle)] px-4 py-3 text-xs leading-5 text-[var(--muted)]">There are no published curriculum versions available to this Council yet. A curriculum must complete review and publication before it can be selected here.</p> : null}
               {current?.selection ? (
@@ -295,14 +295,14 @@ export default function CouncilCurriculumPage() {
                               </div>
                               <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_100px]">
                                 <label className="text-[10px] font-semibold text-[var(--muted)]">Council display label
-                                  <input value={draft.displayLabel} onChange={(event) => updateDraft(area, { displayLabel: event.target.value })} placeholder={source.sourceLabel} className="mt-1 w-full rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-normal text-[var(--ink-strong)]" />
+                                  <input value={draft.displayLabel} onChange={(event) => updateDraft(area, { displayLabel: event.target.value })} placeholder={source.sourceLabel} className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-normal text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" />
                                 </label>
                                 <label className="text-[10px] font-semibold text-[var(--muted)]">Order
-                                  <input type="number" min="0" max="10000" value={draft.sortOrder} onChange={(event) => updateDraft(area, { sortOrder: Number(event.target.value) })} className="mt-1 w-full rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-normal text-[var(--ink-strong)]" />
+                                  <input type="number" min="0" max="10000" value={draft.sortOrder} onChange={(event) => updateDraft(area, { sortOrder: Number(event.target.value) })} className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-normal text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" />
                                 </label>
                               </div>
                               <label className="mt-3 block text-[10px] font-semibold text-[var(--muted)]">Reason for this change
-                                <input value={draft.reason} onChange={(event) => updateDraft(area, { reason: event.target.value })} placeholder="Required for the Council audit trail" className="mt-1 w-full rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-normal text-[var(--ink-strong)]" />
+                                <input value={draft.reason} onChange={(event) => updateDraft(area, { reason: event.target.value })} placeholder="Required for the Council audit trail" className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-normal text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" />
                               </label>
                               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                                 <p className="text-[10px] text-[var(--subtle)]">Source classification: {source.optionality === "UNKNOWN" ? "Unresolved" : source.optionality}</p>
