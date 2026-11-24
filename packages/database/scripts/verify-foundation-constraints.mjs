@@ -17,7 +17,7 @@ const ids = {
   clusterA: id(), clusterB: id(),
   registrationA: id(), registrationDuplicate: id(), registrationHistory: id(),
   membershipA: id(), membershipB: id(), membershipC: id(), classA: id(), classB: id(), classDuplicate: id(), assignmentA: id(), assignmentB: id(),
-  learnerA: id(), enrollmentA: id(), candidateA: id(),
+  learnerA: id(), enrollmentA: id(), candidateA: id(), markA: id(),
 };
 
 async function expectSqlStateFailure(sqlState, operation) {
@@ -514,10 +514,51 @@ try {
       ids.enrollmentA, ids.registrationA, ids.classA],
   );
   await client.query(
+    `INSERT INTO "AssessmentMark"
+      ("id", "assessmentId", "candidateId", "assessmentLearningAreaId", "updatedAt")
+     VALUES ($1, $2, $3, $4, NOW())`,
+    [ids.markA, assessmentId, ids.candidateA, assessmentLearningAreaId],
+  );
+  await expectConstraintFailure("SchoolLearnerEnrollment_one_active_learner", () =>
+    client.query(
+      `INSERT INTO "SchoolLearnerEnrollment"
+        ("id", "learnerId", "registrationId", "councilId", "schoolClassId", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [id(), ids.learnerA, ids.registrationHistory, ids.councilA, ids.classB],
+    ),
+  );
+  await client.query(
     `UPDATE "Assessment" SET "opensAt" = NOW() + INTERVAL '1 day',
        "closesAt" = NOW() + INTERVAL '2 days', "status" = 'SCHEDULED', "updatedAt" = NOW()
      WHERE "id" = $1`,
     [assessmentId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "AssessmentCandidate" SET "learnerNameSnapshot" = 'Tampered' WHERE "id" = $1`,
+      [ids.candidateA],
+    ),
+  );
+  await client.query(
+    `UPDATE "Assessment" SET "status" = 'OPEN', "updatedAt" = NOW() WHERE "id" = $1`,
+    [assessmentId],
+  );
+  await expectSqlStateFailure("23514", () =>
+    client.query(`UPDATE "AssessmentMark" SET "marks" = 101 WHERE "id" = $1`, [ids.markA]),
+  );
+  await expectSqlStateFailure("23514", () =>
+    client.query(`UPDATE "AssessmentMark" SET "marks" = 75.123 WHERE "id" = $1`, [ids.markA]),
+  );
+  await client.query(
+    `UPDATE "AssessmentMark" SET "marks" = 75.25, "enteredByAccountId" = $1, "updatedAt" = NOW() WHERE "id" = $2`,
+    [ids.accountA, ids.markA],
+  );
+  await client.query(
+    `UPDATE "AssessmentMark" SET "status" = 'SUBMITTED', "submittedAt" = NOW(), "updatedAt" = NOW() WHERE "id" = $1`,
+    [ids.markA],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(`UPDATE "AssessmentMark" SET "marks" = 70 WHERE "id" = $1`, [ids.markA]),
   );
   await expectSqlStateFailure("55000", () =>
     client.query(
@@ -587,7 +628,7 @@ try {
   );
 
   await client.query("ROLLBACK");
-  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, registration lifecycle, email-token ownership, class assignments, learner enrollment, assessment roster snapshots, curriculum publication immutability, Council selection and version-scoped learning areas.");
+  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, registration lifecycle, email-token ownership, class assignments, learner enrollment, immutable assessment rosters, mark validation and submission locks, curriculum publication immutability, Council selection and version-scoped learning areas.");
 } catch (error) {
   await client.query("ROLLBACK").catch(() => undefined);
   throw error;
