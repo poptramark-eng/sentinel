@@ -386,7 +386,7 @@ test("governance moderation returns every submitted mark for one class and reope
   const records = {};
   const tx = {
     assessment: {
-      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026 }),
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026, status: "CLOSED" }),
       update: async ({ data }) => { records.assessment = data; return { id: assessmentId, ...data }; },
     },
     schoolClass: { findFirst: async () => ({ id: classId, registrationId }) },
@@ -397,6 +397,10 @@ test("governance moderation returns every submitted mark for one class and reope
       updateMany: async ({ where, data }) => { records.markUpdate = { where, data }; return { count: 2 }; },
     },
     assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    assessmentSchoolSubmission: {
+      findUnique: async () => ({ id: "30303030-3030-4030-8030-303030303030", status: "SUBMITTED" }),
+      update: async ({ data }) => { records.returnedSubmission = data; return data; },
+    },
     auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
   };
   const client = { $transaction: async (callback, options) => {
@@ -413,6 +417,9 @@ test("governance moderation returns every submitted mark for one class and reope
   assert.equal(records.revisions.length, 2);
   assert.equal(records.revisions[0].action, "RETURNED");
   assert.equal(records.revisions[0].reason, reason);
+  assert.equal(records.returnedSubmission.status, "RETURNED");
+  assert.equal(records.returnedSubmission.returnedByAccountId, accountId);
+  assert.equal(records.returnedSubmission.returnedReason, reason);
   assert.equal(records.assessment.status, "OPEN");
   assert.equal(records.audit.action, "ASSESSMENT_CLASS_MARKS_RETURNED_FOR_CORRECTION");
   assert.equal(records.audit.reason, reason);
@@ -423,7 +430,7 @@ test("moderation cannot return a class while any mark is missing or unsubmitted"
   const classId = "21212121-2121-4121-8121-212121212121";
   const tx = {
     assessment: {
-      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026 }),
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026, status: "CLOSED" }),
     },
     schoolClass: { findFirst: async () => ({ id: classId, registrationId: "23232323-2323-4323-8323-232323232323" }) },
     assessmentCandidate: { findMany: async () => [{ id: "24242424-2424-4424-8424-242424242424" }] },
@@ -463,7 +470,7 @@ test("governance moderation can return one learning area without returning other
   const records = {};
   const tx = {
     assessment: {
-      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026 }),
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026, status: "CLOSED" }),
       update: async ({ data }) => { records.assessment = data; return { id: assessmentId, ...data }; },
     },
     schoolClass: { findFirst: async () => ({ id: classId, registrationId }) },
@@ -474,6 +481,10 @@ test("governance moderation can return one learning area without returning other
       updateMany: async ({ where, data }) => { records.markUpdate = { where, data }; return { count: 1 }; },
     },
     assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    assessmentSchoolSubmission: {
+      findUnique: async () => ({ id: "30303030-3030-4030-8030-303030303030", status: "SUBMITTED" }),
+      update: async ({ data }) => { records.returnedSubmission = data; return data; },
+    },
     auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
   };
   const client = { $transaction: async (callback, options) => {
@@ -490,6 +501,8 @@ test("governance moderation can return one learning area without returning other
   assert.equal(records.revisions[0].action, "RETURNED");
   assert.equal(records.audit.action, "ASSESSMENT_LEARNING_AREA_MARKS_RETURNED_FOR_CORRECTION");
   assert.equal(records.audit.metadata.councilGradeLearningAreaId, mappingId);
+  assert.equal(records.returnedSubmission.status, "RETURNED");
+  assert.equal(records.returnedSubmission.returnedReason, reason);
   assert.equal(records.assessment.status, "OPEN");
   assert.equal(result.learningAreaId, learningAreaId);
   assert.equal(result.markCount, 1);
@@ -511,4 +524,109 @@ test("learning-area moderation rejects incomplete or unsubmitted marks", async (
         "Please correct the missing Mathematics mark."),
     (error) => error instanceof ConflictException && /every candidate mark has been submitted/.test(error.message),
   );
+});
+
+
+test("Council cannot close an assessment before every participating school submits", async () => {
+  const tx = {
+    assessment: {
+      findFirst: async () => ({ id: assessmentId, status: "OPEN" }),
+      update: async () => { throw new Error("Assessment must not close"); },
+    },
+    assessmentCandidate: { findMany: async () => [{ registrationId: "school-one", marks: [{ marks: 70, status: "SUBMITTED" }] }, { registrationId: "school-two", marks: [{ marks: 80, status: "SUBMITTED" }] }] },
+    assessmentLearningArea: { count: async () => 1 },
+    assessmentSchoolSubmission: { findMany: async () => [{ registrationId: "school-one" }] },
+  };
+  await assert.rejects(
+    serviceFor(tx).closeAssessment({ accountId }, councilId, assessmentId),
+    (error) => error instanceof ConflictException && /1 participating school/.test(error.message),
+  );
+});
+
+test("Council closes an assessment only after every participating school and mark is submitted", async () => {
+  const records = {};
+  const tx = {
+    assessment: {
+      findFirst: async () => ({ id: assessmentId, status: "OPEN" }),
+      update: async ({ data }) => { records.assessment = data; return { id: assessmentId, ...data }; },
+    },
+    assessmentCandidate: { findMany: async () => [{ registrationId: "school-one", marks: [{ marks: 70, status: "SUBMITTED" }] }, { registrationId: "school-two", marks: [{ marks: 80, status: "SUBMITTED" }] }] },
+    assessmentLearningArea: { count: async () => 1 },
+    assessmentSchoolSubmission: { findMany: async () => [{ registrationId: "school-one" }, { registrationId: "school-two" }] },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const result = await serviceFor(tx).closeAssessment({ accountId }, councilId, assessmentId);
+  assert.deepEqual(records.assessment, { status: "CLOSED" });
+  assert.equal(result.status, "CLOSED");
+  assert.equal(records.audit.action, "ASSESSMENT_CLOSED");
+});
+
+
+test("governance can return another school's learning area during an active correction window", async () => {
+  const records = {};
+  const classId = "21212121-2121-4121-8121-212121212121";
+  const learningAreaId = "27272727-2727-4727-8727-272727272727";
+  const tx = {
+    assessment: {
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026, status: "OPEN" }),
+      update: async () => { throw new Error("An already-open correction window must not be reopened again"); },
+    },
+    assessmentMark: {
+      count: async ({ where }) => { records.correctionWindow = where.status; return 1; },
+      findMany: async () => [{ id: "29292929-2929-4929-8929-292929292929", marks: 68, status: "SUBMITTED" }],
+      updateMany: async ({ data }) => { records.markUpdate = data; return { count: 1 }; },
+    },
+    schoolClass: { findFirst: async () => ({ id: classId, registrationId: "23232323-2323-4323-8323-232323232323" }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: learningAreaId, councilGradeLearningAreaId: areaId, canonicalName: "Mathematics" }) },
+    assessmentCandidate: { findMany: async () => [{ id: "24242424-2424-4424-8424-242424242424" }] },
+    assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    assessmentSchoolSubmission: {
+      findUnique: async () => ({ id: "30303030-3030-4030-8030-303030303030", status: "SUBMITTED" }),
+      update: async ({ data }) => { records.schoolSubmission = data; return data; },
+    },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const result = await serviceFor(tx).returnLearningAreaMarksForCorrection(
+    { accountId }, councilId, assessmentId, classId, learningAreaId,
+    "Please verify this school's Mathematics mark sheet against the signed original.",
+  );
+  assert.equal(records.correctionWindow, "RETURNED");
+  assert.equal(records.markUpdate.status, "RETURNED");
+  assert.equal(records.schoolSubmission.status, "RETURNED");
+  assert.equal(result.status, "OPEN");
+});
+
+
+test("additional returns for the same school preserve its existing returned submission state", async () => {
+  const records = {};
+  const classId = "21212121-2121-4121-8121-212121212121";
+  const registrationId = "23232323-2323-4323-8323-232323232323";
+  const learningAreaId = "27272727-2727-4727-8727-272727272727";
+  const tx = {
+    assessment: {
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026, status: "OPEN" }),
+      update: async () => { throw new Error("The assessment is already in its correction window"); },
+    },
+    assessmentMark: {
+      count: async () => 1,
+      findMany: async () => [{ id: "29292929-2929-4929-8929-292929292929", marks: 68, status: "SUBMITTED" }],
+      updateMany: async ({ data }) => { records.markUpdate = data; return { count: 1 }; },
+    },
+    schoolClass: { findFirst: async () => ({ id: classId, registrationId }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: learningAreaId, councilGradeLearningAreaId: areaId, canonicalName: "Mathematics" }) },
+    assessmentCandidate: { findMany: async () => [{ id: "24242424-2424-4424-8424-242424242424" }] },
+    assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    assessmentSchoolSubmission: {
+      findUnique: async () => ({ id: "30303030-3030-4030-8030-303030303030", status: "RETURNED" }),
+      update: async () => { throw new Error("An already-returned school submission must not be transitioned twice"); },
+    },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const result = await serviceFor(tx).returnLearningAreaMarksForCorrection(
+    { accountId }, councilId, assessmentId, classId, learningAreaId,
+    "Please verify this additional Mathematics mark against the original class record.",
+  );
+  assert.equal(records.markUpdate.status, "RETURNED");
+  assert.equal(records.audit.action, "ASSESSMENT_LEARNING_AREA_MARKS_RETURNED_FOR_CORRECTION");
+  assert.equal(result.status, "OPEN");
 });

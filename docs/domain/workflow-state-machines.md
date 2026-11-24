@@ -71,22 +71,23 @@ This is a high-level lifecycle only. Internal and external result governance are
 
 ~~~mermaid
 flowchart TD
-  A[Subject teachers enter marks] --> B[Class teacher coordinates completeness]
-  B --> C[School Administrator finalizes school submission]
-  C --> D[Validation and review]
-  D -->|Issues| E[Return to school for correction]
-  E --> A
-  D -->|Valid| F[Platform Administrator approval]
-  F -->|Rejected / returned| E
-  F -->|Approved| G[School Administrator releases results]
-  G --> H[Immutable result release and snapshots]
+  A[Subject teachers enter marks] --> B[Subject teachers submit learning areas]
+  B --> C[School Administrator reviews completeness]
+  C --> D[School Administrator submits immutable school version]
+  D --> E[Validation and review]
+  E -->|Issues| F[Return to school for correction]
+  F --> A
+  E -->|Valid| G[Platform Administrator approval]
+  G -->|Rejected / returned| F
+  G -->|Approved| H[School Administrator releases results]
+  H --> I[Immutable result release and snapshots]
 ~~~
 
 - Marks entry is not submission.
 - School submission is not platform approval.
 - Platform approval is not release.
 - School Administrator release is allowed only after the required platform approval.
-- Record each submission version, review, correction, approval and release as separate auditable history.
+- Record each submission version, review, correction, approval and release as separate auditable history. A returned school submission must be resubmitted as the next immutable version.
 - Post-release correction and replacement release rules remain unresolved and block final implementation.
 
 ## 5. External/inter-school assessment result governance

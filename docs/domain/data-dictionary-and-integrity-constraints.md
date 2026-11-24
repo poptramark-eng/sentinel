@@ -78,7 +78,8 @@
 
 | Concept | Ownership | Core attributes / references | Candidate integrity constraints | Sensitivity / retention |
 |---|---|---|---|---|
-| SchoolSubmission | AssessmentParticipation | Submission ID; version; submitter; timestamp; state | Submission actor must be authorized for participation. Version is monotonic; retries idempotent. | Highly sensitive; retention TBD |
+| SchoolSubmission | Assessment + CouncilSchoolRegistration | Submission ID; version; submitter; timestamp; state; candidate/mark counts; return reason | One current school submission per assessment/registration. Only the active School Administrator submits. State transitions are governed; retries idempotent. | Highly sensitive; retention TBD |
+| SchoolSubmissionVersion | SchoolSubmission | Monotonic version; submitter; candidate/mark counts; immutable mark snapshot; timestamp | One immutable snapshot per version; current submission state must reference its matching version. No update/delete. | Highly sensitive child/educational data; retention TBD |
 | ValidationIssue | SchoolSubmission | Code; severity; field/entity reference; status; resolution history | Issue must refer to a resource in the same submission/assessment scope. Resolution is auditable. | Sensitive; retention TBD |
 | Review | Assessment/submission | Reviewer; findings; action; timestamp | Reviewer must have current scope; review does not implicitly approve or release. | Sensitive governance; retention TBD |
 | Approval | Assessment workflow | Decision type; actor; reason; timestamp; subject/version | Actor must be distinct, active and unconflicted where required. Approval is append-only and distinct from release. | High governance; retention TBD |

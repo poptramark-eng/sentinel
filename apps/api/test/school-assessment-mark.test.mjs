@@ -313,3 +313,29 @@ test("Class Teacher coordination alone does not grant marks entry", async () => 
   assert.equal(observedAssignmentFilter.type, "SUBJECT_TEACHER");
   assert.equal(observedAssignmentFilter.councilGradeLearningAreaId, mappingId);
 });
+
+
+test("teaching workspace resolves assigned curriculum mappings to assessment snapshot learning-area IDs", async () => {
+  const snapshotAreaId = "77777777-7777-4777-8777-777777777777";
+  const client = {
+    schoolMembership: {
+      findMany: async () => [{
+        id: "88888888-8888-4888-8888-888888888888", registrationId, councilId,
+        registration: { school: { name: "Example School" }, council: { name: "Example Council" } },
+        staffAssignments: [{
+          id: "99999999-9999-4999-8999-999999999999", type: "SUBJECT_TEACHER",
+          schoolClass: { id: classId, grade: "GRADE_4", academicYear: 2026, streamCode: "MAIN", displayName: null },
+          councilGradeLearningArea: { id: mappingId, displayLabel: null, gradeLearningArea: { sourceLabel: "Mathematics", learningArea: { code: "MATH", canonicalName: "Mathematics" } } },
+        }],
+      }],
+    },
+    assessment: { findMany: async () => [{
+      id: assessmentId, name: "Term 2", code: "T2", opensAt: null, closesAt: null,
+      learningAreas: [{ id: snapshotAreaId, councilGradeLearningAreaId: mappingId }],
+    }] },
+  };
+  const result = await new SchoolAssessmentMarkService({ client }).listAssignedClasses(actor);
+  assert.equal(result[0].learningAreas[0].id, mappingId);
+  assert.equal(result[0].assessments[0].learningAreas[0].id, snapshotAreaId);
+  assert.notEqual(result[0].assessments[0].learningAreas[0].id, mappingId);
+});

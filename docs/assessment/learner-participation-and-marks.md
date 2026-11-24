@@ -37,6 +37,8 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 - A Subject Teacher learning-area submission requires a mark for every active candidate in that class.
 - Submission records the submitting account and timestamp, creates append-only revision records and locks submitted marks.
 - Submitted marks cannot be overwritten through the normal entry endpoint. A Council Governance Approver can return a complete class or one learning area for reasoned correction; each Subject Teacher can then correct and resubmit only their assigned learning area.
+- After every active candidate has a submitted mark for every learning area, the School Administrator reviews the school-wide completion summary and performs final submission.
+- School submission creates a versioned, immutable mark snapshot. Retries are idempotent. A governance return marks the school submission `RETURNED`; after the affected Subject Teachers complete corrections, the School Administrator submits the next version.
 
 ## API routes
 
@@ -47,13 +49,16 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 | POST | `/school/registrations/:registrationId/classes/:classId/learners` | School Administrator; create/reuse learner identity and enrol |
 | PATCH | `/school/registrations/:registrationId/learners/:enrollmentId/end` | School Administrator; end an enrolment with a reasoned lifecycle state |
 | GET | `/school/teaching/classes` | Teacher; list active assigned classes and their open assessments |
+| GET | `/school/registrations/:registrationId/assessments` | School Administrator; list assessments in which the school has active candidates and show submission progress |
+| GET | `/school/registrations/:registrationId/assessments/:assessmentId/submission` | School Administrator; inspect school-wide readiness, returned reason and submission history |
+| POST | `/school/registrations/:registrationId/assessments/:assessmentId/submission` | School Administrator; submit a complete school assessment snapshot or resubmit a returned version |
 | GET | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Subject Teacher with `?learningAreaId=`; read only the assigned learning area |
 | PUT | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Subject Teacher for the mark's learning area; save one mark |
 | POST | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks/submit` | Assigned Subject Teacher with `?learningAreaId=`; submit only the assigned learning area |
 
 ## Not yet implemented
 
-The implemented workflow does not yet provide School Administrator final school submission after all learning areas are complete, bulk Excel import, a guided learner-transfer wizard, analytics dashboards, comprehensive report exports, or controlled post-publication correction and supersession. Result computation must use the immutable assessment candidate and learning-area snapshots, not the current live class roster.
+The implemented workflow does not yet provide bulk Excel import, a guided learner-transfer wizard, analytics dashboards, comprehensive report exports, or controlled post-publication correction and supersession. Result computation must use the immutable assessment candidate and learning-area snapshots, not the current live class roster.
 
 ## Subject Teacher mark access
 

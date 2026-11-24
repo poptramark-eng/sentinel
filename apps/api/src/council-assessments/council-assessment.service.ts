@@ -709,10 +709,13 @@ export class CouncilAssessmentService {
     try {
       return await this.prisma.client.$transaction(async (tx) => {
         const assessment = await tx.assessment.findFirst({
-          where: { id: assessmentId, councilId, status: "CLOSED" },
-          select: { id: true, grade: true, academicYear: true },
+          where: { id: assessmentId, councilId, status: { in: ["CLOSED", "OPEN"] } },
+          select: { id: true, grade: true, academicYear: true, status: true },
         });
-        if (!assessment) throw new NotFoundException("A closed assessment was not found in this Council.");
+        if (!assessment) throw new NotFoundException("A closed assessment or active correction window was not found in this Council.");
+        if (assessment.status === "OPEN" && await tx.assessmentMark.count({ where: { assessmentId, status: "RETURNED" } }) === 0) {
+          throw new ConflictException("Additional governance returns are allowed only during an already-open correction window.");
+        }
 
         const schoolClass = await tx.schoolClass.findFirst({
           where: { id: classId, councilId, grade: assessment.grade, academicYear: assessment.academicYear },
@@ -752,11 +755,27 @@ export class CouncilAssessmentService {
           })),
         });
 
-        const reopened = await tx.assessment.update({
-          where: { id: assessmentId },
-          data: { status: "OPEN" },
+        const schoolSubmission = await tx.assessmentSchoolSubmission.findUnique({
+          where: { assessmentId_registrationId: { assessmentId, registrationId: schoolClass.registrationId } },
           select: { id: true, status: true },
         });
+        if (!schoolSubmission) throw new ConflictException("The school's final assessment submission was not found.");
+        if (schoolSubmission.status === "SUBMITTED") {
+          await tx.assessmentSchoolSubmission.update({
+            where: { id: schoolSubmission.id },
+            data: { status: "RETURNED", returnedByAccountId: actor.accountId, returnedAt: new Date(), returnedReason: normalizedReason },
+          });
+        } else if (schoolSubmission.status !== "RETURNED") {
+          throw new ConflictException("The school's assessment submission is not in a returnable state.");
+        }
+
+        const reopened = assessment.status === "CLOSED"
+          ? await tx.assessment.update({
+              where: { id: assessmentId },
+              data: { status: "OPEN" },
+              select: { id: true, status: true },
+            })
+          : { id: assessmentId, status: "OPEN" as const };
         await tx.auditEvent.create({
           data: {
             actorAccountId: actor.accountId,
@@ -794,10 +813,13 @@ export class CouncilAssessmentService {
     try {
       return await this.prisma.client.$transaction(async (tx) => {
         const assessment = await tx.assessment.findFirst({
-          where: { id: assessmentId, councilId, status: "CLOSED" },
-          select: { id: true, grade: true, academicYear: true },
+          where: { id: assessmentId, councilId, status: { in: ["CLOSED", "OPEN"] } },
+          select: { id: true, grade: true, academicYear: true, status: true },
         });
-        if (!assessment) throw new NotFoundException("A closed assessment was not found in this Council.");
+        if (!assessment) throw new NotFoundException("A closed assessment or active correction window was not found in this Council.");
+        if (assessment.status === "OPEN" && await tx.assessmentMark.count({ where: { assessmentId, status: "RETURNED" } }) === 0) {
+          throw new ConflictException("Additional governance returns are allowed only during an already-open correction window.");
+        }
 
         const schoolClass = await tx.schoolClass.findFirst({
           where: { id: classId, councilId, grade: assessment.grade, academicYear: assessment.academicYear },
@@ -840,11 +862,27 @@ export class CouncilAssessmentService {
           })),
         });
 
-        const reopened = await tx.assessment.update({
-          where: { id: assessmentId },
-          data: { status: "OPEN" },
+        const schoolSubmission = await tx.assessmentSchoolSubmission.findUnique({
+          where: { assessmentId_registrationId: { assessmentId, registrationId: schoolClass.registrationId } },
           select: { id: true, status: true },
         });
+        if (!schoolSubmission) throw new ConflictException("The school's final assessment submission was not found.");
+        if (schoolSubmission.status === "SUBMITTED") {
+          await tx.assessmentSchoolSubmission.update({
+            where: { id: schoolSubmission.id },
+            data: { status: "RETURNED", returnedByAccountId: actor.accountId, returnedAt: new Date(), returnedReason: normalizedReason },
+          });
+        } else if (schoolSubmission.status !== "RETURNED") {
+          throw new ConflictException("The school's assessment submission is not in a returnable state.");
+        }
+
+        const reopened = assessment.status === "CLOSED"
+          ? await tx.assessment.update({
+              where: { id: assessmentId },
+              data: { status: "OPEN" },
+              select: { id: true, status: true },
+            })
+          : { id: assessmentId, status: "OPEN" as const };
         await tx.auditEvent.create({
           data: {
             actorAccountId: actor.accountId,
@@ -892,22 +930,53 @@ export class CouncilAssessmentService {
   }
 
   async closeAssessment(actor: CouncilActor, councilId: string, assessmentId: string) {
-    return this.prisma.client.$transaction(async (tx) => {
-      const assessment = await tx.assessment.findFirst({
-        where: { id: assessmentId, councilId },
-        select: { id: true, status: true },
-      });
-      if (!assessment) throw new NotFoundException("Assessment not found in this Council.");
-      if (assessment.status !== "OPEN") throw new ConflictException("Only an open assessment can be closed.");
-      const updated = await tx.assessment.update({
-        where: { id: assessmentId },
-        data: { status: "CLOSED" },
-        select: { id: true, status: true },
-      });
-      await tx.auditEvent.create({
-        data: { actorAccountId: actor.accountId, councilId, action: "ASSESSMENT_CLOSED", resourceType: "Assessment", resourceId: assessmentId, decision: "ALLOW" },
-      });
-      return updated;
-    });
+    try {
+      return await this.prisma.client.$transaction(async (tx) => {
+        const assessment = await tx.assessment.findFirst({
+          where: { id: assessmentId, councilId },
+          select: { id: true, status: true },
+        });
+        if (!assessment) throw new NotFoundException("Assessment not found in this Council.");
+        if (assessment.status !== "OPEN") throw new ConflictException("Only an open assessment can be closed.");
+
+        const candidates = await tx.assessmentCandidate.findMany({
+          where: { assessmentId, status: "ACTIVE" },
+          select: { registrationId: true, marks: { select: { marks: true, status: true } } },
+        });
+        if (candidates.length === 0) throw new ConflictException("An assessment with no active candidates cannot be closed.");
+        const learningAreaCount = await tx.assessmentLearningArea.count({ where: { assessmentId } });
+        if (learningAreaCount === 0 || candidates.some((candidate) =>
+          candidate.marks.length !== learningAreaCount || candidate.marks.some((mark) => mark.status !== "SUBMITTED" || mark.marks === null),
+        )) {
+          throw new ConflictException("The assessment cannot close while any active candidate has an incomplete or unsubmitted learning-area mark.");
+        }
+
+        const participatingRegistrationIds = [...new Set(candidates.map((candidate) => candidate.registrationId))];
+        const submissions = await tx.assessmentSchoolSubmission.findMany({
+          where: { assessmentId, status: "SUBMITTED", registrationId: { in: participatingRegistrationIds } },
+          select: { registrationId: true },
+        });
+        const submittedRegistrationIds = new Set(submissions.map((submission) => submission.registrationId));
+        const missingSchoolCount = participatingRegistrationIds.filter((id) => !submittedRegistrationIds.has(id)).length;
+        if (missingSchoolCount > 0) {
+          throw new ConflictException(`${missingSchoolCount} participating school(s) have not completed final School Administrator submission.`);
+        }
+
+        const updated = await tx.assessment.update({
+          where: { id: assessmentId },
+          data: { status: "CLOSED" },
+          select: { id: true, status: true },
+        });
+        await tx.auditEvent.create({
+          data: { actorAccountId: actor.accountId, councilId, action: "ASSESSMENT_CLOSED", resourceType: "Assessment", resourceId: assessmentId, decision: "ALLOW" },
+        });
+        return updated;
+      }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 30_000 });
+    } catch (error) {
+      if (prismaCode(error) === "P2034") {
+        throw new ConflictException("Assessment submissions changed while Council closure was being processed. Refresh and try again.");
+      }
+      throw error;
+    }
   }
 }

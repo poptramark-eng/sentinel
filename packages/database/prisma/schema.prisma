@@ -191,6 +191,11 @@ enum AssessmentResultPublicationStatus {
   SUPERSEDED
 }
 
+enum AssessmentSchoolSubmissionStatus {
+  SUBMITTED
+  RETURNED
+}
+
 model Person {
   id          String   @id @default(uuid()) @db.Uuid
   givenName   String
@@ -231,6 +236,9 @@ model UserAccount {
   enteredAssessmentMarks     AssessmentMark[]              @relation("AssessmentMarkEnteredBy")
   assessmentMarkRevisions    AssessmentMarkRevision[]
   publishedAssessmentResults AssessmentResultPublication[] @relation("AssessmentResultPublisher")
+  schoolAssessmentSubmissions AssessmentSchoolSubmission[] @relation("AssessmentSchoolSubmissionActor")
+  returnedSchoolSubmissions AssessmentSchoolSubmission[] @relation("AssessmentSchoolSubmissionReturner")
+  schoolSubmissionVersions AssessmentSchoolSubmissionVersion[]
   auditEvents                AuditEvent[]
 
   @@index([status])
@@ -459,6 +467,7 @@ model CouncilSchoolRegistration {
   schoolClasses        SchoolClass[]
   learnerEnrollments   SchoolLearnerEnrollment[]
   assessmentCandidates AssessmentCandidate[]
+  assessmentSubmissions AssessmentSchoolSubmission[]
 
   @@unique([id, councilId])
   @@unique([councilId, registrationCode])
@@ -905,6 +914,7 @@ model Assessment {
   candidates         AssessmentCandidate[]
   marks              AssessmentMark[]
   resultPublications AssessmentResultPublication[]
+  schoolSubmissions AssessmentSchoolSubmission[]
 
   @@unique([id, councilId, curriculumVersionId])
   @@unique([id, rubricVersionId])
@@ -939,6 +949,52 @@ model AssessmentLearningArea {
   @@unique([assessmentId, councilGradeLearningAreaId])
   @@index([assessmentId, sortOrder])
   @@index([councilGradeLearningAreaId])
+}
+
+model AssessmentSchoolSubmission {
+  id                   String                           @id @default(uuid()) @db.Uuid
+  assessmentId         String                           @db.Uuid
+  councilId            String                           @db.Uuid
+  registrationId       String                           @db.Uuid
+  version              Int                              @default(1)
+  status               AssessmentSchoolSubmissionStatus @default(SUBMITTED)
+  candidateCount       Int
+  markCount            Int
+  submittedByAccountId String                           @db.Uuid
+  submittedAt          DateTime                         @default(now())
+  returnedByAccountId  String?                          @db.Uuid
+  returnedAt           DateTime?
+  returnedReason       String?
+  createdAt            DateTime                         @default(now())
+  updatedAt            DateTime                         @updatedAt
+
+  assessment   Assessment                 @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  registration CouncilSchoolRegistration  @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
+  submittedBy  UserAccount                 @relation("AssessmentSchoolSubmissionActor", fields: [submittedByAccountId], references: [id], onDelete: Restrict)
+  returnedBy   UserAccount?                @relation("AssessmentSchoolSubmissionReturner", fields: [returnedByAccountId], references: [id], onDelete: Restrict)
+  versions     AssessmentSchoolSubmissionVersion[]
+
+  @@unique([id, assessmentId])
+  @@unique([assessmentId, registrationId])
+  @@index([councilId, status, submittedAt])
+  @@index([registrationId, status, submittedAt])
+}
+
+model AssessmentSchoolSubmissionVersion {
+  id                    String   @id @default(uuid()) @db.Uuid
+  submissionId          String   @db.Uuid
+  version               Int
+  submittedByAccountId  String   @db.Uuid
+  candidateCount        Int
+  markCount             Int
+  snapshot              Json     @db.JsonB
+  createdAt             DateTime @default(now())
+
+  submission AssessmentSchoolSubmission @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  submittedBy UserAccount               @relation(fields: [submittedByAccountId], references: [id], onDelete: Restrict)
+
+  @@unique([submissionId, version])
+  @@index([submittedByAccountId, createdAt])
 }
 
 model AssessmentResultPublication {

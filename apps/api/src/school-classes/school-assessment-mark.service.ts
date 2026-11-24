@@ -56,9 +56,22 @@ export class SchoolAssessmentMarkService {
       const assessments = await this.prisma.client.assessment.findMany({
         where: { councilId: item.councilId, grade: item.schoolClass.grade, academicYear: item.schoolClass.academicYear, status: "OPEN" },
         orderBy: [{ opensAt: "asc" }, { name: "asc" }],
-        select: { id: true, name: true, code: true, opensAt: true, closesAt: true },
+        select: {
+          id: true, name: true, code: true, opensAt: true, closesAt: true,
+          learningAreas: { select: { id: true, councilGradeLearningAreaId: true } },
+        },
       });
-      return { ...item, learningAreas: item.learningAreas, assessments };
+      return {
+        ...item,
+        learningAreas: item.learningAreas,
+        assessments: assessments.map((assessment) => ({
+          id: assessment.id, name: assessment.name, code: assessment.code, opensAt: assessment.opensAt, closesAt: assessment.closesAt,
+          learningAreas: item.learningAreas.flatMap((assignment) => {
+            const snapshot = assessment.learningAreas.find((area) => area.councilGradeLearningAreaId === assignment.id);
+            return snapshot ? [{ id: snapshot.id, code: assignment.code, name: assignment.name }] : [];
+          }),
+        })),
+      };
     }));
   }
 

@@ -8,17 +8,19 @@ Submitted school mark sheets are immutable by default. A Council Governance Appr
 
 1. Each assigned Subject Teacher enters marks only for their assigned learning area while the assessment is open. Each saved value is revisioned.
 2. A Subject Teacher submits their learning area for the class. Submission is rejected if any active candidate is missing a mark for that area. Submitted cells are locked.
-3. The Council closes the assessment after collecting school submissions.
-4. A Council Governance Approver may return one complete class sheet or one learning area within a class with a substantive reason. A class-level return changes all submitted cells for that class to `RETURNED`; a learning-area return changes only that area's cells. Both operations record one `RETURNED` revision per affected cell and reopen the assessment for correction.
-5. For either return type, each assigned Subject Teacher sees the return reason beside their affected learning-area cells, corrects those values and resubmits only their assigned learning area. A class-level return therefore requires the affected Subject Teachers to complete their own learning-area corrections; Class Teacher coordination does not grant mark-editing permissions.
-6. Unaffected subject marks and other classes' submitted cells remain locked during a learning-area correction window. The Council can close the assessment again after review.
+3. The School Administrator reviews school-wide readiness and performs the final registration-scoped submission. Sentinel records an immutable submission snapshot and version.
+4. The Council can close the assessment only after every participating school has submitted and every active candidate has a complete submitted mark set.
+5. A Council Governance Approver may return one complete class sheet or one learning area within a class with a substantive reason. A class-level return changes all submitted cells for that class to `RETURNED`; a learning-area return changes only that area's cells. Both operations record one `RETURNED` revision per affected cell and reopen the assessment for correction.
+6. For either return type, each assigned Subject Teacher sees the return reason beside their affected learning-area cells, corrects those values and resubmits only their assigned learning area. A class-level return therefore requires the affected Subject Teachers to complete their own learning-area corrections; Class Teacher coordination does not grant mark-editing permissions.
+7. Unaffected subject marks and other classes' submitted cells remain locked during a learning-area correction window. After all affected marks are corrected and resubmitted, the School Administrator submits the next immutable school version. The Council can close the assessment again only after every school is submitted.
 
 ## Authorization
 
 - Class Teachers coordinate class readiness and may read the assigned learner roster; this assignment does not grant marks entry.
 - Only a Council Governance Approver can return marks for correction.
 - A return is scoped to a class in the assessment's Council, grade and academic year. A learning-area return must reference an area snapshotted on that assessment.
-- The return reason is mandatory (10–2,000 characters).
+- One correction window may contain multiple class/learning-area returns across participating schools. A school submission remains `RETURNED` until its School Administrator submits the next complete version.
+- The return reason is mandatory (10–2,000 characters). A school submission is returned in the same transaction as the affected mark rows.
 - Council Administrators manage assessment lifecycle and configuration; they do not gain the governance-return permission merely by being administrators.
 
 ## Database enforcement

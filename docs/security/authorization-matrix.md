@@ -105,7 +105,7 @@ Additional constraints:
 | View assigned candidates | Scoped to own school and permitted assessment | Scoped to assigned work | Scoped to assigned class/coordination | Field-level learner privacy policy remains to be finalized. |
 | Enter/correct marks | School oversight and correction authority TBD | Scoped to assigned learning area and candidates | Only if separately assigned subject duties | Mark correction authority, deadlines and approval rules remain open. |
 | Coordinate assessment completeness | Allowed for own school | View own work status | Scoped to assigned class/assessment | Class-teacher coordination is explicit. |
-| Final school submission | School Administrator oversight; exact action permission TBD | Denied unless separately assigned | Allowed when designated for that assessment/class | Submission actor and delegation rules need final approval. |
+| Final school submission | Allowed for own approved registration and participating assessment | Denied | Denied | Active School Administrator membership only; class/subject assignments do not grant final submission.
 | Release internal assessment results | Allowed only after required PlatformAdministrator approval | Denied | Denied | School Administrator release is explicit. |
 | Release external/inter-school results | Denied unless separately authorized as organizer staff | Denied | Denied | Organizer releases under active authority. |
 | View released school results | Scoped to own school | Scoped to assigned role; exact field policy TBD | Scoped to assigned class; exact field policy TBD | Result visibility before release is restricted. |

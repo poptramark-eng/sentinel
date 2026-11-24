@@ -47,3 +47,20 @@ Subject Teacher assignments are class-scoped and tied to a specific enabled `Cou
 The POST body is `{ "membershipId": "...", "councilGradeLearningAreaId": "..." }`. The API verifies the active School Administrator membership, approved school and Council, class grade, active teacher membership, effective Council curriculum selection, published curriculum version, and enabled grade-to-learning-area mapping in a serializable transaction. Database composite foreign keys and a partial unique index enforce mapping ownership and one active assignment per class/learning area. Every assignment and end operation is audited.
 
 A Class Teacher does not bypass learning-area assignments. A Subject Teacher can read, save and submit marks only for the explicitly assigned learning area. The mark-sheet GET and submit routes accept `learningAreaId` (the assessment's learning-area snapshot ID) to scope the operation. A Subject Teacher must supply `learningAreaId`; an unqualified mark-sheet request is denied.
+
+
+## School assessment submission
+
+The final submission is registration-scoped, not class-scoped. Only an active School Administrator membership for the approved registration can inspect or submit the school's assessment. Teacher assignments cannot perform this action.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/school/registrations/:registrationId/assessments` | List assessments with active candidates for this school and their completion/submission status |
+| `GET` | `/api/school/registrations/:registrationId/assessments/:assessmentId/submission` | Review class and learning-area readiness, return reason and version history |
+| `POST` | `/api/school/registrations/:registrationId/assessments/:assessmentId/submission` | Finalize the school's complete assessment submission or submit the next corrected version |
+
+The API derives Council and school scope from the caller's active School Administrator membership. The assessment must belong to the same Council. Final submission is accepted only while the assessment is `OPEN`, with at least one active candidate, at least one snapshotted learning area, and exactly one non-null `SUBMITTED` mark for every active candidate/learning-area pair in the school. Draft, returned, missing or incomplete marks block submission.
+
+The first successful submission creates version 1 and an immutable snapshot of candidate, class, mark-row, learning-area and mark-value references. A repeated request while the submission is already `SUBMITTED` is idempotent and does not create another version. After a Council Governance Approver returns the school's class or learning-area marks for correction, the submission becomes `RETURNED`; Subject Teachers correct only their assigned areas and resubmit those marks. The School Administrator then creates the next immutable school submission version. Every submission and resubmission is audited.
+
+The Council cannot close the assessment until every participating school has a `SUBMITTED` school record and every active candidate has all learning-area marks submitted. The Council return workflow changes the affected school's submission to `RETURNED` before reopening the assessment for correction.

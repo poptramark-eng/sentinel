@@ -101,7 +101,9 @@ This register resolves the previously open design questions with conservative de
 **Consequences**
 
 - Mark value and mark revision history are distinct.
-- Submission records reference immutable/versioned mark sets.
+- `AssessmentSchoolSubmission` records the current school/assessment state; `AssessmentSchoolSubmissionVersion` stores an append-only JSONB snapshot of the exact candidate, class, learning-area and mark-row/value set submitted by the School Administrator.
+- Submission is registration-scoped and idempotent. A returned submission can only be resubmitted as the next monotonic version after all affected learning-area marks are resubmitted.
+- Council assessment closure is blocked until every participating registration has a submitted school version and every active candidate has a complete submitted mark set.
 - School administration and mark-entry responsibilities remain separated.
 
 **Confidence:** Medium-high; specific deadlines and evidence requirements are assessment configuration, not hard-coded global constants.
