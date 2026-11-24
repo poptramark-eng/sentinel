@@ -16,6 +16,21 @@ interface CouncilActor {
 export class CouncilCurriculumService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listPublished() {
+    return this.prisma.client.curriculumVersion.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        versionLabel: true,
+        publishedAt: true,
+        sourceTitle: true,
+        curriculum: { select: { code: true, name: true, track: true } },
+        _count: { select: { gradeLearningAreas: true, councilCurricula: true } },
+      },
+    });
+  }
+
   async getCurrent(councilId: string) {
     const council = await this.prisma.client.council.findUnique({
       where: { id: councilId },
