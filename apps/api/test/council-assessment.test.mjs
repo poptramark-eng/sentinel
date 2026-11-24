@@ -181,3 +181,47 @@ test("assessment creation rejects a learning area outside the Council's eligible
     (error) => error instanceof ConflictException && /not enabled and assessment-eligible/.test(error.message),
   );
 });
+
+
+test("rubric read access is available to active Council administrators and governance approvers", async () => {
+  const { CouncilRubricReaderGuard } = await import("../dist/auth/council-rubric-reader.guard.js");
+  let membershipWhere;
+  const guard = new CouncilRubricReaderGuard({
+    client: {
+      userAccount: { findUnique: async () => ({ personId: "77777777-7777-4777-8777-777777777777" }) },
+      councilMembership: {
+        findFirst: async ({ where }) => {
+          membershipWhere = where;
+          return { id: "66666666-6666-4666-8666-666666666666" };
+        },
+      },
+    },
+  });
+  const context = {
+    switchToHttp: () => ({
+      getRequest: () => ({ auth: { accountId }, params: { councilId } }),
+    }),
+  };
+
+  assert.equal(await guard.canActivate(context), true);
+  assert.equal(membershipWhere.councilId, councilId);
+  assert.deepEqual(membershipWhere.role.in, ["COUNCIL_ADMINISTRATOR", "COUNCIL_GOVERNANCE_APPROVER"]);
+  assert.equal(membershipWhere.status, "ACTIVE");
+});
+
+test("rubric read access denies accounts without an active Council governance membership", async () => {
+  const { CouncilRubricReaderGuard } = await import("../dist/auth/council-rubric-reader.guard.js");
+  const guard = new CouncilRubricReaderGuard({
+    client: {
+      userAccount: { findUnique: async () => ({ personId: "77777777-7777-4777-8777-777777777777" }) },
+      councilMembership: { findFirst: async () => null },
+    },
+  });
+  const context = {
+    switchToHttp: () => ({
+      getRequest: () => ({ auth: { accountId }, params: { councilId } }),
+    }),
+  };
+
+  await assert.rejects(guard.canActivate(context), (error) => error.getStatus() === 403);
+});
