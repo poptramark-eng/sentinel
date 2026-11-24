@@ -507,11 +507,12 @@ try {
   await client.query(
     `INSERT INTO "AssessmentCandidate"
       ("id", "assessmentId", "councilId", "curriculumVersionId", "learnerId", "enrollmentId",
-       "registrationId", "schoolClassId", "learnerNumberSnapshot", "learnerNameSnapshot",
-       "classGradeSnapshot", "classStreamSnapshot")
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SENTINEL-TEST-LEARNER', 'Test Learner', 'GRADE_4', 'MAIN')`,
+       "registrationId", "schoolClassId", "schoolIdSnapshot", "schoolNameSnapshot",
+       "learnerNumberSnapshot", "learnerNameSnapshot", "classGradeSnapshot", "classStreamSnapshot")
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Synthetic Constraint School',
+       'SENTINEL-TEST-LEARNER', 'Test Learner', 'GRADE_4', 'MAIN')`,
     [ids.candidateA, assessmentId, ids.councilA, curriculumVersionId, ids.learnerA,
-      ids.enrollmentA, ids.registrationA, ids.classA],
+      ids.enrollmentA, ids.registrationA, ids.classA, ids.school],
   );
   await client.query(
     `INSERT INTO "AssessmentMark"
