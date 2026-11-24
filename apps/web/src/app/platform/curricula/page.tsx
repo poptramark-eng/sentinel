@@ -590,7 +590,7 @@ export default function PlatformCurriculaPage() {
                 </div>
                 {draftPreview.errors.length > 0 ? <ul className="mt-3 space-y-1 text-[11px] text-[#a33b3b]">{draftPreview.errors.map((item) => <li key={`${item.row}-${item.message}`}>Row {item.row}: {item.message}</li>)}</ul> : null}
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#e5eaf1] pt-4">
-                  <p className="max-w-xl text-[11px] leading-5 text-[#64748b]">The imported version remains a draft. Independent review is still required before publication; the file's assessment-eligibility column is retained as unresolved source context, not activated.</p>
+                  <p className="max-w-xl text-[11px] leading-5 text-[#64748b]">The imported version remains a draft. Independent review is still required before publication; the source file fingerprint is retained, while assessment eligibility remains unconfigured and cannot be activated by import.</p>
                   <button disabled={!draftPreview.valid || draftImportBusy} onClick={() => void commitDraftImport()} className="rounded-lg bg-[#16734b] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#115d3d] disabled:opacity-50">{draftImportBusy ? "Importing…" : "Create draft version"}</button>
                 </div>
               </div>
