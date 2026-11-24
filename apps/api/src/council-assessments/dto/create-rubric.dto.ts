@@ -92,7 +92,7 @@ export class CreateRubricVersionDto {
   @Length(1, 40)
   versionLabel!: string;
 
-  @IsEnum(["NUMERIC_BANDS", "PERFORMANCE_LEVELS", "DESCRIPTIVE"])
+  @IsIn(["NUMERIC_BANDS", "PERFORMANCE_LEVELS", "DESCRIPTIVE"])
   scaleType!: "NUMERIC_BANDS" | "PERFORMANCE_LEVELS" | "DESCRIPTIVE";
 
   @IsOptional()
