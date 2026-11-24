@@ -86,10 +86,19 @@ export class LearnerEnrollmentService {
     const learners = await this.prisma.client.learner.findMany({
       where: {
         OR: [
+          // A known system identifier may be used for a transfer across schools.
           { learnerNumber: { equals: normalized, mode: "insensitive" } },
-          { givenName: { contains: normalized, mode: "insensitive" } },
-          { familyName: { contains: normalized, mode: "insensitive" } },
-          { otherNames: { contains: normalized, mode: "insensitive" } },
+          // Name search is restricted to identities already associated with this school.
+          {
+            AND: [
+              { enrollments: { some: { registrationId } } },
+              { OR: [
+                { givenName: { contains: normalized, mode: "insensitive" } },
+                { familyName: { contains: normalized, mode: "insensitive" } },
+                { otherNames: { contains: normalized, mode: "insensitive" } },
+              ] },
+            ],
+          },
         ],
       },
       take: 10,
@@ -157,7 +166,7 @@ export class LearnerEnrollmentService {
           resourceType: "SchoolLearnerEnrollment",
           resourceId: enrollment.id,
           decision: "ALLOW",
-          reason: status,
+          reason: reason.trim(),
           metadata: { registrationId, schoolClassId: enrollment.schoolClassId, learnerId: enrollment.learnerId, learnerNumber: enrollment.learner.learnerNumber },
         },
       });
