@@ -25,6 +25,15 @@ Submitted school mark sheets are immutable by default. A Council Governance Appr
 
 The PostgreSQL mark trigger rejects edits to submitted marks. The only exception is the controlled `SUBMITTED → RETURNED` transition while the assessment is `CLOSED`, with a substantive reason, unchanged mark value and cleared submission timestamp. Returned values can be edited only after the assessment has been reopened. Returned rows require a non-null mark and reason. Mark revisions remain append-only.
 
-## Result publication boundary
+## Result preview and publication
 
-This workflow does not calculate or publish results. Results must not be computed from a closed assessment until all active candidates have a submitted mark for every snapshotted learning area. Publication will use the assessment's frozen curriculum, rubric, candidate and mark-revision history. No grading thresholds or performance descriptors are inferred from unreviewed curriculum source material.
+A closed assessment can be previewed only when every active candidate has a submitted mark for every snapshotted learning area. The result engine uses the frozen candidate, school, learning-area and rubric snapshots attached to the assessment. Withdrawn candidates are excluded; later changes to live learner, school or curriculum records do not alter the result inputs.
+
+The preview calculates learning-area percentages, candidate totals, overall percentages, competition ranks (equal totals share a rank), school averages, and highest/lowest/average performance. Numeric classification is applied only when the published rubric explicitly declares a numeric scale whose score unit and range match either the assessment percentage scale or the total raw-mark scale. Otherwise the result remains unclassified; no thresholds or descriptors are inferred. The configured maximum is included in the final rubric band.
+
+Routes:
+- GET /councils/:councilId/assessments/:assessmentId/results/preview — Council rubric readers can inspect a closed assessment preview.
+- POST /councils/:councilId/assessments/:assessmentId/results/publish — Council Governance Approver only; publishes and releases the assessment in one serializable transaction.
+- GET /councils/:councilId/assessments/:assessmentId/results — Council rubric readers can retrieve the immutable published snapshot.
+
+Publication stores a versioned result publication, one immutable result per active candidate, and the learning-area result rows. It records an audit event and transitions the assessment to RELEASED. Database constraints reject incomplete publication snapshots and protect published result records. A published snapshot is read as stored, never recomputed from current live records. Corrections after publication require a separately controlled supersession and republication process; no in-place editing is supported.
