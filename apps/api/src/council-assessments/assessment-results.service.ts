@@ -143,7 +143,9 @@ export class AssessmentResultsService {
         const score = classificationMode === "PERCENTAGE" ? row.percentage : row.totalMarks;
         const band = assessment.rubricBands.find((item) =>
           item.lowerBound !== null && item.upperBound !== null &&
-          score >= Number(item.lowerBound) && score < Number(item.upperBound),
+          score >= Number(item.lowerBound) &&
+          (score < Number(item.upperBound) ||
+            (maxScore !== null && score === maxScore && Number(item.upperBound) === maxScore)),
         );
         row.overallBandCode = band?.code ?? null;
         row.overallBandLabel = band?.label ?? null;
