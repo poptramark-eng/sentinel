@@ -50,3 +50,5 @@ jobs:
         run: pnpm lint
       - name: Build applications
         run: pnpm build
+      - name: Run API unit tests
+        run: pnpm --filter @cbe/api test
