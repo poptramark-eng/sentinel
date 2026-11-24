@@ -4,7 +4,7 @@ A multi-council platform for configuring and administering assessments, managing
 
 ## Project status
 
-The repository foundation and first educator UX prototype are in place. The platform is not production-ready. Use synthetic learner and assessment data until privacy, hosting, and operational controls have been reviewed.
+The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party login/refresh/logout/current-user API are in place. The platform is not production-ready: migrations, account onboarding/verification, rate limiting, full authorization, school-registration endpoints, and production operations remain incomplete. Use synthetic learner and assessment data only.
 
 ## Architecture
 
@@ -25,7 +25,8 @@ PostgreSQL is the system of record. Redis is not a permanent ledger or source of
 - Teacher identity is global; school membership and assignments are school-specific.
 - Learners do not have login accounts.
 - Internal and external assessment result-governance paths are distinct.
-- The physical database schema and migrations are intentionally not implemented until the open identity, authorization, candidate uniqueness and result-correction decisions are reviewed.
+- Core identity, tenant, geography and school-registration foundation models are implemented in Prisma. The first migration is not yet generated or applied.
+- Core identity and authorization decisions are recorded in docs/decisions/decision-register.md; legal/privacy and external identifier validation gates remain open.
 
 Read:
 - `docs/architecture/` — ADRs and architecture boundaries
@@ -48,7 +49,7 @@ corepack enable
 pnpm install --frozen-lockfile
 ```
 
-Copy `.env.example` to `.env` and configure `DATABASE_URL` for a local PostgreSQL database. Never commit the real `.env` file or provider credentials.
+Copy `.env.example` to `.env` and configure a local PostgreSQL `DATABASE_URL`, `WEB_ORIGIN`, `ACCESS_TOKEN_SECRET` and `REFRESH_TOKEN_PEPPER`. Generate independent secrets with `openssl rand -base64 48`. Never commit the real `.env` file or provider credentials.
 
 Run both applications:
 
@@ -69,6 +70,17 @@ pnpm dev:api
 
 The marks-entry prototype uses synthetic data and local page state only. It does not call the API or persist marks.
 
+The API now provides first-party `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, and `GET /api/auth/me` endpoints. Login is currently limited to pre-provisioned accounts with verified email identifiers. There is no public account signup or password reset yet.
+
+To bootstrap the first PlatformAdministrator in a local database, build the workspace, set `BOOTSTRAP_ADMIN_GIVEN_NAME`, `BOOTSTRAP_ADMIN_FAMILY_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD` in the local environment, then run:
+
+```bash
+pnpm build
+pnpm --filter @cbe/api bootstrap:platform-admin
+```
+
+The bootstrap command refuses to run if an active PlatformAdministrator already exists. Do not use it as a public endpoint or commit bootstrap credentials.
+
 ## Quality checks
 
 ```bash
@@ -84,5 +96,5 @@ CI runs the same validation/build checks with frozen-lockfile installation.
 
 - Do not load real learner data in development.
 - Do not create production credentials or activate paid providers without explicit approval.
-- Do not run Prisma migrations until the logical data model and authorization design gates are satisfied.
+- Do not run Prisma migrations against production. The foundation schema is validated, but the initial SQL migration still needs generation, review and a non-production PostgreSQL test.
 - Never commit secrets, tokens, private keys or personal learner information.
