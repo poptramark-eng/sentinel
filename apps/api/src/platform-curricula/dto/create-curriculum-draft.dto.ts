@@ -61,6 +61,7 @@ export class CreateCurriculumDraftDto {
 
   @IsString()
   @Length(2, 60)
+  @Matches(/^[A-Z0-9]+(?:_[A-Z0-9]+)*$/)
   track!: string;
 
   @IsString()

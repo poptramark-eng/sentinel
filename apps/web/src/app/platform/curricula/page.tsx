@@ -109,12 +109,13 @@ function statusClass(status: VersionStatus) {
 }
 
 function parseCsv(source: string): string[][] {
-  const text = source.replace(/^\\uFEFF/, "");
+  const text = source.replace(/^\uFEFF/, "");
   const rows: string[][] = [];
   let row: string[] = [];
   let value = "";
   let quoted = false;
   let afterQuote = false;
+
   const finishRow = () => {
     row.push(value);
     if (row.some((cell) => cell.trim().length > 0)) rows.push(row);
@@ -122,6 +123,7 @@ function parseCsv(source: string): string[][] {
     value = "";
     afterQuote = false;
   };
+
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
     if (quoted) {
@@ -131,38 +133,48 @@ function parseCsv(source: string): string[][] {
       } else if (character === '"') {
         quoted = false;
         afterQuote = true;
-      } else value += character;
+      } else {
+        value += character;
+      }
       continue;
     }
+
     if (afterQuote) {
       if (character === ",") {
         row.push(value);
         value = "";
         afterQuote = false;
-      } else if (character === "\\n" || character === "\\r") {
-        if (character === "\\r" && text[index + 1] === "\\n") index += 1;
+      } else if (character === "\n" || character === "\r") {
+        if (character === "\r" && text[index + 1] === "\n") index += 1;
         finishRow();
-      } else if (character !== " " && character !== "\\t") {
+      } else if (character === " " || character === "\t") {
+        // Ignore optional whitespace between a quoted cell and its delimiter.
+      } else {
         throw new Error("The CSV contains characters after a closing quote.");
       }
       continue;
     }
+
     if (character === '"') {
       if (value.length > 0) throw new Error("The CSV contains a quote inside an unquoted field.");
       quoted = true;
     } else if (character === ",") {
       row.push(value);
       value = "";
-    } else if (character === "\\n" || character === "\\r") {
-      if (character === "\\r" && text[index + 1] === "\\n") index += 1;
+    } else if (character === "\n" || character === "\r") {
+      if (character === "\r" && text[index + 1] === "\n") index += 1;
       finishRow();
-    } else value += character;
+    } else {
+      value += character;
+    }
   }
+
   if (quoted) throw new Error("The CSV file contains an unclosed quoted field.");
   row.push(value);
   if (row.some((cell) => cell.trim().length > 0)) rows.push(row);
   return rows;
 }
+
 
 function sha256Hex(buffer: ArrayBuffer) {
   return crypto.subtle.digest("SHA-256", buffer).then((digest) =>
@@ -183,11 +195,11 @@ export default function PlatformCurriculaPage() {
   const [returnReason, setReturnReason] = useState("");
   const [mappingReviews, setMappingReviews] = useState<Record<string, { optionality: "CORE" | "OPTIONAL" | ""; reason: string }>>({});
   const [draftFile, setDraftFile] = useState<File | null>(null);
-  const [draftSourceTitle, setDraftSourceTitle] = useState("KICD CBE curriculum source review extract");
-  const [draftSourceUrl, setDraftSourceUrl] = useState("https://kicd.ac.ke/cbc-materials/");
-  const [draftRetrievedAt, setDraftRetrievedAt] = useState("2026-11-24");
+  const [draftSourceTitle, setDraftSourceTitle] = useState("");
+  const [draftSourceUrl, setDraftSourceUrl] = useState("");
+  const [draftRetrievedAt, setDraftRetrievedAt] = useState("");
   const [draftCurriculumName, setDraftCurriculumName] = useState("Kenya Regular CBE");
-  const [draftVersionLabel, setDraftVersionLabel] = useState("source-review-2026-11");
+  const [draftVersionLabel, setDraftVersionLabel] = useState("");
   const [draftPayload, setDraftPayload] = useState<CurriculumDraftImportPayload | null>(null);
   const [draftPreview, setDraftPreview] = useState<CurriculumDraftImportPreview | null>(null);
   const [draftImportBusy, setDraftImportBusy] = useState(false);
