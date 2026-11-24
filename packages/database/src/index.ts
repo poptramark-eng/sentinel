@@ -17,7 +17,6 @@ export function createPrismaClient(connectionString = process.env.DATABASE_URL) 
     client,
     async disconnect() {
       await client.$disconnect();
-      await pool.end();
     },
   };
 }
