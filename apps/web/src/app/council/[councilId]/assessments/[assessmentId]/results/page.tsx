@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "../../../../../../lib/api";
+import { CouncilWorkspaceShell } from "../../../../../../components/council-workspace-shell";
 
 type Candidate = {
   learnerNumber: string;
@@ -195,13 +196,7 @@ export default function AssessmentResultsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb]">
-      <header className="no-print border-b border-[#e5eaf1] bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href={`/council/${councilId}/assessments`} className="text-sm font-semibold text-[#2457c5]">← Assessment register</Link>
-          <span className="text-xs font-medium text-[#64748b]">Sentinel · Results</span>
-        </div>
-      </header>
+    <CouncilWorkspaceShell councilId={councilId} active="results">
       <div className="report-screen mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div className="report-print-header"><p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color: "#2457c5" }}>SENTINEL · COUNCIL ASSESSMENT REPORT</p><h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 8 }}>{published ? (published.publication.status === "PUBLISHED" ? "Official assessment results" : "Historical assessment results · Superseded") : "Assessment results preview"}</h1><p style={{ fontSize: 11, marginTop: 4 }}>{published ? `Publication v${published.publication.version} · Published ${dateTime(published.publication.publishedAt)}` : "PREVIEW · NOT PUBLISHED"}</p></div><div className="no-print flex flex-wrap items-center justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Assessment outcomes</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d] sm:text-3xl">Results review</h1></div>{published ? <button type="button" onClick={() => window.print()} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1e49a6]">{published.publication.status === "PUBLISHED" ? "Print official report" : "Print historical snapshot"} ↗</button> : null}</div>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[#64748b]">Review candidate totals, grade-wide ranks and school performance before publication. Calculations use the assessment&apos;s frozen candidate, learning-area and rubric snapshots.</p>
@@ -255,6 +250,6 @@ export default function AssessmentResultsPage() {
           {!published && canPublish ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0f5] pt-5"><p className="max-w-2xl text-xs leading-5 text-[#64748b]">Publication is a governance action. It freezes the computed results and releases the assessment; corrections afterward require a separately controlled republication workflow.</p><button disabled={busy} onClick={() => void publish()} className="rounded-xl bg-[#2457c5] px-5 py-3 text-xs font-semibold text-white hover:bg-[#1e49a6] disabled:opacity-50">{busy ? "Publishing…" : "Publish results"}</button></div> : null}
         </section> : null}
       </div>
-    </main>
+    </CouncilWorkspaceShell>
   );
 }
