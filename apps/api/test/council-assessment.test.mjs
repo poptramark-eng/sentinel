@@ -335,6 +335,11 @@ test("scheduling freezes active matching learner enrollments and initializes eve
     },
     assessmentLearningArea: { findMany: async () => [{ id: areaId }] },
     assessmentMark: { createMany: async ({ data }) => { markRows.push(...data); return { count: data.length }; } },
+    schoolMembership: { findMany: async ({ where }) => {
+      assert.deepEqual(where.registrationId.in, ["15151515-1515-4515-8515-151515151515"]);
+      return [];
+    } },
+    notificationDelivery: { createMany: async () => ({ count: 0 }) },
     auditEvent: { create: async ({ data }) => { audit = data; return data; } },
   };
   const opensAt = new Date(Date.now() + 60 * 60 * 1000);

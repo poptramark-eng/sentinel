@@ -3,8 +3,10 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
+import { NotificationService } from "../notifications/notification.service";
 import { CreateAssessmentDto } from "./dto/create-assessment.dto";
 import { CreateRubricDto, CreateRubricBandDto, CreateRubricVersionDto } from "./dto/create-rubric.dto";
 import { ScheduleAssessmentDto } from "./dto/schedule-assessment.dto";
@@ -57,7 +59,10 @@ function validateRubricBands(
 
 @Injectable()
 export class CouncilAssessmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notifications?: NotificationService,
+  ) {}
 
   async listRubrics(councilId: string) {
     return this.prisma.client.gradingRubric.findMany({
@@ -597,7 +602,7 @@ export class CouncilAssessmentService {
       throw new BadRequestException("Scheduling requires a future opening time and a later closing time.");
     }
     try {
-      return await this.prisma.client.$transaction(async (tx) => {
+      const scheduled = await this.prisma.client.$transaction(async (tx) => {
       const assessment = await tx.assessment.findFirst({
         where: { id: assessmentId, councilId },
         select: { id: true, status: true, grade: true, academicYear: true, curriculumVersionId: true },
@@ -686,8 +691,80 @@ export class CouncilAssessmentService {
           metadata: { opensAt: opensAt.toISOString(), closesAt: closesAt.toISOString(), candidateCount: candidates.length, participatingSchoolCount: new Set(enrollments.map((item) => item.registrationId)).size },
         },
       });
+      const memberships = await tx.schoolMembership.findMany({
+        where: {
+          councilId,
+          registrationId: { in: [...new Set(enrollments.map((item) => item.registrationId))] },
+          role: "SCHOOL_ADMINISTRATOR",
+          status: "ACTIVE",
+          registration: { is: { status: "APPROVED" } },
+          person: { is: { account: { is: {
+            status: "ACTIVE",
+            loginIdentifiers: { some: { type: "EMAIL", verifiedAt: { not: null } } },
+          }}}},
+        },
+        select: { person: { select: {
+          givenName: true, familyName: true, displayName: true,
+          account: { select: {
+            id: true,
+            loginIdentifiers: {
+              where: { type: "EMAIL", verifiedAt: { not: null } },
+              orderBy: { createdAt: "desc" }, take: 1,
+              select: { normalizedValue: true },
+            },
+          }},
+        }}},
+      });
+      const recipients = new Map<string, { email: string; name: string }>();
+      for (const membership of memberships) {
+        const account = membership.person.account;
+        const email = account?.loginIdentifiers[0]?.normalizedValue;
+        if (!account || !email) continue;
+        recipients.set(account.id, {
+          email,
+          name: membership.person.displayName?.trim() ||
+            [membership.person.givenName, membership.person.familyName].filter(Boolean).join(" "),
+        });
+      }
+      const deliveries = [...recipients.entries()].map(([accountId, recipient]) => ({
+        councilId,
+        assessmentId,
+        recipientAccountId: accountId,
+        recipientEmail: recipient.email,
+        recipientName: recipient.name,
+        template: "ASSESSMENT_SCHEDULED",
+        ...NotificationService.scheduledAssessmentContent({
+          recipientName: recipient.name,
+          assessmentName: updated.name,
+          assessmentCode: updated.code,
+          grade: assessment.grade,
+          academicYear: assessment.academicYear,
+          opensAt,
+          closesAt,
+        }),
+        idempotencyKey: `assessment-scheduled:${assessmentId}:${accountId}`,
+        provider: "RESEND",
+        status: "QUEUED" as const,
+        payload: {
+          assessmentName: updated.name,
+          assessmentCode: updated.code,
+          grade: assessment.grade,
+          academicYear: assessment.academicYear,
+          opensAt: opensAt.toISOString(),
+          closesAt: closesAt.toISOString(),
+        },
+      }));
+      if (deliveries.length) {
+        await tx.notificationDelivery.createMany({ data: deliveries, skipDuplicates: true });
+      }
       return updated;
       }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 30_000 });
+      try {
+        await this.notifications?.processPendingForAssessment(assessmentId);
+      } catch {
+        console.warn("Assessment scheduling committed; notification processing will require operational recovery.");
+      }
+      return scheduled;
     } catch (error) {
       if (prismaCode(error) === "P2034") {
         throw new ConflictException("The active school roster changed while this assessment was being scheduled. Refresh and try again.");

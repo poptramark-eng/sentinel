@@ -196,6 +196,14 @@ enum AssessmentSchoolSubmissionStatus {
   RETURNED
 }
 
+enum NotificationDeliveryStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  DELIVERED
+  FAILED
+}
+
 model Person {
   id          String   @id @default(uuid()) @db.Uuid
   givenName   String
@@ -240,6 +248,7 @@ model UserAccount {
   returnedSchoolSubmissions AssessmentSchoolSubmission[] @relation("AssessmentSchoolSubmissionReturner")
   schoolSubmissionVersions AssessmentSchoolSubmissionVersion[]
   auditEvents                AuditEvent[]
+  notificationDeliveries    NotificationDelivery[]
 
   @@index([status])
 }
@@ -306,6 +315,7 @@ model Council {
   gradingRubrics       GradingRubric[]
   assessments          Assessment[]
   auditEvents          AuditEvent[]
+  notificationDeliveries NotificationDelivery[]
 
   @@index([status, name])
 }
@@ -915,6 +925,7 @@ model Assessment {
   marks              AssessmentMark[]
   resultPublications AssessmentResultPublication[]
   schoolSubmissions AssessmentSchoolSubmission[]
+  notificationDeliveries NotificationDelivery[]
 
   @@unique([id, councilId, curriculumVersionId])
   @@unique([id, rubricVersionId])
@@ -922,6 +933,41 @@ model Assessment {
   @@index([councilId, academicYear, grade, status])
   @@index([councilCurriculumId, status])
   @@index([rubricVersionId])
+}
+
+model NotificationDelivery {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  councilId          String                     @db.Uuid
+  assessmentId       String                     @db.Uuid
+  recipientAccountId String                     @db.Uuid
+  recipientEmail     String
+  recipientName      String
+  template           String
+  subject            String
+  textBody           String
+  htmlBody           String
+  payload            Json?
+  idempotencyKey     String                     @unique
+  provider           String                     @default("RESEND")
+  providerMessageId  String?
+  status             NotificationDeliveryStatus @default(QUEUED)
+  attemptCount       Int                        @default(0)
+  nextAttemptAt      DateTime                   @default(now())
+  lastAttemptAt      DateTime?
+  sentAt             DateTime?
+  deliveredAt        DateTime?
+  lastError          String?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  council   Council     @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  recipient UserAccount @relation(fields: [recipientAccountId], references: [id], onDelete: Restrict)
+
+  @@index([assessmentId, status, nextAttemptAt])
+  @@index([recipientAccountId, createdAt])
+  @@index([councilId, createdAt])
+  @@index([providerMessageId])
 }
 
 model AssessmentLearningArea {
