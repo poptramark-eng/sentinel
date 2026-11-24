@@ -7,5 +7,331 @@ datasource db {
   provider = "postgresql"
 }
 
-// Domain models are intentionally deferred until tenant ownership,
-// identity/membership relationships and lifecycle rules are baselined.
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+enum LoginIdentifierType {
+  EMAIL
+  PHONE
+  USERNAME
+}
+
+enum CouncilStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum CouncilMembershipRole {
+  COUNCIL_ADMINISTRATOR
+  COUNCIL_APPROVER
+  COUNCIL_GOVERNANCE_APPROVER
+  COUNCIL_MEMBER
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum SchoolStatus {
+  PROVISIONAL
+  ACTIVE
+  INACTIVE
+}
+
+enum RegistrationStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum SchoolMembershipRole {
+  SCHOOL_ADMINISTRATOR
+  TEACHER
+}
+
+enum SchoolIdentifierType {
+  MINISTRY_REGISTRY
+  COUNCIL_REGISTRY
+  OTHER
+}
+
+enum GeographyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Person {
+  id          String   @id @default(uuid()) @db.Uuid
+  givenName   String
+  familyName  String
+  displayName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account                 UserAccount?
+  councilMemberships      CouncilMembership[]
+  schoolMemberships       SchoolMembership[]
+  initiatedRegistrations  CouncilSchoolRegistration[] @relation("RegistrationInitialRegistrant")
+
+  @@index([familyName, givenName])
+}
+
+model UserAccount {
+  id           String        @id @default(uuid()) @db.Uuid
+  personId     String        @unique @db.Uuid
+  status       AccountStatus @default(PENDING_VERIFICATION)
+  authVersion  Int           @default(0)
+  passwordHash String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  lastLoginAt  DateTime?
+
+  person                Person                     @relation(fields: [personId], references: [id], onDelete: Restrict)
+  loginIdentifiers      LoginIdentifier[]
+  reviewedRegistrations CouncilSchoolRegistration[] @relation("RegistrationReviewer")
+  auditEvents           AuditEvent[]
+
+  @@index([status])
+}
+
+model LoginIdentifier {
+  id               String              @id @default(uuid()) @db.Uuid
+  accountId        String              @db.Uuid
+  type             LoginIdentifierType
+  normalizedValue  String
+  verifiedAt       DateTime?
+  createdAt        DateTime            @default(now())
+
+  account UserAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([type, normalizedValue])
+  @@index([accountId, verifiedAt])
+}
+
+model Council {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String        @unique
+  status    CouncilStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  memberships   CouncilMembership[]
+  registrations CouncilSchoolRegistration[]
+  regions       Region[]
+  auditEvents   AuditEvent[]
+
+  @@index([status, name])
+}
+
+model CouncilMembership {
+  id        String           @id @default(uuid()) @db.Uuid
+  councilId String           @db.Uuid
+  personId  String           @db.Uuid
+  role      CouncilMembershipRole
+  status    MembershipStatus @default(PENDING)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  council Council @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  person  Person  @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  @@unique([councilId, personId, role])
+  @@index([personId, status])
+  @@index([councilId, status, role])
+}
+
+model School {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String
+  status    SchoolStatus @default(PROVISIONAL)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  identifiers   SchoolIdentifier[]
+  registrations CouncilSchoolRegistration[]
+
+  @@index([name])
+}
+
+model SchoolIdentifier {
+  id              String              @id @default(uuid()) @db.Uuid
+  schoolId        String              @db.Uuid
+  type            SchoolIdentifierType
+  issuer          String
+  normalizedValue String
+  verifiedAt      DateTime?
+  createdAt       DateTime            @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  @@unique([issuer, normalizedValue])
+  @@index([schoolId, type])
+}
+
+model Region {
+  id        String          @id @default(uuid()) @db.Uuid
+  councilId String          @db.Uuid
+  name      String
+  code      String?
+  status    GeographyStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+
+  council Council  @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  counties County[]
+
+  @@unique([id, councilId])
+  @@unique([councilId, name])
+  @@index([councilId, status])
+}
+
+model County {
+  id        String          @id @default(uuid()) @db.Uuid
+  councilId String          @db.Uuid
+  regionId  String          @db.Uuid
+  name      String
+  code      String?
+  status    GeographyStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+
+  region     Region      @relation(fields: [regionId, councilId], references: [id, councilId], onDelete: Restrict)
+  subcounties Subcounty[]
+
+  @@unique([id, councilId])
+  @@unique([regionId, name])
+  @@index([councilId, status])
+}
+
+model Subcounty {
+  id        String          @id @default(uuid()) @db.Uuid
+  councilId String          @db.Uuid
+  countyId  String          @db.Uuid
+  name      String
+  code      String?
+  status    GeographyStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+
+  county County @relation(fields: [countyId, councilId], references: [id, councilId], onDelete: Restrict)
+  zones  Zone[]
+
+  @@unique([id, councilId])
+  @@unique([countyId, name])
+  @@index([councilId, status])
+}
+
+model Zone {
+  id          String          @id @default(uuid()) @db.Uuid
+  councilId   String          @db.Uuid
+  subcountyId String          @db.Uuid
+  name        String
+  code        String?
+  status      GeographyStatus @default(ACTIVE)
+  createdAt   DateTime        @default(now())
+
+  subcounty Subcounty @relation(fields: [subcountyId, councilId], references: [id, councilId], onDelete: Restrict)
+  clusters  Cluster[]
+
+  @@unique([id, councilId])
+  @@unique([subcountyId, name])
+  @@index([councilId, status])
+}
+
+model Cluster {
+  id        String          @id @default(uuid()) @db.Uuid
+  councilId String          @db.Uuid
+  zoneId    String          @db.Uuid
+  name      String
+  code      String?
+  status    GeographyStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+
+  zone          Zone                        @relation(fields: [zoneId, councilId], references: [id, councilId], onDelete: Restrict)
+  registrations CouncilSchoolRegistration[]
+
+  @@unique([id, councilId])
+  @@unique([zoneId, name])
+  @@index([councilId, status])
+}
+
+model CouncilSchoolRegistration {
+  id                       String             @id @default(uuid()) @db.Uuid
+  councilId                String             @db.Uuid
+  schoolId                 String             @db.Uuid
+  clusterId                String             @db.Uuid
+  registrationCode         String?
+  status                   RegistrationStatus @default(PENDING_REVIEW)
+  initialRegistrantPersonId String            @db.Uuid
+  reviewedByAccountId      String?            @db.Uuid
+  submittedAt              DateTime           @default(now())
+  reviewedAt               DateTime?
+  decisionReason           String?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  version                  Int                @default(0)
+
+  council          Council      @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  school           School       @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  cluster          Cluster      @relation(fields: [clusterId, councilId], references: [id, councilId], onDelete: Restrict)
+  initialRegistrant Person       @relation("RegistrationInitialRegistrant", fields: [initialRegistrantPersonId], references: [id], onDelete: Restrict)
+  reviewedBy       UserAccount?  @relation("RegistrationReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
+  memberships      SchoolMembership[]
+
+  @@unique([id, councilId])
+  @@unique([councilId, registrationCode])
+  @@index([councilId, status, submittedAt])
+  @@index([schoolId, councilId, createdAt])
+}
+
+model SchoolMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  registrationId String           @db.Uuid
+  councilId      String           @db.Uuid
+  personId       String           @db.Uuid
+  role           SchoolMembershipRole
+  status         MembershipStatus @default(PENDING)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
+  person       Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  @@unique([registrationId, personId, role])
+  @@index([personId, status])
+  @@index([registrationId, status, role])
+}
+
+model AuditEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  actorAccountId String?  @db.Uuid
+  councilId      String?  @db.Uuid
+  action         String
+  resourceType   String
+  resourceId     String
+  decision       String?
+  reason         String?
+  correlationId  String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  actor   UserAccount? @relation(fields: [actorAccountId], references: [id], onDelete: Restrict)
+  council Council?     @relation(fields: [councilId], references: [id], onDelete: Restrict)
+
+  @@index([councilId, createdAt])
+  @@index([resourceType, resourceId, createdAt])
+  @@index([actorAccountId, createdAt])
+}
