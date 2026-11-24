@@ -14,12 +14,29 @@ import { CsrfGuard } from "../auth/csrf.guard";
 import { PlatformOperatorGuard } from "../auth/platform-operator.guard";
 import { ReturnCurriculumForChangesDto } from "./dto/return-curriculum-for-changes.dto";
 import { ReviewGradeLearningAreaDto } from "./dto/review-grade-learning-area.dto";
+import { CreateCurriculumDraftDto } from "./dto/create-curriculum-draft.dto";
 import { PlatformCurriculumService } from "./platform-curriculum.service";
 
 @Controller("platform/curricula")
 @UseGuards(AccessTokenGuard, PlatformOperatorGuard, CsrfGuard)
 export class PlatformCurriculaController {
   constructor(private readonly curricula: PlatformCurriculumService) {}
+
+  @Post("import-preview")
+  previewImport(@Body() body: CreateCurriculumDraftDto) {
+    return this.curricula.previewImport(body);
+  }
+
+  @Post("import")
+  importDraft(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: CreateCurriculumDraftDto,
+  ) {
+    return this.curricula.createDraft(
+      { accountId: request.auth!.accountId },
+      body,
+    );
+  }
 
   @Get()
   list() {
