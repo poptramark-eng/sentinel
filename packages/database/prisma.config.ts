@@ -8,5 +8,7 @@ dotenv.config({ path: resolve(process.cwd(), "../../.env") });
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: { path: "prisma/migrations" },
-  datasource: { url: env("DATABASE_URL") },
+  datasource: {
+    url: process.env.MIGRATION_DATABASE_URL ?? env("DATABASE_URL"),
+  },
 });
