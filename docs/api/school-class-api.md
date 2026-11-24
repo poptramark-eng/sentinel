@@ -80,3 +80,13 @@ Learner identities are system-wide and do not have learner login accounts. A lea
 CSV import accepts JSON `{ "csv": "...", "dryRun": true }`. Omit `dryRun` to preview; set it to `false` only after reviewing the preview to commit. The upload is limited to 1 MB and 500 data rows. Required headers are `learnerNumber`, `givenName`, and `familyName`; optional headers are `otherNames` and `admissionNumber`. CSV quoting and escaped double quotes are supported. Unknown or duplicate headers, duplicate identifiers, malformed rows, conflicting existing identities and active enrollments are reported before any write. Existing global learner numbers are matched case-insensitively and reused only when all supplied names match; an existing identity is never overwritten by import. An active enrollment at any school blocks the row and must be resolved through the transfer process first.
 
 The preview is read-only. A confirmed import revalidates within a serializable transaction, creates new identities and enrollments as one atomic batch, and records an audit event for every enrollment. A conflict aborts the complete batch; it never leaves a partial import. The browser workflow provides a downloadable CSV template, validation summary, row-level errors and a separate confirmation before commit. Excel workbooks should be exported to CSV before upload.
+
+## Published school assessment results
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | /api/school/registrations/:registrationId/assessments/:assessmentId/results | Read official published results for the authenticated School Administrator's own registration |
+
+The school results endpoint requires an active School Administrator membership in the approved registration and returns only result rows belonging to that registration. It does not expose other schools' candidates, marks or school aggregates. Results remain unavailable until the Council publishes them and the assessment is in RELEASED status.
+
+The dashboard includes the school's candidate count and average/highest/lowest percentage, learning-area averages and ranges, class averages, learner results, the official grade-wide rank and a separately calculated within-school rank. CSV export is available from the school dashboard. These values are read from the immutable Council publication snapshot, not recalculated from live marks.

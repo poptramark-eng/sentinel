@@ -22,12 +22,13 @@ function candidate(markOverrides = {}) {
     marks: [{ id: markId, assessmentLearningAreaId: areaId, marks: 72, status: "SUBMITTED", updatedAt: new Date("2026-11-24T08:00:00Z"), ...markOverrides }],
   };
 }
-function clientFor({ candidates = [candidate()], existing = null, records = {} } = {}) {
+function clientFor({ candidates = [candidate()], existing = null, records = {}, assessmentStatus = "OPEN", publication = null } = {}) {
   const client = {
     schoolMembership: { findFirst: async ({ where }) => where.role === "SCHOOL_ADMINISTRATOR" ? membership() : null },
-    assessment: { findFirst: async () => ({ id: assessmentId, councilId, name: "Term 2", code: "T2", grade: "GRADE_4", academicYear: 2026, status: "OPEN", opensAt: null, closesAt: null }) },
+    assessment: { findFirst: async () => ({ id: assessmentId, councilId, name: "Term 2", code: "T2", grade: "GRADE_4", academicYear: 2026, status: assessmentStatus, opensAt: null, closesAt: null }) },
     assessmentLearningArea: { findMany: async () => [{ id: areaId, learningAreaCode: "MATH", canonicalName: "Mathematics", displayLabel: null, maxMarks: 100, sortOrder: 1 }] },
     assessmentCandidate: { findMany: async () => candidates },
+    assessmentResultPublication: { findFirst: async (args) => { records.publicationQuery = args; return publication; } },
     assessmentSchoolSubmission: {
       findUnique: async () => existing,
       create: async ({ data }) => { records.created = data; return { id: "55555555-5555-4555-8555-555555555555", version: data.version, status: data.status, submittedAt: data.submittedAt }; },
@@ -89,5 +90,50 @@ test("teachers cannot perform final school submission", async () => {
   await assert.rejects(
     new SchoolAssessmentSubmissionService({ client }).submitSchoolAssessment(actor, registrationId, assessmentId),
     (error) => error instanceof ForbiddenException,
+  );
+});
+
+
+test("published school results are scoped to the approved registration and rank candidates within the school", async () => {
+  const area = (marks) => ({
+    assessmentLearningAreaId: areaId, learningAreaCode: "MATH", displayLabel: "Mathematics",
+    marks: String(marks), maximumMarks: "100", percentage: String(marks), sortOrder: 1,
+  });
+  const resultRow = (id, name, marks, gradeRank) => ({
+    id, registrationId, schoolClassId: classId, schoolNameSnapshot: "Example School",
+    schoolClassNameSnapshot: "Grade 4 · A", learnerNumberSnapshot: id,
+    learnerNameSnapshot: name, totalMarks: String(marks), maximumMarks: "100",
+    percentage: String(marks), rank: gradeRank, overallBandCode: null, overallBandLabel: null,
+    learningAreas: [area(marks)],
+  });
+  const publication = {
+    id: "77777777-7777-4777-8777-777777777777", version: 1,
+    publishedAt: new Date("2026-11-24T10:00:00Z"),
+    results: [
+      resultRow("learner-a", "Amina", 85, 1),
+      resultRow("learner-b", "Brian", 85, 2),
+      resultRow("learner-c", "Cynthia", 72, 4),
+    ],
+  };
+  const { client, records } = clientFor({ assessmentStatus: "RELEASED", publication });
+  const result = await new SchoolAssessmentSubmissionService({ client }).publishedSchoolResults(actor, registrationId, assessmentId);
+  assert.equal(records.publicationQuery.where.councilId, councilId);
+  assert.equal(records.publicationQuery.include.results.where.registrationId, registrationId);
+  assert.equal(result.summary.candidateCount, 3);
+  assert.equal(result.summary.averagePercentage, 80.6667);
+  assert.deepEqual(result.candidates.map((row) => row.schoolRank), [1, 1, 3]);
+  assert.deepEqual(result.candidates.map((row) => row.gradeRank), [1, 2, 4]);
+  assert.equal(result.learningAreas[0].averagePercentage, 80.6667);
+  assert.equal(result.classes[0].averagePercentage, 80.6667);
+});
+
+test("school results remain unavailable until the assessment is released", async () => {
+  const { client } = clientFor({
+    assessmentStatus: "CLOSED",
+    publication: { id: "77777777-7777-4777-8777-777777777777", version: 1, results: [] },
+  });
+  await assert.rejects(
+    new SchoolAssessmentSubmissionService({ client }).publishedSchoolResults(actor, registrationId, assessmentId),
+    (error) => error instanceof ConflictException && /not currently released/.test(error.message),
   );
 });

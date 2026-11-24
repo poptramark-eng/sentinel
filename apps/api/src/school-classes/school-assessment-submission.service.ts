@@ -183,6 +183,72 @@ export class SchoolAssessmentSubmissionService {
     };
   }
 
+  async publishedSchoolResults(actor: SchoolAdministratorActor, registrationId: string, assessmentId: string) {
+    const scope = await this.resolveSchoolScope(this.prisma.client, actor, registrationId);
+    const assessment = await this.resolveAssessment(this.prisma.client, scope.councilId, assessmentId);
+    const publication = await this.prisma.client.assessmentResultPublication.findFirst({
+      where: { assessmentId, councilId: scope.councilId, status: "PUBLISHED" },
+      orderBy: { version: "desc" },
+      include: {
+        results: {
+          where: { registrationId: scope.registrationId },
+          orderBy: [{ rank: "asc" }],
+          include: { learningAreas: { orderBy: [{ sortOrder: "asc" }] } },
+        },
+      },
+    });
+    if (!publication) return { assessment, publication: null, school: { name: scope.registration.school.name }, summary: null, learningAreas: [], classes: [], candidates: [] };
+    if (assessment.status !== "RELEASED") throw new ConflictException("Published results are not currently released for this assessment.");
+    const results = publication.results;
+    const averagePercentage = results.length
+      ? Math.round(results.reduce((sum, row) => sum + Number(row.percentage), 0) / results.length * 10_000) / 10_000
+      : 0;
+    const sorted = [...results].sort((a, b) => Number(b.totalMarks) - Number(a.totalMarks) || a.learnerNameSnapshot.localeCompare(b.learnerNameSnapshot));
+    let previous: number | null = null;
+    let rank = 0;
+    const candidates = sorted.map((row, index) => {
+      const score = Math.round(Number(row.totalMarks) * 10_000);
+      if (previous !== score) rank = index + 1;
+      previous = score;
+      return {
+        id: row.id, learnerNumber: row.learnerNumberSnapshot, learnerName: row.learnerNameSnapshot,
+        className: row.schoolClassNameSnapshot, totalMarks: Number(row.totalMarks),
+        maximumMarks: Number(row.maximumMarks), percentage: Number(row.percentage),
+        overallBandCode: row.overallBandCode, overallBandLabel: row.overallBandLabel,
+        gradeRank: row.rank, schoolRank: rank,
+        learningAreas: row.learningAreas.map((area) => ({
+          id: area.assessmentLearningAreaId, code: area.learningAreaCode,
+          name: area.displayLabel, marks: Number(area.marks), maximumMarks: Number(area.maximumMarks), percentage: Number(area.percentage),
+        })),
+      };
+    });
+    const areaGroups = new Map<string, { id: string; name: string; count: number; total: number; highest: number; lowest: number }>();
+    const classGroups = new Map<string, { name: string; count: number; total: number }>();
+    for (const row of results) {
+      const classGroup = classGroups.get(row.schoolClassId) ?? { name: row.schoolClassNameSnapshot, count: 0, total: 0 };
+      classGroup.count += 1; classGroup.total += Number(row.percentage); classGroups.set(row.schoolClassId, classGroup);
+      for (const area of row.learningAreas) {
+        const group = areaGroups.get(area.assessmentLearningAreaId) ?? { id: area.assessmentLearningAreaId, name: area.displayLabel, count: 0, total: 0, highest: 0, lowest: 100 };
+        const value = Number(area.percentage);
+        group.count += 1; group.total += value; group.highest = Math.max(group.highest, value); group.lowest = Math.min(group.lowest, value);
+        areaGroups.set(area.assessmentLearningAreaId, group);
+      }
+    }
+    return {
+      assessment,
+      school: { name: scope.registration.school.name },
+      publication: { version: publication.version, publishedAt: publication.publishedAt },
+      summary: {
+        candidateCount: results.length, averagePercentage,
+        highestPercentage: results.length ? Math.max(...results.map((row) => Number(row.percentage))) : 0,
+        lowestPercentage: results.length ? Math.min(...results.map((row) => Number(row.percentage))) : 0,
+      },
+      learningAreas: [...areaGroups.values()].map((item) => ({ ...item, averagePercentage: Math.round(item.total / item.count * 10_000) / 10_000 })).sort((a, b) => a.name.localeCompare(b.name)),
+      classes: [...classGroups.values()].map((item) => ({ ...item, averagePercentage: Math.round(item.total / item.count * 10_000) / 10_000 })).sort((a, b) => b.averagePercentage - a.averagePercentage),
+      candidates,
+    };
+  }
+
   async submitSchoolAssessment(actor: SchoolAdministratorActor, registrationId: string, assessmentId: string) {
     try {
       return await this.prisma.client.$transaction(async (tx) => {

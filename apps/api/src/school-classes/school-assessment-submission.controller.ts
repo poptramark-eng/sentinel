@@ -25,6 +25,15 @@ export class SchoolAssessmentSubmissionController {
     return this.submissions.getSubmission({ accountId: request.auth!.accountId, personId: request.auth!.personId }, registrationId, assessmentId);
   }
 
+  @Get(":assessmentId/results")
+  getPublishedResults(
+    @Req() request: AuthenticatedRequest,
+    @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+  ) {
+    return this.submissions.publishedSchoolResults({ accountId: request.auth!.accountId, personId: request.auth!.personId }, registrationId, assessmentId);
+  }
+
   @Post(":assessmentId/submission")
   submit(
     @Req() request: AuthenticatedRequest,

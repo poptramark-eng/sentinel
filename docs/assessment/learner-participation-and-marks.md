@@ -63,3 +63,11 @@ The implemented workflow does not yet provide bulk Excel import, a guided learne
 ## Subject Teacher mark access
 
 A Subject Teacher assignment is attached to a school class and a specific Council-approved curriculum learning-area mapping. It is not implied by the global TEACHER membership. For an open assessment, the teacher's assignment must match the assessment learning-area snapshot's `councilGradeLearningAreaId`. Subject Teachers can read only that learning-area column, save only its mark cells, and submit only that learning area's marks across the active class candidates. Class Teachers retain class-coordination and assigned-roster access; marks permissions remain subject-assignment scoped. All marks remain subject to the same score maximum, decimal precision, revision history and immutable submission rules.
+
+## Results analytics and release
+
+Assessment result previews are calculated only after an assessment is closed and every active candidate has a submitted mark in every snapshotted learning area. Council review includes school averages, learning-area averages/ranges, school-by-learning-area comparisons, class averages and grade-wide candidate ranking. Area comparisons use percentages normalized against each area's configured maximum marks; raw totals are not compared across areas with different maxima.
+
+After publication, the immutable result rows remain the source of truth. School Administrators can view only the published rows belonging to their approved registration, including school-local ranks alongside the official grade-wide rank. School analytics are not exposed before release.
+
+Gender comparisons are intentionally not calculated: the current learner and assessment candidate snapshots do not contain a verified gender field. Do not infer gender from names or add a proxy classification. A future gender breakdown requires an explicit, governed data-collection and privacy decision, plus an immutable assessment snapshot field.

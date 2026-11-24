@@ -178,11 +178,69 @@ export class AssessmentResultsService {
         ? a.schoolName.localeCompare(b.schoolName)
         : b.averagePercentage - a.averagePercentage);
 
+    const areaGroups = new Map<string, { id: string; code: string; name: string; displayLabel: string; maximumMarks: number; candidateCount: number; totalMarks: number; totalPercentage: number; highestPercentage: number; lowestPercentage: number }>();
+    const classGroups = new Map<string, { schoolId: string; schoolName: string; className: string; candidateCount: number; totalPercentage: number; topRank: number }>();
+    const schoolAreaGroups = new Map<string, { schoolId: string; schoolName: string; areaId: string; areaLabel: string; candidateCount: number; totalPercentage: number }>();
+    for (const row of rows) {
+      const classKey = row.schoolIdSnapshot + ":" + row.schoolClassId;
+      const classSummary = classGroups.get(classKey) ?? {
+        schoolId: row.schoolIdSnapshot, schoolName: row.schoolNameSnapshot,
+        className: row.schoolClassNameSnapshot, candidateCount: 0, totalPercentage: 0,
+        topRank: Number.MAX_SAFE_INTEGER,
+      };
+      classSummary.candidateCount += 1;
+      classSummary.totalPercentage += row.percentage;
+      classSummary.topRank = Math.min(classSummary.topRank, row.rank);
+      classGroups.set(classKey, classSummary);
+      for (const area of row.learningAreas) {
+        const group = areaGroups.get(area.assessmentLearningAreaId) ?? {
+          id: area.assessmentLearningAreaId, code: area.learningAreaCode,
+          name: area.learningAreaName, displayLabel: area.displayLabel,
+          maximumMarks: area.maximumMarks, candidateCount: 0, totalMarks: 0,
+          totalPercentage: 0, highestPercentage: 0, lowestPercentage: 100,
+        };
+        group.candidateCount += 1;
+        group.totalMarks += area.marks;
+        group.totalPercentage += area.percentage;
+        group.highestPercentage = Math.max(group.highestPercentage, area.percentage);
+        group.lowestPercentage = Math.min(group.lowestPercentage, area.percentage);
+        areaGroups.set(area.assessmentLearningAreaId, group);
+        const schoolAreaKey = row.schoolIdSnapshot + ":" + area.assessmentLearningAreaId;
+        const schoolArea = schoolAreaGroups.get(schoolAreaKey) ?? {
+          schoolId: row.schoolIdSnapshot, schoolName: row.schoolNameSnapshot,
+          areaId: area.assessmentLearningAreaId, areaLabel: area.displayLabel,
+          candidateCount: 0, totalPercentage: 0,
+        };
+        schoolArea.candidateCount += 1;
+        schoolArea.totalPercentage += area.percentage;
+        schoolAreaGroups.set(schoolAreaKey, schoolArea);
+      }
+    }
+    const learningAreaSummaries = [...areaGroups.values()]
+      .map((area) => ({
+        assessmentLearningAreaId: area.id, code: area.code, name: area.name,
+        displayLabel: area.displayLabel, maximumMarks: area.maximumMarks,
+        candidateCount: area.candidateCount,
+        averageMarks: round4(area.totalMarks / area.candidateCount),
+        averagePercentage: round4(area.totalPercentage / area.candidateCount),
+        highestPercentage: area.highestPercentage, lowestPercentage: area.lowestPercentage,
+      }))
+      .sort((a, b) => a.displayLabel.localeCompare(b.displayLabel));
+    const classSummaries = [...classGroups.values()]
+      .map((item) => ({ ...item, averagePercentage: round4(item.totalPercentage / item.candidateCount) }))
+      .sort((a, b) => b.averagePercentage - a.averagePercentage || a.className.localeCompare(b.className));
+    const schoolLearningAreaSummaries = [...schoolAreaGroups.values()]
+      .map((item) => ({ ...item, averagePercentage: round4(item.totalPercentage / item.candidateCount) }))
+      .sort((a, b) => a.schoolName.localeCompare(b.schoolName) || a.areaLabel.localeCompare(b.areaLabel));
+
     const averagePercentage = round4(rows.reduce((sum, row) => sum + row.percentage, 0) / rows.length);
     return {
       assessment,
       rows: sorted,
       schoolSummaries,
+      learningAreaSummaries,
+      classSummaries,
+      schoolLearningAreaSummaries,
       summary: {
         candidateCount: rows.length,
         schoolCount: schoolGroups.size,
@@ -216,6 +274,9 @@ export class AssessmentResultsService {
           : "Classifications use only the published numeric rubric bands and the explicitly configured score unit.",
       },
       schools: prepared.schoolSummaries,
+      learningAreas: prepared.learningAreaSummaries,
+      classes: prepared.classSummaries,
+      schoolLearningAreas: prepared.schoolLearningAreaSummaries,
       candidates: prepared.rows.slice(0, 50).map((row) => ({
         learnerNumber: row.learnerNumberSnapshot,
         learnerName: row.learnerNameSnapshot,
