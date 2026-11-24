@@ -126,7 +126,7 @@ ON "CouncilCurriculum" ("councilId")
 WHERE "status" = 'ACTIVE' AND "effectiveTo" IS NULL;
 
 -- Published catalogue versions and their grade mappings are immutable.
-CREATE FUNCTION sentinel_reject_published_curriculum_mutation() RETURNS trigger AS $
+CREATE FUNCTION sentinel_reject_published_curriculum_mutation() RETURNS trigger AS $function$
 DECLARE
   target_version_id UUID;
 BEGIN
@@ -168,7 +168,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$function$ LANGUAGE plpgsql;
 
 CREATE TRIGGER "CurriculumVersion_immutable_published"
 BEFORE INSERT OR UPDATE OR DELETE ON "CurriculumVersion"
@@ -178,7 +178,7 @@ CREATE TRIGGER "GradeLearningArea_immutable_published"
 BEFORE INSERT OR UPDATE OR DELETE ON "GradeLearningArea"
 FOR EACH ROW EXECUTE FUNCTION sentinel_reject_published_curriculum_mutation();
 
-CREATE FUNCTION sentinel_require_published_curriculum_selection() RETURNS trigger AS $
+CREATE FUNCTION sentinel_require_published_curriculum_selection() RETURNS trigger AS $function$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM "CurriculumVersion" v
@@ -188,7 +188,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$function$ LANGUAGE plpgsql;
 
 CREATE TRIGGER "CouncilCurriculum_requires_published_version"
 BEFORE INSERT OR UPDATE ON "CouncilCurriculum"

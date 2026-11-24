@@ -242,6 +242,8 @@ try {
   const gradeLearningAreaId = id();
   const councilCurriculumId = id();
   const councilGradeLearningAreaId = id();
+  const draftVersionId = id();
+  const draftGradeLearningAreaId = id();
   await client.query(
     `INSERT INTO "Curriculum" ("id", "code", "name", "track", "updatedAt")
      VALUES ($1, 'KE_KICD_REGULAR_CBE_TEST', 'Kenya Regular CBE', 'REGULAR', NOW())`,
@@ -265,6 +267,25 @@ try {
     [gradeLearningAreaId, curriculumVersionId, learningAreaId],
   );
   await client.query(
+    `INSERT INTO "CurriculumVersion"
+      ("id", "curriculumId", "versionLabel", "sourceTitle", "sourceUrl", "sourceRetrievedAt", "sourceSha256", "createdByAccountId", "updatedAt")
+     VALUES ($1, $2, 'draft-2', 'Synthetic source', 'https://example.test/source', NOW(), $3, $4, NOW())`,
+    [draftVersionId, curriculumId, "b".repeat(64), ids.accountA],
+  );
+  await client.query(
+    `INSERT INTO "GradeLearningArea"
+      ("id", "curriculumVersionId", "learningAreaId", "grade", "sourceLabel", "sourceUrl", "updatedAt")
+     VALUES ($1, $2, $3, 'GRADE_4', 'Mathematics', 'https://example.test/grade-4', NOW())`,
+    [draftGradeLearningAreaId, draftVersionId, learningAreaId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `INSERT INTO "CouncilCurriculum" ("id", "councilId", "curriculumVersionId", "updatedAt")
+       VALUES ($1, $2, $3, NOW())`,
+      [id(), ids.councilB, draftVersionId],
+    ),
+  );
+  await client.query(
     `UPDATE "CurriculumVersion"
      SET "status" = 'PUBLISHED', "reviewedByAccountId" = $2, "publishedAt" = NOW(), "updatedAt" = NOW()
      WHERE "id" = $1`,
@@ -284,13 +305,6 @@ try {
       [curriculumVersionId],
     ),
   );
-  await expectSqlStateFailure("55000", () =>
-    client.query(
-      `INSERT INTO "CouncilCurriculum" ("id", "councilId", "curriculumVersionId", "updatedAt")
-       VALUES ($1, $2, $3, NOW())`,
-      [id(), ids.councilB, curriculumVersionId],
-    ).then(() => undefined),
-  );
   await client.query(
     `INSERT INTO "CouncilCurriculum" ("id", "councilId", "curriculumVersionId", "updatedAt")
      VALUES ($1, $2, $3, NOW())`,
@@ -301,6 +315,14 @@ try {
       ("id", "councilCurriculumId", "councilId", "curriculumVersionId", "gradeLearningAreaId", "updatedAt")
      VALUES ($1, $2, $3, $4, $5, NOW())`,
     [councilGradeLearningAreaId, councilCurriculumId, ids.councilA, curriculumVersionId, gradeLearningAreaId],
+  );
+  await expectConstraintFailure("CouncilGradeLearningArea_gradeLearningAreaId_curriculumVersionId_fkey", () =>
+    client.query(
+      `INSERT INTO "CouncilGradeLearningArea"
+        ("id", "councilCurriculumId", "councilId", "curriculumVersionId", "gradeLearningAreaId", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [id(), councilCurriculumId, ids.councilA, curriculumVersionId, draftGradeLearningAreaId],
+    ),
   );
   await expectSqlStateFailure("55000", () =>
     client.query(
