@@ -16,6 +16,7 @@ const ids = {
   subcountyA: id(), subcountyB: id(), zoneA: id(), zoneB: id(),
   clusterA: id(), clusterB: id(),
   registrationA: id(), registrationDuplicate: id(), registrationHistory: id(),
+  membershipA: id(), membershipB: id(), membershipC: id(), classA: id(), classDuplicate: id(), assignmentA: id(), assignmentB: id(),
 };
 
 async function expectConstraintFailure(constraint, operation) {
@@ -170,8 +171,54 @@ try {
     ),
   );
 
+  await client.query(
+    `INSERT INTO "SchoolMembership" ("id", "registrationId", "councilId", "personId", "role", "status", "startsAt", "updatedAt") VALUES
+      ($1, $2, $3, $4, 'TEACHER', 'ACTIVE', NOW(), NOW()),
+      ($5, $2, $3, $6, 'TEACHER', 'ACTIVE', NOW(), NOW()),
+      ($7, $8, $9, $6, 'TEACHER', 'ACTIVE', NOW(), NOW())`,
+    [ids.membershipA, ids.registrationA, ids.councilA, ids.person, ids.membershipB, ids.personB, ids.membershipC, ids.registrationHistory, ids.councilA],
+  );
+  await client.query(
+    `INSERT INTO "SchoolClass" ("id", "registrationId", "councilId", "grade", "academicYear", "streamCode", "updatedAt")
+     VALUES ($1, $2, $3, 'GRADE_4', 2026, 'MAIN', NOW())`,
+    [ids.classA, ids.registrationA, ids.councilA],
+  );
+  await expectConstraintFailure("SchoolClass_registrationId_academicYear_grade_streamCode_key", () =>
+    client.query(
+      `INSERT INTO "SchoolClass" ("id", "registrationId", "councilId", "grade", "academicYear", "streamCode", "updatedAt")
+       VALUES ($1, $2, $3, 'GRADE_4', 2026, 'MAIN', NOW())`,
+      [ids.classDuplicate, ids.registrationA, ids.councilA],
+    ),
+  );
+  await expectConstraintFailure("SchoolClass_streamCode_normalized_check", () =>
+    client.query(
+      `INSERT INTO "SchoolClass" ("id", "registrationId", "councilId", "grade", "academicYear", "streamCode", "updatedAt")
+       VALUES ($1, $2, $3, 'GRADE_5', 2026, 'east', NOW())`,
+      [id(), ids.registrationA, ids.councilA],
+    ),
+  );
+  await client.query(
+    `INSERT INTO "StaffAssignment" ("id", "registrationId", "councilId", "schoolClassId", "membershipId", "type", "status", "startsAt", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, 'CLASS_TEACHER', 'ACTIVE', NOW(), NOW())`,
+    [ids.assignmentA, ids.registrationA, ids.councilA, ids.classA, ids.membershipA],
+  );
+  await expectConstraintFailure("StaffAssignment_one_active_class_teacher", () =>
+    client.query(
+      `INSERT INTO "StaffAssignment" ("id", "registrationId", "councilId", "schoolClassId", "membershipId", "type", "status", "startsAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, 'CLASS_TEACHER', 'ACTIVE', NOW(), NOW())`,
+      [ids.assignmentB, ids.registrationA, ids.councilA, ids.classA, ids.membershipB],
+    ),
+  );
+  await expectConstraintFailure("StaffAssignment_membershipId_registrationId_councilId_fkey", () =>
+    client.query(
+      `INSERT INTO "StaffAssignment" ("id", "registrationId", "councilId", "schoolClassId", "membershipId", "type", "status", "startsAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, 'CLASS_TEACHER', 'ACTIVE', NOW(), NOW())`,
+      [id(), ids.registrationA, ids.councilA, ids.classA, ids.membershipC],
+    ),
+  );
+
   await client.query("ROLLBACK");
-  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, active registration uniqueness, historical episodes and email-verification token ownership.");
+  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, active registration uniqueness, historical episodes, email-verification token ownership, school class uniqueness and one active Class Teacher per class.");
 } catch (error) {
   await client.query("ROLLBACK").catch(() => undefined);
   throw error;

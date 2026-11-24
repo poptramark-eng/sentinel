@@ -416,3 +416,33 @@ The current KICD online curriculum-design library exposes shared Lower Primary (
 - School Administrator creates/changes classes and staff assignments; teachers cannot self-assign classes or subjects.
 - Teacher membership alone grants no mark-entry or class-wide learner-data access.
 - Class/assignment schema and API are implemented after the curriculum and learning-area catalogue is physically established.
+
+## ADR-021 — School class identity and Class Teacher assignment
+
+**Status:** Accepted engineering default; implemented in the school-classes vertical slice.
+
+**Context**
+
+A School Administrator needs to represent the school's grade/stream structure and appoint class coordinators. Class membership must not be confused with global roles, and a class coordinator must not receive subject-mark permissions merely by being assigned to a class.
+
+**Decision**
+
+- `SchoolClass` is owned by one approved `CouncilSchoolRegistration` and Council. It is keyed by registration, academic year, grade (Grades 1–9) and normalized stream code. `MAIN` represents a class without parallel streams.
+- Class records are retained when no longer in use; archival is a status change, not deletion. A new academic year creates new class records rather than reusing the prior year's class identity.
+- `StaffAssignment` is separate from `SchoolMembership`. The first supported assignment type is `CLASS_TEACHER`, effective-dated and attached to one class and one active TEACHER membership from the same registration.
+- At most one active Class Teacher may be assigned to a class. Reassignment ends the prior assignment and creates a new assignment row; history is retained.
+- Class Teacher assignment grants coordination only. It does not grant learner roster, marks, subject, assessment or results access. `SUBJECT_TEACHER` will be introduced only after a published curriculum version and Council-enabled grade-learning-area mapping are available.
+- No learner records or enrollments are created in this slice. Class and assignment management uses school/teacher account data only.
+- Every class and assignment mutation is transactional and audited. Composite foreign keys enforce that class, assignment, membership and registration all belong to the same Council and registration.
+
+**Alternatives considered**
+
+- Store class teacher directly on SchoolClass: rejected because it loses assignment history and mixes class identity with staff lifecycle.
+- Give teachers a global `CLASS_TEACHER` role: rejected because class coordination is school- and class-scoped.
+- Allow multiple active Class Teachers by default: deferred; one accountable coordinator is the simpler initial rule. Co-coordination can be introduced explicitly later.
+
+**Consequences**
+
+- School Administrators can create class structures and assign/end class coordinators.
+- Subject-specific authority remains closed until the curriculum configuration is published.
+- The database migration adds composite tenant-bound foreign keys, uniqueness for the class key, and a partial unique index for one active Class Teacher per class.

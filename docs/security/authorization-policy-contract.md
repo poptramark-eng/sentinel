@@ -67,8 +67,12 @@ The action identifiers below are proposed stable policy keys. They are not a com
 | organizer.results.release | OrganizationAdministrator / OrganizerStaff | **Scoped** | Explicit current RELEASE_RESULTS permission, valid assessment scope, all validation/review gates satisfied, and correct workflow state. |
 | school.teacher.list | SchoolAdministrator | **Scoped** | Own approved registration only; return teacher memberships and masked verified email only. |
 | school.teacher.link | SchoolAdministrator | **Scoped** | Own approved registration only; exact verified email match to an active global account. Reuse Person; never create duplicate identity or match by name. |
+| school.class.list | SchoolAdministrator | **Scoped** | Own approved registration only.
+| school.class.create | SchoolAdministrator | **Scoped** | Own approved registration only; unique grade/year/stream class key.
+| school.class_teacher.assign | SchoolAdministrator | **Scoped** | Own class and active TEACHER membership in the same registration; one active Class Teacher per class. Coordination only, no learner/marks permissions.
+| school.class_teacher.end | SchoolAdministrator | **Scoped** | Own class only; end-date assignment and retain audit history.
 | school.membership.manage | SchoolAdministrator | **Scoped / TBD** | Own approved school. Membership lifecycle, deactivation, and approval rules need final definition. |
-| school.assignment.manage | SchoolAdministrator | **Scoped** | Own school; grade/class/learning-area assignments are school-specific and time-bounded. Assignment catalogue and reassignment rules need finalization. |
+| school.assignment.manage | SchoolAdministrator | **Scoped** | Own school; current implementation supports one effective-dated Class Teacher assignment per class. Subject Teacher assignment requires a published curriculum mapping and Council enablement. |
 | marks.enter | Subject Teacher assignment | **Scoped** | Assigned learning area, grade/class, assessment participation, and open entry window. |
 | marks.correct | Teacher / SchoolAdministrator | **TBD** | Do not infer correction rights from entry rights or school oversight. Correction actor, deadlines, approval and post-submission/release rules remain unresolved. |
 | school.submission.coordinate | Designated Class Teacher | **Scoped / TBD** | Only assigned class/assessment. Exact designation, authority and reassignment rules remain unresolved. |
@@ -184,6 +188,10 @@ Every policy key implemented must have positive and negative tests. At minimum:
 | AUTHZ-023 | School Administrator links an unverified or nonexistent email as a teacher | Deny; no membership created |
 | AUTHZ-024 | Same global teacher is linked to a second approved school | Reuse Person; create only the second school membership |
 | AUTHZ-025 | School Administrator substitutes another school's registration ID when listing/linking teachers | Deny without data leakage |
+| AUTHZ-026 | School Administrator creates a class using another Council's registration | Deny; derive Council from the caller's membership |
+| AUTHZ-027 | School Administrator assigns a teacher from another school or an inactive membership | Deny; no assignment created |
+| AUTHZ-028 | Second active Class Teacher is assigned to one class | Conflict; retain the current assignment |
+| AUTHZ-029 | Class Teacher attempts subject-mark or learner-record access based only on class assignment | Deny; assignment grants coordination only |
 
 Also test race conditions: simultaneous approvals, authority revocation during a release, duplicate submissions, stale version writes, and export authorization changes between request and execution.
 

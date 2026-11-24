@@ -5,9 +5,10 @@ import { HealthController } from "./health/health.controller";
 import { SchoolRegistrationsModule } from "./school-registrations/school-registrations.module";
 import { PlatformCouncilsModule } from "./platform-councils/platform-councils.module";
 import { SchoolTeachersModule } from "./school-teachers/school-teachers.module";
+import { SchoolClassesModule } from "./school-classes/school-classes.module";
 
 @Module({
-  imports: [DatabaseModule, AuthModule, SchoolRegistrationsModule, PlatformCouncilsModule, SchoolTeachersModule],
+  imports: [DatabaseModule, AuthModule, SchoolRegistrationsModule, PlatformCouncilsModule, SchoolTeachersModule, SchoolClassesModule],
   controllers: [HealthController],
 })
 export class AppModule {}

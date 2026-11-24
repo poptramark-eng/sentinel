@@ -77,15 +77,16 @@ pnpm dev:api
 - Platform Council/geography setup and CSV import: http://localhost:3000/platform/councils
 - Platform school-registration review: http://localhost:3000/platform/school-registrations
 - School teacher roster: open a school membership in the workspace and choose **Manage teachers**
+- School classes and Class Teacher assignments: open an approved school membership and choose **Manage classes**
 - Educator UX prototype: http://localhost:3000/prototype/marks-entry
 
 The marks-entry prototype uses synthetic data and local page state only. It does not call the API or persist marks.
 
 Platform Council setup supports manual hierarchy entry and a validated, preview-first CSV import (2,000 rows / 1 MB, atomic commit). No real Kenyan geography dataset has been loaded; validate the authoritative source before production import.
 
-School Administrators can link an existing verified Sentinel account to an approved school. Linking reuses the global Person and creates only a school-specific membership. Teacher invitation/provisioning is not implemented yet. Grade/class/learning-area assignments are a later slice.
+School Administrators can link an existing verified Sentinel account to an approved school. Linking reuses the global Person and creates only a school-specific membership. Teacher invitation/provisioning is not implemented yet. School classes and Class Teacher coordination are implemented; subject-teacher assignments remain gated on the published curriculum mapping.
 
-The API also provides school-scoped teacher roster and linking endpoints under `/api/school/registrations/:registrationId/teachers`. Linking reuses a global Person with an active account and verified email; it never creates a duplicate identity.
+The API provides school-scoped teacher roster/linking endpoints under `/api/school/registrations/:registrationId/teachers` and class management under `/api/school/registrations/:registrationId/classes`. Linking reuses a global Person with an active account and verified email; it never creates a duplicate identity. Class Teacher assignment is scoped to one active teacher membership and grants coordination only, not learner or marks access.
 
 The KICD regular curriculum source review and a 120-row Grades 1–9 directory extraction are available under `docs/research/` and `data/curriculum/`. These are review artifacts only: optionality and assessment eligibility remain unapproved, and no production curriculum seed is published.
 

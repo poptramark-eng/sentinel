@@ -81,6 +81,33 @@ enum GeographyStatus {
   INACTIVE
 }
 
+enum SchoolGrade {
+  GRADE_1
+  GRADE_2
+  GRADE_3
+  GRADE_4
+  GRADE_5
+  GRADE_6
+  GRADE_7
+  GRADE_8
+  GRADE_9
+}
+
+enum SchoolClassStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum StaffAssignmentType {
+  CLASS_TEACHER
+}
+
+enum StaffAssignmentStatus {
+  ACTIVE
+  ENDED
+  REVOKED
+}
+
 model Person {
   id          String   @id @default(uuid()) @db.Uuid
   givenName   String
@@ -335,6 +362,7 @@ model CouncilSchoolRegistration {
   initialRegistrant Person             @relation("RegistrationInitialRegistrant", fields: [initialRegistrantPersonId], references: [id], onDelete: Restrict)
   reviewedBy        UserAccount?       @relation("RegistrationReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
   memberships       SchoolMembership[]
+  schoolClasses     SchoolClass[]
 
   @@unique([id, councilId])
   @@unique([councilId, registrationCode])
@@ -354,12 +382,58 @@ model SchoolMembership {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
-  person       Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
+  registration    CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
+  person          Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
+  staffAssignments StaffAssignment[]
 
+  @@unique([id, registrationId, councilId])
   @@unique([registrationId, personId, role])
   @@index([personId, status])
   @@index([registrationId, status, role])
+}
+
+
+model SchoolClass {
+  id             String            @id @default(uuid()) @db.Uuid
+  registrationId String            @db.Uuid
+  councilId      String            @db.Uuid
+  grade          SchoolGrade
+  academicYear   Int
+  streamCode     String            @default("MAIN")
+  displayName    String?
+  status         SchoolClassStatus @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
+  assignments  StaffAssignment[]
+
+  @@unique([id, registrationId, councilId])
+  @@unique([registrationId, academicYear, grade, streamCode])
+  @@index([councilId, academicYear, grade, status])
+  @@index([registrationId, status, grade])
+}
+
+model StaffAssignment {
+  id             String                @id @default(uuid()) @db.Uuid
+  registrationId String                @db.Uuid
+  councilId      String                @db.Uuid
+  schoolClassId  String                @db.Uuid
+  membershipId   String                @db.Uuid
+  type           StaffAssignmentType   @default(CLASS_TEACHER)
+  status         StaffAssignmentStatus @default(ACTIVE)
+  startsAt       DateTime              @default(now())
+  endsAt         DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  schoolClass SchoolClass     @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+  membership  SchoolMembership @relation(fields: [membershipId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+
+  @@unique([id, registrationId, councilId])
+  @@index([registrationId, status, type])
+  @@index([membershipId, status, startsAt])
+  @@index([schoolClassId, status, type])
 }
 
 model AuditEvent {
