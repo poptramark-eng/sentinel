@@ -14,6 +14,7 @@ import {
   CookieReply,
   clearAuthCookies,
   getRefreshCookie,
+  hasTrustedOrigin,
   hasValidCsrf,
   setAuthCookies,
 } from "./cookie";
@@ -26,8 +27,12 @@ export class AuthController {
   @Post("login")
   async login(
     @Body() body: LoginDto,
+    @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) reply: CookieReply,
   ) {
+    if (!hasTrustedOrigin(request)) {
+      throw new UnauthorizedException("Request origin is not trusted.");
+    }
     const result = await this.authService.login(body.email, body.password);
     setAuthCookies(
       reply as never,
