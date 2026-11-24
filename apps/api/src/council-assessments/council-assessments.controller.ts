@@ -11,6 +11,7 @@ import {
 import { AccessTokenGuard, AuthenticatedRequest } from "../auth/access-token.guard";
 import { CouncilAdministratorGuard } from "../auth/council-administrator.guard";
 import { CouncilGovernanceApproverGuard } from "../auth/council-governance-approver.guard";
+import { CouncilRubricReaderGuard } from "../auth/council-rubric-reader.guard";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { CreateAssessmentDto } from "./dto/create-assessment.dto";
 import { CreateRubricDto, CreateRubricVersionDto, CreateRubricBandDto } from "./dto/create-rubric.dto";
@@ -23,7 +24,7 @@ export class CouncilAssessmentsController {
   constructor(private readonly assessments: CouncilAssessmentService) {}
 
   @Get("rubrics")
-  @UseGuards(CouncilAdministratorGuard)
+  @UseGuards(CouncilRubricReaderGuard)
   listRubrics(@Param("councilId", new ParseUUIDPipe()) councilId: string) {
     return this.assessments.listRubrics(councilId);
   }
@@ -78,6 +79,12 @@ export class CouncilAssessmentsController {
     @Param("versionId", new ParseUUIDPipe()) versionId: string,
   ) {
     return this.assessments.publishRubric({ accountId: request.auth!.accountId }, councilId, versionId);
+  }
+
+  @Get("rubrics/review-queue")
+  @UseGuards(CouncilGovernanceApproverGuard)
+  listRubricReviewQueue(@Param("councilId", new ParseUUIDPipe()) councilId: string) {
+    return this.assessments.listRubricReviewQueue(councilId);
   }
 
   @Get("assessments")
