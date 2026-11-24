@@ -178,7 +178,12 @@ export class SchoolAssessmentMarkService {
         }
         const updated = await tx.assessmentMark.update({
           where: { id: existing.id },
-          data: { marks: String(input.marks), enteredByAccountId: actor.accountId, returnedReason: null },
+          data: {
+            marks: String(input.marks),
+            enteredByAccountId: actor.accountId,
+            status: existing.status === "RETURNED" ? "DRAFT" : existing.status,
+            returnedReason: null,
+          },
           select: { id: true, marks: true, status: true, updatedAt: true },
         });
         await tx.assessmentMarkRevision.create({
