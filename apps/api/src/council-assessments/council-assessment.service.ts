@@ -379,8 +379,27 @@ export class CouncilAssessmentService {
     });
   }
 
-  async listAssessments(councilId: string) {
-    return this.prisma.client.assessment.findMany({
+  async listAssessments(councilId: string, accountId: string) {
+    const account = await this.prisma.client.userAccount.findUnique({
+      where: { id: accountId },
+      select: { personId: true },
+    });
+    if (!account) throw new NotFoundException("Account not found.");
+    const now = new Date();
+    const memberships = await this.prisma.client.councilMembership.findMany({
+      where: {
+        councilId,
+        personId: account.personId,
+        status: "ACTIVE",
+        role: { in: ["COUNCIL_ADMINISTRATOR", "COUNCIL_GOVERNANCE_APPROVER"] },
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+        ],
+      },
+      select: { role: true },
+    });
+    const [assessments] = await Promise.all([this.prisma.client.assessment.findMany({
       where: { councilId },
       orderBy: [{ academicYear: "desc" }, { createdAt: "desc" }],
       include: {
@@ -403,7 +422,12 @@ export class CouncilAssessmentService {
           },
         },
       },
-    });
+    })]);
+    return {
+      canManage: memberships.some((membership) => membership.role === "COUNCIL_ADMINISTRATOR"),
+      canModerate: memberships.some((membership) => membership.role === "COUNCIL_GOVERNANCE_APPROVER"),
+      assessments,
+    };
   }
 
   async createAssessment(actor: CouncilActor, councilId: string, input: CreateAssessmentDto) {
