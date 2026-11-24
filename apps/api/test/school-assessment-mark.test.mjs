@@ -151,3 +151,62 @@ test("class mark submission rejects incomplete mark cells", async () => {
     (error) => error instanceof ConflictException && /missing or already submitted/.test(error.message),
   );
 });
+
+
+test("a returned mark can be corrected while the assessment is reopened", async () => {
+  const records = {};
+  const base = {
+    schoolClass: { findFirst: async () => classAccess() },
+    schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
+  };
+  const tx = {
+    assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
+    assessmentCandidate: { findFirst: async () => ({ id: candidateId }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: areaId, maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
+    assessmentMark: {
+      findFirst: async () => ({ id: markId, marks: 72, status: "RETURNED" }),
+      update: async ({ data }) => { records.updated = data; return { id: markId, marks: data.marks, status: "RETURNED", updatedAt: new Date() }; },
+    },
+    assessmentMarkRevision: { create: async ({ data }) => { records.revision = data; return data; } },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const client = { ...base, $transaction: async (callback) => callback(tx) };
+  const result = await new SchoolAssessmentMarkService({ client }).saveMark(
+    actor, registrationId, classId, assessmentId,
+    { candidateId, assessmentLearningAreaId: areaId, marks: 74.5 },
+  );
+  assert.equal(records.updated.marks, "74.5");
+  assert.equal(records.updated.returnedReason, null);
+  assert.equal(records.revision.action, "UPDATED");
+  assert.equal(records.revision.previousMarks, 72);
+  assert.equal(records.revision.newMarks, "74.5");
+  assert.equal(records.audit.action, "ASSESSMENT_MARK_SAVED");
+  assert.equal(result.marks, 74.5);
+});
+
+test("class resubmission accepts complete returned marks and records a new submission revision", async () => {
+  const records = {};
+  const base = {
+    schoolClass: { findFirst: async () => classAccess() },
+    schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
+  };
+  const tx = {
+    assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
+    assessmentCandidate: {
+      findMany: async () => [{ id: candidateId, marks: [{ id: markId, marks: 74.5, status: "RETURNED" }] }],
+    },
+    assessmentMark: {
+      updateMany: async ({ where, data }) => { records.update = { where, data }; return { count: 1 }; },
+    },
+    assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const client = { ...base, $transaction: async (callback) => callback(tx) };
+  const result = await new SchoolAssessmentMarkService({ client }).submitClassMarks(
+    actor, registrationId, classId, assessmentId,
+  );
+  assert.deepEqual(records.update.where.status.in, ["DRAFT", "RETURNED"]);
+  assert.equal(records.update.data.status, "SUBMITTED");
+  assert.equal(records.revisions[0].action, "SUBMITTED");
+  assert.deepEqual(result, { success: true, candidateCount: 1, markCount: 1 });
+});
