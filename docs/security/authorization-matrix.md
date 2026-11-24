@@ -55,6 +55,16 @@ Legend:
 - Assessment eligibility is denied unless the Council area is enabled and its source mapping has `REVIEWED` status with optionality resolved to `CORE` or `OPTIONAL`.
 - Each Council selection and grade-area configuration change is audited. The Council Administrator guard checks the active, effective-dated membership; a platform role or UI link alone does not grant access.
 
+### Learner and marks permissions
+
+- Learners are global identity records and do not have accounts or login credentials. Learner numbers are identifiers only.
+- An active School Administrator may search for existing learner identities, create/reuse identities, enrol learners into classes and end enrolments for an approved school registration.
+- An active assigned Class Teacher may read only the learner roster and assessment marks for the class covered by their active assignment.
+- Assessment roster snapshots are created at scheduling from active enrollments matching the assessment grade and academic year. A global active-enrolment constraint prevents one learner from being simultaneously enrolled in multiple schools.
+- Only the assigned Class Teacher may save and submit marks for their class. The assessment must be OPEN; marks must respect the snapshotted maximum and precision.
+- Class submission requires all mark cells to be complete. Submitted marks are immutable through normal entry routes and every change/submission is recorded in append-only revision history.
+- School Administrator access to learner enrollment does not grant mark-entry access. Council Administrator access to assessment configuration does not grant access to school learner records or mark capture.
+
 ### Implemented assessment and rubric permissions
 
 - An active `COUNCIL_ADMINISTRATOR` membership may create and manage rubric drafts and Council assessment configuration only within the Council in the route scope.
