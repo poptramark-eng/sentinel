@@ -261,7 +261,7 @@ export default function CouncilAssessmentsPage() {
             </div>
             {!curriculum?.selection ? <p className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">Select a published curriculum before creating an assessment. <Link className="font-semibold underline" href={`/council/${councilId}/curriculum`}>Configure curriculum</Link></p> :
               rubrics.length === 0 ? <p className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">No published rubric versions are available. A Council Administrator must configure a rubric and obtain independent governance approval before creating assessments.</p> :
-              <form onSubmit={(event) => void createAssessment(event)} className="mt-5 space-y-5">
+              <form aria-busy={busy} onSubmit={(event) => void createAssessment(event)} className="mt-5 space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <label className="text-xs font-medium text-[var(--muted)]">Assessment name<input required minLength={2} maxLength={160} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="e.g. Term 2 Assessment" className="mt-2 w-full rounded-xl border border-[var(--line-strong)] px-3 py-3 text-sm text-[var(--ink-strong)] outline-none focus:border-[var(--brand)]" /></label>
                   <label className="text-xs font-medium text-[var(--muted)]">Assessment code<input required minLength={2} maxLength={40} value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase() })} placeholder="e.g. T2-2026" className="mt-2 w-full rounded-xl border border-[var(--line-strong)] px-3 py-3 text-sm text-[var(--ink-strong)] outline-none focus:border-[var(--brand)]" /></label>
@@ -282,7 +282,7 @@ export default function CouncilAssessmentsPage() {
                       })}
                     </div>}
                 </div>
-                <div className="flex justify-end border-t border-[var(--line)] pt-4"><button type="submit" disabled={busy || !form.rubricVersionId || availableAreas.length === 0} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] disabled:opacity-50">{busy ? "Saving…" : "Create assessment draft"}</button></div>
+                <div className="flex justify-end border-t border-[var(--line)] pt-4"><button type="submit" aria-busy={busy} disabled={busy || !form.rubricVersionId || availableAreas.length === 0} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] disabled:opacity-50">{busy ? "Saving…" : "Create assessment draft"}</button></div>
               </form>}
           </section> : null}
           <section className="mt-8">
