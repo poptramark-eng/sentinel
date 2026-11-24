@@ -8,9 +8,10 @@ import { SchoolTeachersModule } from "./school-teachers/school-teachers.module";
 import { SchoolClassesModule } from "./school-classes/school-classes.module";
 import { PlatformCurriculaModule } from "./platform-curricula/platform-curricula.module";
 import { CouncilCurriculaModule } from "./council-curricula/council-curricula.module";
+import { CouncilAssessmentsModule } from "./council-assessments/council-assessments.module";
 
 @Module({
-  imports: [DatabaseModule, AuthModule, SchoolRegistrationsModule, PlatformCouncilsModule, SchoolTeachersModule, SchoolClassesModule, PlatformCurriculaModule, CouncilCurriculaModule],
+  imports: [DatabaseModule, AuthModule, SchoolRegistrationsModule, PlatformCouncilsModule, SchoolTeachersModule, SchoolClassesModule, PlatformCurriculaModule, CouncilCurriculaModule, CouncilAssessmentsModule],
   controllers: [HealthController],
 })
 export class AppModule {}
