@@ -117,6 +117,8 @@ button, input, select, textarea { font: inherit; }
   .no-print { display: none !important; }
   .report-print-header { display: block !important; margin-bottom: 20px; border-bottom: 2px solid #1d4ed8; padding-bottom: 12px; }
   .report-print-only { display: block !important; }
+  .workspace-content { padding-left: 0 !important; }
+  .workspace-main { max-width: none !important; padding: 0 !important; margin: 0 !important; }
   .report-screen { max-width: none !important; padding: 0 !important; margin: 0 !important; }
   .report-card { break-inside: avoid; border-color: #cbd5e1 !important; box-shadow: none !important; }
   .report-table { width: 100% !important; min-width: 0 !important; border-collapse: collapse !important; font-size: 9pt !important; }
