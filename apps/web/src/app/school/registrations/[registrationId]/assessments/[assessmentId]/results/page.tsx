@@ -71,7 +71,7 @@ export default function SchoolPublishedResultsPage() {
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = "cbe-school-assessment-results.csv"; anchor.click(); URL.revokeObjectURL(url);
   }
 
-  return <WorkspaceShell section="School workspace" title="Published assessment results" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Assessments", href: `/school/registrations/${registrationId}/assessments` }, { label: "Published results", href: "#results", active: true }]} actions={<Link href={`/school/registrations/${registrationId}/assessments`} className="cbe-button cbe-button-secondary no-print">Back to assessments</Link>}>
+  return <WorkspaceShell section="School workspace" title="Published assessment results" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Assessments", href: `/school/registrations/${registrationId}/assessments` }, { label: "Published results", href: `/school/registrations/${registrationId}/assessments/${assessmentId}/results`, active: true }]} actions={<Link href={`/school/registrations/${registrationId}/assessments`} className="cbe-button cbe-button-secondary no-print">Back to assessments</Link>}>
 
     
     <div className="report-screen mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
