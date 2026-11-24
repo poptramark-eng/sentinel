@@ -219,8 +219,10 @@ export default function PlatformCurriculaPage() {
     try {
       const response = await apiRequest(`/platform/curricula/${detail.id}/${action}`, {
         method: "POST",
-        headers: action === "return" ? { "Content-Type": "application/json" } : undefined,
-        ...(action === "return" ? { body: JSON.stringify({ reason: returnReason }) } : {}),
+        ...(action === "return" ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: returnReason }),
+        } : {}),
       });
       const payload = await response.json().catch(() => null) as { message?: string } | null;
       if (!response.ok) throw new Error(payload?.message ?? "The curriculum action could not be completed.");
