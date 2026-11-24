@@ -83,7 +83,9 @@ export default function PlatformSchoolRegistrationsPage() {
   }, []);
 
   useEffect(() => {
-    void loadQueue();
+    queueMicrotask(() => {
+      void loadQueue();
+    });
   }, [loadQueue]);
 
   const visibleItems = (queue?.items ?? []).filter((item) =>
