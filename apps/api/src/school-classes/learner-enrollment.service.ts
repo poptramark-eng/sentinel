@@ -94,7 +94,7 @@ export class LearnerEnrollmentService {
       },
       take: 10,
       orderBy: [{ familyName: "asc" }, { givenName: "asc" }],
-      select: { id: true, learnerNumber: true, givenName: true, otherNames: true, familyName: true, enrollments: { where: { status: "ACTIVE", endedAt: null }, select: { registrationId: true } } },
+      select: { id: true, learnerNumber: true, givenName: true, otherNames: true, familyName: true, displayName: true, enrollments: { where: { status: "ACTIVE", endedAt: null }, select: { registrationId: true } } },
     });
     return learners.map((learner) => ({
       id: learner.id,
