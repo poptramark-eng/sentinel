@@ -190,7 +190,7 @@ export default function CouncilAssessmentsPage() {
       <header className="border-b border-[#e5eaf1] bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
           <Link href="/workspace" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Council workspace</span></Link>
-          <Link href={`/council/${councilId}/curriculum`} className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Curriculum settings</Link>
+          <div className="flex gap-4"><Link href={`/council/${councilId}/rubrics`} className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Rubric settings</Link><Link href={`/council/${councilId}/curriculum`} className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Curriculum settings</Link></div>
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
