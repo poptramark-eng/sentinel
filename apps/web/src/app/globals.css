@@ -131,3 +131,57 @@ button, input, select, textarea { font: inherit; }
   .report-slip:last-child { break-after: auto; page-break-after: auto; }
   a { text-decoration: none !important; }
 }
+
+/* Astryx interaction primitives. Existing screens can adopt these without a UI dependency. */
+.cbe-field {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0.625rem 0.75rem;
+  color: var(--ink);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.cbe-field::placeholder { color: var(--subtle); }
+.cbe-field:focus-visible {
+  border-color: var(--brand);
+  outline: 3px solid var(--brand-soft);
+  outline-offset: 1px;
+}
+.cbe-field:disabled { cursor: not-allowed; background: var(--surface-subtle); color: var(--subtle); }
+.cbe-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.cbe-button-primary { background: var(--brand); color: var(--brand-contrast); }
+.cbe-button-primary:hover { background: var(--brand-strong); }
+.cbe-button-secondary { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.cbe-button-secondary:hover { background: var(--surface-subtle); }
+.cbe-button:disabled { cursor: not-allowed; opacity: 0.55; }
+.cbe-status {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+.cbe-status-success { background: var(--success-soft); color: var(--success); }
+.cbe-status-warning { background: var(--warning-soft); color: var(--warning); }
+.cbe-status-danger { background: var(--danger-soft); color: var(--danger); }
+.cbe-status-info { background: var(--brand-soft); color: var(--brand-strong); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
