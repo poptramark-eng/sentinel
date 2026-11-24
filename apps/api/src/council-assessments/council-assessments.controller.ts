@@ -19,11 +19,15 @@ import { ScheduleAssessmentDto } from "./dto/schedule-assessment.dto";
 import { ReturnRubricForChangesDto } from "./dto/return-rubric-for-changes.dto";
 import { ReturnAssessmentMarksDto } from "./dto/return-assessment-marks.dto";
 import { CouncilAssessmentService } from "./council-assessment.service";
+import { AssessmentResultsService } from "./assessment-results.service";
 
 @Controller("councils/:councilId")
 @UseGuards(AccessTokenGuard, CsrfGuard)
 export class CouncilAssessmentsController {
-  constructor(private readonly assessments: CouncilAssessmentService) {}
+  constructor(
+    private readonly assessments: CouncilAssessmentService,
+    private readonly results: AssessmentResultsService,
+  ) {}
 
   @Get("rubrics")
   @UseGuards(CouncilRubricReaderGuard)
@@ -161,6 +165,25 @@ export class CouncilAssessmentsController {
       classId,
       body.reason.trim(),
     );
+  }
+
+  @Get("assessments/:assessmentId/results/preview")
+  @UseGuards(CouncilRubricReaderGuard)
+  previewAssessmentResults(
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+  ) {
+    return this.results.preview(councilId, assessmentId);
+  }
+
+  @Post("assessments/:assessmentId/results/publish")
+  @UseGuards(CouncilGovernanceApproverGuard)
+  publishAssessmentResults(
+    @Req() request: AuthenticatedRequest,
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+  ) {
+    return this.results.publish({ accountId: request.auth!.accountId }, councilId, assessmentId);
   }
 
   @Post("assessments/:assessmentId/close")
