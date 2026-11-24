@@ -47,6 +47,14 @@ Legend:
 | Approve organizer RELEASE_RESULTS authority | Denied | Cannot self-approve | Denied unless separately also CouncilApprover | Allowed if active, distinct and unconflicted | CouncilApprover is a separate authority. |
 | View Council audit events | Restricted platform audit | Scoped to own Council, exact permissions TBD | Governance-related scope TBD | Approval-related scope TBD | Audit access itself is permissioned. |
 
+### Implemented Council curriculum permissions
+
+- An active `COUNCIL_ADMINISTRATOR` membership may list published curriculum versions and read the current curriculum only for the Council in the route scope.
+- A Council Administrator may select a published version for that Council. The prior selection is retained as `SUPERSEDED` history; a new selection creates Council-specific grade-area configuration rows.
+- New Council grade-area rows start disabled and not assessment-eligible. A Council Administrator must explicitly enable an area and separately mark it assessment-eligible.
+- Assessment eligibility is denied unless the Council area is enabled and its source mapping has `REVIEWED` status with optionality resolved to `CORE` or `OPTIONAL`.
+- Each Council selection and grade-area configuration change is audited. The Council Administrator guard checks the active, effective-dated membership; a platform role or UI link alone does not grant access.
+
 ## 4. Organizer authority and delegation
 
 | Action | CouncilAdministrator | CouncilApprover | OrganizationAdministrator | OrganizerStaff |
