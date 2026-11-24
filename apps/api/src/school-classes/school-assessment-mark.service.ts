@@ -232,7 +232,7 @@ export class SchoolAssessmentMarkService {
       const markIds = candidates.flatMap((candidate) => candidate.marks.map((mark) => mark.id));
       await tx.assessmentMark.updateMany({
         where: { id: { in: markIds }, status: { in: ["DRAFT", "RETURNED"] } },
-        data: { status: "SUBMITTED", submittedAt: new Date(), enteredByAccountId: actor.accountId },
+        data: { status: "SUBMITTED", submittedAt: new Date(), enteredByAccountId: actor.accountId, returnedReason: null },
       });
       await tx.assessmentMarkRevision.createMany({
         data: markIds.map((markId) => ({
