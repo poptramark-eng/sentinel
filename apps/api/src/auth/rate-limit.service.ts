@@ -1,11 +1,25 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import {
+  Injectable,
+  Optional,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { createHmac } from "node:crypto";
+import { Prisma } from "@cbe/database";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { PrismaService } from "../database/prisma.service";
 
 export interface RateLimitDecision {
   allowed: boolean;
   resetAt?: number;
+}
+
+interface DatabaseRateLimitCheck {
+  scope: string;
+  identifier: string;
+  limit: number;
+  windowMs: number;
+  keyHash?: string;
 }
 
 class BoundedEphemeralCache extends Map<string, number> {
@@ -26,6 +40,7 @@ class BoundedEphemeralCache extends Map<string, number> {
 
 @Injectable()
 export class RateLimitService {
+  private readonly upstashConfigured: boolean;
   private readonly loginIpLimiter?: Ratelimit;
   private readonly loginEmailLimiter?: Ratelimit;
   private readonly refreshIpLimiter?: Ratelimit;
@@ -36,11 +51,18 @@ export class RateLimitService {
   private readonly resendEmailLimiter?: Ratelimit;
   private readonly initializationError?: unknown;
 
-  constructor() {
+  constructor(@Optional() private readonly prisma?: PrismaService) {
     const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
     const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+    this.upstashConfigured = Boolean(url || token);
 
-    if (!url || !token) return;
+    if (!this.upstashConfigured) return;
+    if (!url || !token) {
+      this.initializationError = new Error(
+        "Both Upstash REST URL and token are required.",
+      );
+      return;
+    }
 
     try {
       const redis = new Redis({ url, token });
@@ -103,6 +125,7 @@ export class RateLimitService {
       email,
       this.loginIpLimiter,
       this.loginEmailLimiter,
+      "login",
     );
   }
 
@@ -112,6 +135,7 @@ export class RateLimitService {
       email,
       this.registerIpLimiter,
       this.registerEmailLimiter,
+      "register",
     );
   }
 
@@ -124,22 +148,43 @@ export class RateLimitService {
       email,
       this.resendIpLimiter,
       this.resendEmailLimiter,
+      "resend-verification",
     );
   }
 
   async checkVerifyEmail(ipAddress: string): Promise<RateLimitDecision> {
-    this.ensureConfigured();
-    if (!this.verifyEmailIpLimiter) return { allowed: true };
-    return this.runChecks([
-      this.verifyEmailIpLimiter.limit(this.normalizeIp(ipAddress)),
+    if (this.upstashConfigured) {
+      this.ensureUpstashConfigured();
+      return this.runChecks([
+        this.verifyEmailIpLimiter!.limit(this.normalizeIp(ipAddress)),
+      ]);
+    }
+
+    return this.checkDatabase([
+      {
+        scope: "auth:verify-email:ip",
+        identifier: this.normalizeIp(ipAddress),
+        limit: 20,
+        windowMs: 15 * 60 * 1_000,
+      },
     ]);
   }
 
   async checkRefresh(ipAddress: string): Promise<RateLimitDecision> {
-    this.ensureConfigured();
-    if (!this.refreshIpLimiter) return { allowed: true };
-    return this.runChecks([
-      this.refreshIpLimiter.limit(this.normalizeIp(ipAddress)),
+    if (this.upstashConfigured) {
+      this.ensureUpstashConfigured();
+      return this.runChecks([
+        this.refreshIpLimiter!.limit(this.normalizeIp(ipAddress)),
+      ]);
+    }
+
+    return this.checkDatabase([
+      {
+        scope: "auth:refresh:ip",
+        identifier: this.normalizeIp(ipAddress),
+        limit: 60,
+        windowMs: 5 * 60 * 1_000,
+      },
     ]);
   }
 
@@ -148,29 +193,122 @@ export class RateLimitService {
     email: string | undefined,
     ipLimiter: Ratelimit | undefined,
     emailLimiter: Ratelimit | undefined,
+    policy: "login" | "register" | "resend-verification",
   ): Promise<RateLimitDecision> {
-    this.ensureConfigured();
-    if (!ipLimiter || !emailLimiter) return { allowed: true };
+    const normalizedIp = this.normalizeIp(ipAddress);
+    const normalizedEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    const checks = [ipLimiter.limit(this.normalizeIp(ipAddress))];
-    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-    if (normalizedEmail) {
-      const emailKey = createHmac(
-        "sha256",
-        process.env.REFRESH_TOKEN_PEPPER ?? "sentinel-development-only",
-      )
-        .update(normalizedEmail)
-        .digest("hex");
-      checks.push(emailLimiter.limit(emailKey));
+    if (this.upstashConfigured) {
+      this.ensureUpstashConfigured();
+      const checks = [ipLimiter!.limit(normalizedIp)];
+      if (normalizedEmail) {
+        const emailKey = this.hashIdentifier(
+          `auth:${policy}:email`,
+          normalizedEmail,
+        );
+        checks.push(emailLimiter!.limit(emailKey));
+      }
+      return this.runChecks(checks);
     }
-    return this.runChecks(checks);
+
+    const limits =
+      policy === "login"
+        ? { ip: 30, email: 5, windowMs: 15 * 60 * 1_000 }
+        : policy === "register"
+          ? { ip: 5, email: 3, windowMs: 60 * 60 * 1_000 }
+          : { ip: 5, email: 3, windowMs: 60 * 60 * 1_000 };
+
+    const checks: DatabaseRateLimitCheck[] = [
+      {
+        scope: `auth:${policy}:ip`,
+        identifier: normalizedIp,
+        limit: limits.ip,
+        windowMs: limits.windowMs,
+      },
+    ];
+    if (normalizedEmail) {
+      checks.push({
+        scope: `auth:${policy}:email`,
+        identifier: normalizedEmail,
+        limit: limits.email,
+        windowMs: limits.windowMs,
+      });
+    }
+    return this.checkDatabase(checks);
   }
 
-  private async runChecks(
-    checks: Array<Promise<{ success: boolean; reset: number; reason?: string }>>,
+  private async checkDatabase(
+    checks: DatabaseRateLimitCheck[],
   ): Promise<RateLimitDecision> {
+    this.ensurePepper();
+
+    if (!this.prisma) {
+      if (process.env.NODE_ENV === "production") {
+        throw new ServiceUnavailableException(
+          "Authentication protection is temporarily unavailable.",
+        );
+      }
+      return { allowed: true };
+    }
+
+    const keyedChecks = checks.map((check) => ({
+      ...check,
+      keyHash: this.hashIdentifier(check.scope, check.identifier),
+    }));
+    const now = new Date();
+
     try {
-      return this.evaluate(await Promise.all(checks));
+      return await this.prisma.client.$transaction(
+        async (tx) => {
+          const lockKeys = [...new Set(keyedChecks.map((check) => check.keyHash))].sort();
+          for (const keyHash of lockKeys) {
+            await tx.$queryRaw(
+              Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${keyHash}, 0))`,
+            );
+          }
+
+          await tx.$executeRaw(
+            Prisma.sql`DELETE FROM "AuthRateLimitEvent" WHERE "expiresAt" <= ${now}`,
+          );
+
+          const blockedUntil: number[] = [];
+          for (const check of keyedChecks) {
+            const windowStart = new Date(now.getTime() - check.windowMs);
+            const rows = await tx.$queryRaw<
+              Array<{ count: number; oldest: Date | null }>
+            >(
+              Prisma.sql`SELECT COUNT(*)::int AS "count", MIN("createdAt") AS "oldest"
+                FROM "AuthRateLimitEvent"
+                WHERE "keyHash" = ${check.keyHash}
+                  AND "createdAt" >= ${windowStart}`,
+            );
+            const count = Number(rows[0]?.count ?? 0);
+            if (count >= check.limit) {
+              const oldest = rows[0]?.oldest ?? now;
+              blockedUntil.push(oldest.getTime() + check.windowMs);
+            }
+          }
+
+          if (blockedUntil.length > 0) {
+            return {
+              allowed: false,
+              resetAt: Math.max(...blockedUntil),
+            };
+          }
+
+          for (const check of keyedChecks) {
+            const expiresAt = new Date(now.getTime() + check.windowMs);
+            await tx.$executeRaw(
+              Prisma.sql`INSERT INTO "AuthRateLimitEvent" ("id", "keyHash", "createdAt", "expiresAt")
+                VALUES (gen_random_uuid(), ${check.keyHash}, ${now}, ${expiresAt})`,
+            );
+          }
+
+          return { allowed: true };
+        },
+        { maxWait: 1_000, timeout: 2_500 },
+      );
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
@@ -179,18 +317,10 @@ export class RateLimitService {
     }
   }
 
-  private ensureConfigured(): void {
-    const pepper = process.env.REFRESH_TOKEN_PEPPER;
+  private ensureUpstashConfigured(): void {
+    this.ensurePepper();
     if (
-      process.env.NODE_ENV === "production" &&
-      (!pepper || Buffer.byteLength(pepper) < 32)
-    ) {
-      throw new ServiceUnavailableException(
-        "Authentication protection is temporarily unavailable.",
-      );
-    }
-
-    if (
+      this.initializationError ||
       !this.loginIpLimiter ||
       !this.loginEmailLimiter ||
       !this.refreshIpLimiter ||
@@ -200,15 +330,40 @@ export class RateLimitService {
       !this.resendIpLimiter ||
       !this.resendEmailLimiter
     ) {
-      if (process.env.NODE_ENV === "production") {
-        throw new ServiceUnavailableException(
-          "Authentication protection is temporarily unavailable.",
-        );
-      }
-      return;
+      throw new ServiceUnavailableException(
+        "Authentication protection is temporarily unavailable.",
+      );
     }
+  }
 
-    if (this.initializationError) {
+  private ensurePepper(): void {
+    const pepper = process.env.REFRESH_TOKEN_PEPPER;
+    if (!pepper || Buffer.byteLength(pepper) < 32) {
+      throw new ServiceUnavailableException(
+        "Authentication protection is temporarily unavailable.",
+      );
+    }
+  }
+
+  private hashIdentifier(scope: string, identifier: string): string {
+    const pepper = process.env.REFRESH_TOKEN_PEPPER;
+    if (!pepper) {
+      throw new ServiceUnavailableException(
+        "Authentication protection is temporarily unavailable.",
+      );
+    }
+    return createHmac("sha256", pepper)
+      .update(`sentinel:${process.env.APP_ENV ?? process.env.NODE_ENV ?? "development"}:${scope}:${identifier}`)
+      .digest("hex");
+  }
+
+  private async runChecks(
+    checks: Array<Promise<{ success: boolean; reset: number; reason?: string }>>,
+  ): Promise<RateLimitDecision> {
+    try {
+      return this.evaluate(await Promise.all(checks));
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
         "Authentication protection is temporarily unavailable.",
       );
