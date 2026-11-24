@@ -101,3 +101,32 @@ test("assigned class teacher can read only their class learner roster", async ()
   assert.equal(result.learners[0].learnerNumber, "LRN-001");
   assert.equal(result.learners[0].name, "Amina Otieno");
 });
+
+
+test("ending a learner enrollment preserves the row and records a transfer reason", async () => {
+  const records = {};
+  const tx = {
+    schoolMembership: { findFirst: async () => adminScope() },
+    schoolLearnerEnrollment: {
+      findFirst: async () => ({
+        id: "20202020-2020-4020-8020-202020202020",
+        learnerId,
+        schoolClassId: classId,
+        learner: { learnerNumber: "LRN-TRANSFER-001" },
+      }),
+      update: async ({ data }) => { records.updated = data; return { id: "20202020-2020-4020-8020-202020202020", ...data }; },
+    },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const client = { ...tx, $transaction: async (callback) => callback(tx) };
+  const result = await new LearnerEnrollmentService({ client }).endEnrollment(
+    { accountId, personId }, registrationId,
+    "20202020-2020-4020-8020-202020202020", "TRANSFERRED",
+    "Learner has moved to another registered school.",
+  );
+  assert.equal(records.updated.status, "TRANSFERRED");
+  assert.ok(records.updated.endedAt instanceof Date);
+  assert.equal(records.audit.action, "LEARNER_ENROLLMENT_ENDED");
+  assert.equal(records.audit.reason, "Learner has moved to another registered school.");
+  assert.equal(result.status, "TRANSFERRED");
+});
