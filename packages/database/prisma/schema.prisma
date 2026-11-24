@@ -1138,3 +1138,14 @@ model AssessmentRubricBand {
   @@unique([assessmentId, sourceRubricBandId])
   @@index([assessmentId, sortOrder])
 }
+
+
+model AuthRateLimitEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  keyHash   String   @db.VarChar(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt DateTime @db.Timestamptz(6)
+
+  @@index([keyHash, createdAt])
+  @@index([expiresAt])
+}
