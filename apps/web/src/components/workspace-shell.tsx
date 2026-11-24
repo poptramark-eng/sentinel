@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandLockup } from "./brand-lockup";
 
 export interface WorkspaceNavItem {
   label: string;
@@ -29,10 +30,7 @@ export function WorkspaceShell({
     <div className="workspace-root min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
       <a href="#workspace-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-[var(--brand-strong)] focus:shadow-lg">Skip to main content</a>
       <aside className="print:hidden fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] flex-col border-r border-[var(--line)] bg-white lg:flex">
-        <Link href="/workspace" className="flex h-[var(--topbar-height)] items-center gap-3 border-b border-[var(--line)] px-5" aria-label="Softflix cbe workspace home">
-          <span className="grid size-9 place-items-center rounded-xl bg-[var(--brand)] text-[11px] font-bold tracking-wide text-white">cbe</span>
-          <span className="min-w-0"><span className="block text-sm font-bold tracking-tight text-[var(--ink-strong)]">cbe</span><span className="block text-[10px] text-[var(--muted)]">by Softflix</span></span>
-        </Link>
+        <div className="flex h-[var(--topbar-height)] items-center border-b border-[var(--line)] px-5"><BrandLockup href="/workspace" /></div>
         <div className="px-4 pt-6">
           <p className="px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--subtle)]">{section}</p>
           <nav aria-label="Workspace navigation" className="mt-3 space-y-1">
@@ -59,7 +57,7 @@ export function WorkspaceShell({
       <div className="workspace-content min-h-screen lg:pl-[var(--sidebar-width)]">
         <header className="print:hidden sticky top-0 z-20 flex min-h-[var(--topbar-height)] items-center justify-between gap-4 border-b border-[var(--line)] bg-white/95 px-4 backdrop-blur sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/workspace" className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--brand)] text-[11px] font-bold text-white lg:hidden">cbe</Link>
+            <div className="lg:hidden"><BrandLockup href="/workspace" compact /></div>
             <div className="min-w-0"><p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">{section}</p><p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{title}</p></div>
           </div>
           <div className="flex shrink-0 items-center gap-2">{actions}</div>
