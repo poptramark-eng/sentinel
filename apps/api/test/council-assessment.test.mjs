@@ -450,3 +450,65 @@ test("moderation requires a substantive reason before opening a transaction", as
   );
   assert.equal(called, false);
 });
+
+
+test("governance moderation can return one learning area without returning other subject marks", async () => {
+  const classId = "21212121-2121-4121-8121-212121212121";
+  const registrationId = "23232323-2323-4323-8323-232323232323";
+  const candidateId = "24242424-2424-4424-8424-242424242424";
+  const learningAreaId = "27272727-2727-4727-8727-272727272727";
+  const mappingId = "28282828-2828-4828-8828-282828282828";
+  const markIds = ["29292929-2929-4929-8929-292929292929"];
+  const reason = "Please verify the Mathematics scores against the signed subject mark sheet.";
+  const records = {};
+  const tx = {
+    assessment: {
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026 }),
+      update: async ({ data }) => { records.assessment = data; return { id: assessmentId, ...data }; },
+    },
+    schoolClass: { findFirst: async () => ({ id: classId, registrationId }) },
+    assessmentLearningArea: { findFirst: async ({ where }) => { records.areaWhere = where; return { id: learningAreaId, councilGradeLearningAreaId: mappingId, canonicalName: "Mathematics" }; } },
+    assessmentCandidate: { findMany: async () => [{ id: candidateId }] },
+    assessmentMark: {
+      findMany: async ({ where }) => { records.markWhere = where; return markIds.map((id) => ({ id, marks: 72, status: "SUBMITTED" })); },
+      updateMany: async ({ where, data }) => { records.markUpdate = { where, data }; return { count: 1 }; },
+    },
+    assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const client = { $transaction: async (callback, options) => {
+    assert.equal(options.isolationLevel, "Serializable");
+    return callback(tx);
+  } };
+  const result = await new CouncilAssessmentService({ client }).returnLearningAreaMarksForCorrection(
+    { accountId }, councilId, assessmentId, classId, learningAreaId, reason,
+  );
+  assert.equal(records.areaWhere.id, learningAreaId);
+  assert.equal(records.markWhere.assessmentLearningAreaId, learningAreaId);
+  assert.deepEqual(records.markUpdate.where.id.in, markIds);
+  assert.equal(records.markUpdate.data.status, "RETURNED");
+  assert.equal(records.revisions[0].action, "RETURNED");
+  assert.equal(records.audit.action, "ASSESSMENT_LEARNING_AREA_MARKS_RETURNED_FOR_CORRECTION");
+  assert.equal(records.audit.metadata.councilGradeLearningAreaId, mappingId);
+  assert.equal(records.assessment.status, "OPEN");
+  assert.equal(result.learningAreaId, learningAreaId);
+  assert.equal(result.markCount, 1);
+});
+
+test("learning-area moderation rejects incomplete or unsubmitted marks", async () => {
+  const classId = "21212121-2121-4121-8121-212121212121";
+  const learningAreaId = "27272727-2727-4727-8727-272727272727";
+  const tx = {
+    assessment: { findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026 }) },
+    schoolClass: { findFirst: async () => ({ id: classId, registrationId: "23232323-2323-4323-8323-232323232323" }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: learningAreaId, councilGradeLearningAreaId: "28282828-2828-4828-8828-282828282828", canonicalName: "Mathematics" }) },
+    assessmentCandidate: { findMany: async () => [{ id: "24242424-2424-4424-8424-242424242424" }] },
+    assessmentMark: { findMany: async () => [{ id: "29292929-2929-4929-8929-292929292929", marks: null, status: "DRAFT" }] },
+  };
+  await assert.rejects(
+    new CouncilAssessmentService({ client: { $transaction: async (callback) => callback(tx) } })
+      .returnLearningAreaMarksForCorrection({ accountId }, councilId, assessmentId, classId, learningAreaId,
+        "Please correct the missing Mathematics mark."),
+    (error) => error instanceof ConflictException && /every candidate mark has been submitted/.test(error.message),
+  );
+});

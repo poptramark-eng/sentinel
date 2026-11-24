@@ -167,6 +167,26 @@ export class CouncilAssessmentsController {
     );
   }
 
+  @Post("assessments/:assessmentId/classes/:classId/learning-areas/:learningAreaId/return-marks")
+  @UseGuards(CouncilGovernanceApproverGuard)
+  returnLearningAreaMarksForCorrection(
+    @Req() request: AuthenticatedRequest,
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+    @Param("classId", new ParseUUIDPipe()) classId: string,
+    @Param("learningAreaId", new ParseUUIDPipe()) learningAreaId: string,
+    @Body() body: ReturnAssessmentMarksDto,
+  ) {
+    return this.assessments.returnLearningAreaMarksForCorrection(
+      { accountId: request.auth!.accountId },
+      councilId,
+      assessmentId,
+      classId,
+      learningAreaId,
+      body.reason.trim(),
+    );
+  }
+
   @Get("assessments/:assessmentId/results")
   @UseGuards(CouncilRubricReaderGuard)
   getPublishedAssessmentResults(
