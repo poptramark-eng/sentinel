@@ -107,6 +107,8 @@ ALTER TABLE "AssessmentCandidate" ADD CONSTRAINT "AssessmentCandidate_registrati
   FOREIGN KEY ("registrationId", "councilId") REFERENCES "CouncilSchoolRegistration"("id", "councilId") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "AssessmentCandidate" ADD CONSTRAINT "AssessmentCandidate_schoolClassId_registrationId_councilId_fkey"
   FOREIGN KEY ("schoolClassId", "registrationId", "councilId") REFERENCES "SchoolClass"("id", "registrationId", "councilId") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AssessmentMark" ADD CONSTRAINT "AssessmentMark_assessmentId_fkey"
+  FOREIGN KEY ("assessmentId") REFERENCES "Assessment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "AssessmentMark" ADD CONSTRAINT "AssessmentMark_candidateId_assessmentId_fkey"
   FOREIGN KEY ("candidateId", "assessmentId") REFERENCES "AssessmentCandidate"("id", "assessmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "AssessmentMark" ADD CONSTRAINT "AssessmentMark_assessmentLearningAreaId_assessmentId_fkey"
