@@ -9,7 +9,6 @@
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "bootstrap:platform-admin": "node dist/scripts/bootstrap-platform-administrator.js",
-    "reset:platform-admin-password": "node dist/scripts/reset-platform-administrator-password.js",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
