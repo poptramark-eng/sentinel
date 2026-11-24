@@ -70,6 +70,17 @@ function dateTime(value: string | null) {
   return new Intl.DateTimeFormat("en-KE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+function assessmentStatusClass(status: Assessment["status"]) {
+  switch (status) {
+    case "DRAFT": return "border border-[var(--line)] bg-[var(--surface-subtle)] text-[var(--muted)]";
+    case "SCHEDULED": return "border border-blue-200 bg-blue-50 text-blue-800";
+    case "OPEN": return "border border-teal-200 bg-teal-50 text-teal-800";
+    case "CLOSED": return "border border-amber-200 bg-amber-50 text-amber-800";
+    case "RELEASED": return "border border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "CANCELLED": return "border border-red-200 bg-red-50 text-red-800";
+  }
+}
+
 export default function CouncilAssessmentsPage() {
   const { councilId } = useParams<{ councilId: string }>();
   const router = useRouter();
@@ -267,7 +278,7 @@ export default function CouncilAssessmentsPage() {
             <div className="mb-4 flex items-end justify-between gap-3"><div><h2 className="text-lg font-semibold text-[var(--ink-strong)]">Assessment register</h2><p className="mt-1 text-xs text-[var(--muted)]">Lifecycle actions are validated by the API and database.</p></div><span className="text-xs text-[var(--muted)]">{assessments.length} assessments</span></div>
             {assessments.length === 0 ? <div className="rounded-2xl border border-dashed border-[#ccd8e8] bg-white p-8 text-center text-sm text-[var(--muted)]">No assessments have been created for this Council yet.</div> :
               <div className="space-y-4">{assessments.map((assessment) => <article key={assessment.id} className="rounded-2xl border border-[var(--line)] bg-white p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><h3 className="text-base font-semibold text-[var(--ink-strong)]">{assessment.name}</h3><span className="rounded-full bg-[var(--surface-subtle)] px-2.5 py-1 text-[10px] font-semibold text-[var(--muted)]">{assessment.status}</span></div><p className="mt-1 text-xs text-[var(--muted)]">{assessment.code} · {assessment.academicYear} · {assessment.grade.replace("_", " ")} · {assessment.type.toLowerCase()}</p></div><span className="text-xs font-medium text-[var(--muted)]">{assessment.rubricVersion.rubric.name} · {assessment.rubricVersion.versionLabel}</span></div>
+                <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><h3 className="text-base font-semibold text-[var(--ink-strong)]">{assessment.name}</h3><span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${assessmentStatusClass(assessment.status)}`}>{assessment.status}</span></div><p className="mt-1 text-xs text-[var(--muted)]">{assessment.code} · {assessment.academicYear} · {assessment.grade.replace("_", " ")} · {assessment.type.toLowerCase()}</p></div><span className="text-xs font-medium text-[var(--muted)]">{assessment.rubricVersion.rubric.name} · {assessment.rubricVersion.versionLabel}</span></div>
                 <div className="mt-4 flex flex-wrap gap-2">{assessment.learningAreas.map((area) => <span key={area.id} className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[11px] text-[var(--muted)]">{area.displayLabel || area.sourceLabel} · {area.maxMarks}</span>)}</div>
                 {assessment.status === "CLOSED" || assessment.status === "RELEASED" ? <div className="mt-4 flex justify-end border-t border-[var(--line)] pt-4"><Link href={`/council/${councilId}/assessments/${assessment.id}/results`} className="rounded-xl border border-[#cbd8eb] px-4 py-2.5 text-xs font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)]">{assessment.status === "RELEASED" ? "View published results" : "Review results"}</Link></div> : null}
                 {assessment.status === "DRAFT" ? <div className="mt-5 grid gap-3 border-t border-[var(--line)] pt-4 sm:grid-cols-[1fr_1fr_auto]"><label className="text-[11px] font-medium text-[var(--muted)]">Opens at<input type="datetime-local" value={schedule[assessment.id]?.opensAt ?? ""} onChange={(event) => setSchedule((previous) => ({ ...previous, [assessment.id]: { opensAt: event.target.value, closesAt: previous[assessment.id]?.closesAt ?? "" } }))} className="mt-1 w-full rounded-lg border border-[var(--line-strong)] px-2.5 py-2 text-sm text-[var(--ink-strong)]" /></label><label className="text-[11px] font-medium text-[var(--muted)]">Closes at<input type="datetime-local" value={schedule[assessment.id]?.closesAt ?? ""} onChange={(event) => setSchedule((previous) => ({ ...previous, [assessment.id]: { opensAt: previous[assessment.id]?.opensAt ?? "", closesAt: event.target.value } }))} className="mt-1 w-full rounded-lg border border-[var(--line-strong)] px-2.5 py-2 text-sm text-[var(--ink-strong)]" /></label><button disabled={busy || !schedule[assessment.id]?.opensAt || !schedule[assessment.id]?.closesAt} onClick={() => void transition(assessment, "schedule")} className="self-end rounded-xl border border-[var(--line-strong)] px-4 py-2.5 text-xs font-semibold text-[var(--brand)] disabled:opacity-40">Schedule</button></div> : null}
