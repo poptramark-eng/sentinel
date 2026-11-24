@@ -20,7 +20,7 @@ import { SubmitSchoolRegistrationDto } from "./dto/submit-registration.dto";
 import { WithdrawRegistrationDto } from "./dto/registration-decision.dto";
 
 @Controller("school-registrations")
-@UseGuards(AccessTokenGuard)
+@UseGuards(AccessTokenGuard, CsrfGuard)
 export class SchoolRegistrationsController {
   constructor(
     private readonly registrations: SchoolRegistrationService,
