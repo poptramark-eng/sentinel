@@ -108,6 +108,7 @@ test("assessment creation snapshots the selected curriculum, eligible learning a
         displayLabel: "Mathematics",
         sourceLabel: "Mathematical Activities",
         gradeLearningArea: {
+          sourceLabel: "Mathematical Activities",
           learningArea: { code: "MAT", canonicalName: "Mathematics" },
         },
       }],
