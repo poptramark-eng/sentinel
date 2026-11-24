@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "generate": "prisma generate",
     "validate": "prisma validate",
-    "migrate": "prisma migrate dev"
+    "migrate": "prisma migrate dev",
+    "migration:generate": "bash scripts/generate-foundation-migration.sh"
   },
   "dependencies": {
     "@prisma/client": "7.10.1",
