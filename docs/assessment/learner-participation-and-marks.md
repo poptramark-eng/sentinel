@@ -53,7 +53,7 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 
 ## Not yet implemented
 
-The implemented workflow does not yet provide bulk Excel import, a guided learner-transfer wizard, analytics dashboards, comprehensive report exports, or controlled post-publication correction and supersession. Result computation must use the immutable assessment candidate and learning-area snapshots, not the current live class roster.
+The implemented workflow does not yet provide School Administrator final school submission after all learning areas are complete, bulk Excel import, a guided learner-transfer wizard, analytics dashboards, comprehensive report exports, or controlled post-publication correction and supersession. Result computation must use the immutable assessment candidate and learning-area snapshots, not the current live class roster.
 
 ## Subject Teacher mark access
 
