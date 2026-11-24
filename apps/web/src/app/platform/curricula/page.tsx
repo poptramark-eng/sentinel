@@ -86,6 +86,7 @@ export default function PlatformCurriculaPage() {
   const [detail, setDetail] = useState<CurriculumVersionDetail | null>(null);
   const [search, setSearch] = useState("");
   const [returnReason, setReturnReason] = useState("");
+  const [mappingReviews, setMappingReviews] = useState<Record<string, { optionality: "CORE" | "OPTIONAL"; reason: string }>>({});
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -174,6 +175,33 @@ export default function PlatformCurriculaPage() {
     review: versions.filter(({ version }) => version.status === "IN_REVIEW").length,
     draft: versions.filter(({ version }) => version.status === "DRAFT").length,
   }), [versions]);
+
+  async function saveMappingReview(area: GradeLearningArea) {
+    if (!detail) return;
+    const review = mappingReviews[area.id] ?? { optionality: "CORE" as const, reason: "" };
+    if (review.reason.trim().length < 10) {
+      setError("Add a review note of at least 10 characters for this learning area.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiRequest(`/platform/curricula/${detail.id}/grade-areas/${area.id}/review`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(review),
+      });
+      const payload = await response.json().catch(() => null) as { message?: string } | null;
+      if (!response.ok) throw new Error(payload?.message ?? "The learning area review could not be saved.");
+      await loadDetail(detail.id);
+      setNotice(`${area.sourceLabel} review saved.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The learning area review failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function performAction(action: "submit-review" | "publish" | "return") {
     if (!detail) return;
@@ -358,6 +386,19 @@ export default function PlatformCurriculaPage() {
                                   <span className={`rounded-full px-2 py-1 text-[10px] font-medium ${area.reviewStatus === "REVIEWED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{area.reviewStatus === "REVIEWED" ? "Reviewed" : "Needs review"}</span>
                                   <span className="rounded-full bg-[#f1f4f8] px-2 py-1 text-[10px] font-medium text-[#52647d]">{area.optionality === "UNKNOWN" ? "Optionality unknown" : area.optionality}</span>
                                 </div>
+                                {detail.status === "IN_REVIEW" ? (
+                                  <div className="mt-3 grid gap-2 rounded-lg bg-[#f8fafc] p-3 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-end">
+                                    <label className="text-[10px] font-semibold text-[#64748b]">Optionality
+                                      <select value={(mappingReviews[area.id]?.optionality ?? (area.optionality === "OPTIONAL" ? "OPTIONAL" : "CORE"))} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: event.target.value as "CORE" | "OPTIONAL", reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs">
+                                        <option value="CORE">Core</option><option value="OPTIONAL">Optional</option>
+                                      </select>
+                                    </label>
+                                    <label className="text-[10px] font-semibold text-[#64748b]">Review note
+                                      <input value={mappingReviews[area.id]?.reason ?? area.reviewNote ?? ""} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: current[area.id]?.optionality ?? (area.optionality === "OPTIONAL" ? "OPTIONAL" : "CORE"), reason: event.target.value } }))} placeholder="Evidence supporting this classification" className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs outline-none focus:border-[#6d94e8]" />
+                                    </label>
+                                    <button disabled={busy} onClick={() => void saveMappingReview(area)} className="rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-[11px] font-semibold text-[#2457c5] hover:bg-[#eef4ff] disabled:opacity-50">Save review</button>
+                                  </div>
+                                ) : null}
                               </div>
                             ))}
                           </div>

@@ -12,6 +12,7 @@ import { AccessTokenGuard, AuthenticatedRequest } from "../auth/access-token.gua
 import { CsrfGuard } from "../auth/csrf.guard";
 import { PlatformOperatorGuard } from "../auth/platform-operator.guard";
 import { ReturnCurriculumForChangesDto } from "./dto/return-curriculum-for-changes.dto";
+import { ReviewGradeLearningAreaDto } from "./dto/review-grade-learning-area.dto";
 import { PlatformCurriculumService } from "./platform-curriculum.service";
 
 @Controller("platform/curricula")
@@ -27,6 +28,21 @@ export class PlatformCurriculaController {
   @Get(":versionId")
   getVersion(@Param("versionId", new ParseUUIDPipe()) versionId: string) {
     return this.curricula.getVersion(versionId);
+  }
+
+  @Patch(":versionId/grade-areas/:gradeLearningAreaId/review")
+  reviewGradeLearningArea(
+    @Req() request: AuthenticatedRequest,
+    @Param("versionId", new ParseUUIDPipe()) versionId: string,
+    @Param("gradeLearningAreaId", new ParseUUIDPipe()) gradeLearningAreaId: string,
+    @Body() body: ReviewGradeLearningAreaDto,
+  ) {
+    return this.curricula.reviewGradeLearningArea(
+      { accountId: request.auth!.accountId },
+      versionId,
+      gradeLearningAreaId,
+      body,
+    );
   }
 
   @Post(":versionId/submit-review")

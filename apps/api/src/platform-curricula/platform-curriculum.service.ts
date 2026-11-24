@@ -43,11 +43,61 @@ export class PlatformCurriculumService {
             learningArea: { select: { code: true, canonicalName: true } },
           },
         },
-        _count: { select: { councilCurricula: true } },
+        _count: { select: { gradeLearningAreas: true, councilCurricula: true } },
       },
     });
     if (!version) throw new NotFoundException("Curriculum version not found.");
     return version;
+  }
+
+  async reviewGradeLearningArea(
+    actor: PlatformActor,
+    versionId: string,
+    gradeLearningAreaId: string,
+    input: { optionality: "CORE" | "OPTIONAL"; reason: string },
+  ) {
+    return this.prisma.client.$transaction(async (tx) => {
+      const version = await tx.curriculumVersion.findUnique({
+        where: { id: versionId },
+        select: { id: true, status: true },
+      });
+      if (!version) throw new NotFoundException("Curriculum version not found.");
+      if (version.status !== "IN_REVIEW") {
+        throw new ConflictException("Grade mappings can only be reviewed while the version is under review.");
+      }
+
+      const mapping = await tx.gradeLearningArea.findFirst({
+        where: { id: gradeLearningAreaId, curriculumVersionId: versionId },
+        select: { id: true, sourceLabel: true, grade: true },
+      });
+      if (!mapping) throw new NotFoundException("Grade learning area not found in this curriculum version.");
+
+      await tx.gradeLearningArea.update({
+        where: { id: mapping.id },
+        data: {
+          optionality: input.optionality,
+          reviewStatus: "REVIEWED",
+          reviewNote: input.reason,
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorAccountId: actor.accountId,
+          action: "PLATFORM_CURRICULUM_GRADE_AREA_REVIEWED",
+          resourceType: "GradeLearningArea",
+          resourceId: mapping.id,
+          decision: "ALLOW",
+          reason: input.reason,
+          metadata: {
+            curriculumVersionId: versionId,
+            grade: mapping.grade,
+            sourceLabel: mapping.sourceLabel,
+            optionality: input.optionality,
+          },
+        },
+      });
+      return { id: mapping.id, reviewStatus: "REVIEWED", optionality: input.optionality };
+    });
   }
 
   async submitForReview(actor: PlatformActor, versionId: string) {
