@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api";
+import { apiRequest, clearStoredCsrfToken } from "../../../lib/api";
 
 interface Registration {
   id: string;
@@ -45,27 +43,6 @@ interface PageResult {
   page: number;
   pageSize: number;
   total: number;
-}
-
-function csrfToken(): string {
-  const cookie = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith("cbe_csrf="));
-  return cookie ? decodeURIComponent(cookie.slice("cbe_csrf=".length)) : "";
-}
-
-async function apiRequest(path: string, init: RequestInit = {}) {
-  const headers = new Headers(init.headers);
-  if (init.method && init.method !== "GET") {
-    headers.set("x-csrf-token", csrfToken());
-  }
-  return fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-    credentials: "include",
-    cache: "no-store",
-  });
 }
 
 export default function PlatformSchoolRegistrationsPage() {
@@ -187,7 +164,7 @@ export default function PlatformSchoolRegistrationsPage() {
       <header className="border-b border-[#e5eaf1] bg-white">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-4 sm:px-8">
           <a href="/" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Platform operations</span></a>
-          <div className="flex items-center gap-4"><span className="hidden text-xs text-[#64748b] sm:inline">Governance · School onboarding</span><button onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); router.replace("/login"); }} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button></div>
+          <div className="flex items-center gap-4"><span className="hidden text-xs text-[#64748b] sm:inline">Governance · School onboarding</span><button onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button></div>
         </div>
       </header>
 
