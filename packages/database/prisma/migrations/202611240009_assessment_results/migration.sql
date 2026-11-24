@@ -133,7 +133,7 @@ BEGIN
   END IF;
   SELECT "status", "councilId" INTO assessment_status, assessment_council_id
   FROM "Assessment" WHERE "id" = NEW."assessmentId";
-  IF assessment_status <> 'CLOSED' OR assessment_council_id <> NEW."councilId" OR NEW."status" <> 'PUBLISHED' THEN
+  IF assessment_status IS DISTINCT FROM 'CLOSED' OR assessment_council_id IS DISTINCT FROM NEW."councilId" OR NEW."status" <> 'PUBLISHED' THEN
     RAISE EXCEPTION 'Results can be published only for a closed assessment in the same Council' USING ERRCODE = '55000';
   END IF;
   SELECT count(*), count(DISTINCT "schoolIdSnapshot")
@@ -161,26 +161,36 @@ DECLARE
   candidate_number TEXT;
   candidate_name TEXT;
   candidate_grade "SchoolGrade";
+  candidate_registration_id UUID;
+  candidate_class_id UUID;
+  candidate_class_stream TEXT;
 BEGIN
   IF TG_OP <> 'INSERT' THEN
     RAISE EXCEPTION 'Published assessment result snapshots are immutable' USING ERRCODE = '55000';
   END IF;
   SELECT a."status", p."status", c."status", c."schoolIdSnapshot", c."schoolNameSnapshot",
-         c."learnerNumberSnapshot", c."learnerNameSnapshot", c."classGradeSnapshot"
+         c."learnerNumberSnapshot", c."learnerNameSnapshot", c."classGradeSnapshot",
+         c."registrationId", c."schoolClassId", c."classStreamSnapshot"
     INTO assessment_status, publication_status, candidate_status, candidate_school_id,
-         candidate_school_name, candidate_number, candidate_name, candidate_grade
+         candidate_school_name, candidate_number, candidate_name, candidate_grade,
+         candidate_registration_id, candidate_class_id, candidate_class_stream
   FROM "Assessment" a
   JOIN "AssessmentResultPublication" p ON p."assessmentId" = a."id"
   JOIN "AssessmentCandidate" c ON c."assessmentId" = a."id"
   WHERE a."id" = NEW."assessmentId" AND p."id" = NEW."publicationId" AND c."id" = NEW."candidateId";
-  IF assessment_status <> 'CLOSED' OR publication_status <> 'PUBLISHED' OR candidate_status <> 'ACTIVE' THEN
+  IF assessment_status IS DISTINCT FROM 'CLOSED'
+    OR publication_status IS DISTINCT FROM 'PUBLISHED'
+    OR candidate_status IS DISTINCT FROM 'ACTIVE' THEN
     RAISE EXCEPTION 'Result snapshots require a closed assessment and active published candidate' USING ERRCODE = '55000';
   END IF;
-  IF NEW."schoolIdSnapshot" <> candidate_school_id
-    OR NEW."schoolNameSnapshot" <> candidate_school_name
-    OR NEW."learnerNumberSnapshot" <> candidate_number
-    OR NEW."learnerNameSnapshot" <> candidate_name
-    OR NEW."gradeSnapshot" <> candidate_grade THEN
+  IF NEW."schoolIdSnapshot" IS DISTINCT FROM candidate_school_id
+    OR NEW."schoolNameSnapshot" IS DISTINCT FROM candidate_school_name
+    OR NEW."learnerNumberSnapshot" IS DISTINCT FROM candidate_number
+    OR NEW."learnerNameSnapshot" IS DISTINCT FROM candidate_name
+    OR NEW."gradeSnapshot" IS DISTINCT FROM candidate_grade
+    OR NEW."registrationId" IS DISTINCT FROM candidate_registration_id
+    OR NEW."schoolClassId" IS DISTINCT FROM candidate_class_id
+    OR NEW."schoolClassNameSnapshot" IS DISTINCT FROM (candidate_grade::TEXT || ' · ' || candidate_class_stream) THEN
     RAISE EXCEPTION 'Result identity snapshots must match the scheduled candidate roster' USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
@@ -213,10 +223,10 @@ BEGIN
   JOIN "AssessmentLearningArea" a ON a."assessmentId" = r."assessmentId"
     AND a."id" = NEW."assessmentLearningAreaId"
   WHERE r."id" = NEW."resultId" AND r."assessmentId" = NEW."assessmentId";
-  IF source_status <> 'SUBMITTED' OR source_marks IS NULL
-    OR source_marks <> NEW."marks" OR source_maximum <> NEW."maximumMarks"
-    OR source_code <> NEW."learningAreaCode" OR source_name <> NEW."learningAreaName"
-    OR source_label <> NEW."displayLabel" THEN
+  IF source_status IS DISTINCT FROM 'SUBMITTED' OR source_marks IS NULL
+    OR source_marks IS DISTINCT FROM NEW."marks" OR source_maximum IS DISTINCT FROM NEW."maximumMarks"
+    OR source_code IS DISTINCT FROM NEW."learningAreaCode" OR source_name IS DISTINCT FROM NEW."learningAreaName"
+    OR source_label IS DISTINCT FROM NEW."displayLabel" THEN
     RAISE EXCEPTION 'Result learning-area snapshots must match submitted marks and assessment snapshots' USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
@@ -228,6 +238,11 @@ BEFORE INSERT OR UPDATE OR DELETE ON "AssessmentResultLearningArea"
 FOR EACH ROW EXECUTE FUNCTION sentinel_validate_assessment_result_learning_area();
 
 CREATE OR REPLACE FUNCTION sentinel_validate_assessment_transition() RETURNS trigger AS $function$
+DECLARE
+  publication_id UUID;
+  publication_candidate_count INTEGER;
+  actual_result_count INTEGER;
+  learning_area_count INTEGER;
 BEGIN
   IF TG_OP = 'INSERT' THEN
     IF NEW."status" <> 'DRAFT' THEN
@@ -277,11 +292,34 @@ BEGIN
   END IF;
 
   IF NEW."status" = 'RELEASED' THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM "AssessmentResultPublication" p
-      WHERE p."assessmentId" = NEW."id" AND p."status" = 'PUBLISHED'
-    ) THEN
+    SELECT p."id", p."candidateCount" INTO publication_id, publication_candidate_count
+    FROM "AssessmentResultPublication" p
+    WHERE p."assessmentId" = NEW."id" AND p."status" = 'PUBLISHED'
+    ORDER BY p."version" DESC
+    LIMIT 1;
+    IF publication_id IS NULL THEN
       RAISE EXCEPTION 'Assessment results must be published before release' USING ERRCODE = '55000';
+    END IF;
+    SELECT count(*) INTO actual_result_count
+    FROM "AssessmentResult" r WHERE r."publicationId" = publication_id;
+    SELECT count(*) INTO learning_area_count
+    FROM "AssessmentLearningArea" a WHERE a."assessmentId" = NEW."id";
+    IF actual_result_count <> publication_candidate_count
+      OR EXISTS (
+        SELECT 1 FROM "AssessmentCandidate" c
+        WHERE c."assessmentId" = NEW."id" AND c."status" = 'ACTIVE'
+          AND NOT EXISTS (
+            SELECT 1 FROM "AssessmentResult" r
+            WHERE r."publicationId" = publication_id AND r."candidateId" = c."id"
+          )
+      )
+      OR learning_area_count = 0
+      OR EXISTS (
+        SELECT 1 FROM "AssessmentResult" r
+        WHERE r."publicationId" = publication_id
+          AND (SELECT count(*) FROM "AssessmentResultLearningArea" l WHERE l."resultId" = r."id") <> learning_area_count
+      ) THEN
+      RAISE EXCEPTION 'Result publication is incomplete for the active candidate and learning-area roster' USING ERRCODE = '23514';
     END IF;
   END IF;
 
