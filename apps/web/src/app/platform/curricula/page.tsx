@@ -32,6 +32,39 @@ interface Curriculum {
   versions: CurriculumVersionSummary[];
 }
 
+interface CurriculumDraftImportRow {
+  grade: string;
+  learningAreaCode: string;
+  canonicalName: string;
+  sourceLabel: string;
+  sourceUrl: string;
+  optionality: "UNKNOWN" | "CORE" | "OPTIONAL";
+  sortOrder: number;
+}
+
+interface CurriculumDraftImportPayload {
+  curriculumCode: string;
+  curriculumName: string;
+  track: string;
+  versionLabel: string;
+  sourceTitle: string;
+  sourceUrl: string;
+  sourceRetrievedAt: string;
+  sourceSha256: string;
+  rows: CurriculumDraftImportRow[];
+}
+
+interface CurriculumDraftImportPreview {
+  valid: boolean;
+  curriculumCode: string;
+  versionLabel: string;
+  rowsReceived: number;
+  uniqueLearningAreas: number;
+  gradesCovered: string[];
+  unresolvedOptionality: number;
+  errors: Array<{ row: number; message: string }>;
+}
+
 interface GradeLearningArea {
   id: string;
   grade: string;
@@ -75,6 +108,68 @@ function statusClass(status: VersionStatus) {
   return "border-blue-200 bg-blue-50 text-blue-700";
 }
 
+function parseCsv(source: string): string[][] {
+  const text = source.replace(/^\\uFEFF/, "");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let value = "";
+  let quoted = false;
+  let afterQuote = false;
+  const finishRow = () => {
+    row.push(value);
+    if (row.some((cell) => cell.trim().length > 0)) rows.push(row);
+    row = [];
+    value = "";
+    afterQuote = false;
+  };
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quoted) {
+      if (character === '"' && text[index + 1] === '"') {
+        value += '"';
+        index += 1;
+      } else if (character === '"') {
+        quoted = false;
+        afterQuote = true;
+      } else value += character;
+      continue;
+    }
+    if (afterQuote) {
+      if (character === ",") {
+        row.push(value);
+        value = "";
+        afterQuote = false;
+      } else if (character === "\\n" || character === "\\r") {
+        if (character === "\\r" && text[index + 1] === "\\n") index += 1;
+        finishRow();
+      } else if (character !== " " && character !== "\\t") {
+        throw new Error("The CSV contains characters after a closing quote.");
+      }
+      continue;
+    }
+    if (character === '"') {
+      if (value.length > 0) throw new Error("The CSV contains a quote inside an unquoted field.");
+      quoted = true;
+    } else if (character === ",") {
+      row.push(value);
+      value = "";
+    } else if (character === "\\n" || character === "\\r") {
+      if (character === "\\r" && text[index + 1] === "\\n") index += 1;
+      finishRow();
+    } else value += character;
+  }
+  if (quoted) throw new Error("The CSV file contains an unclosed quoted field.");
+  row.push(value);
+  if (row.some((cell) => cell.trim().length > 0)) rows.push(row);
+  return rows;
+}
+
+function sha256Hex(buffer: ArrayBuffer) {
+  return crypto.subtle.digest("SHA-256", buffer).then((digest) =>
+    Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""),
+  );
+}
+
 function gradeNumber(grade: string) {
   return Number(grade.replace("GRADE_", ""));
 }
@@ -87,6 +182,18 @@ export default function PlatformCurriculaPage() {
   const [search, setSearch] = useState("");
   const [returnReason, setReturnReason] = useState("");
   const [mappingReviews, setMappingReviews] = useState<Record<string, { optionality: "CORE" | "OPTIONAL" | ""; reason: string }>>({});
+  const [draftFile, setDraftFile] = useState<File | null>(null);
+  const [draftSourceTitle, setDraftSourceTitle] = useState("KICD CBE curriculum source review extract");
+  const [draftSourceUrl, setDraftSourceUrl] = useState("https://kicd.ac.ke/cbc-materials/");
+  const [draftRetrievedAt, setDraftRetrievedAt] = useState("2026-11-24");
+  const [draftCurriculumName, setDraftCurriculumName] = useState("Kenya Regular CBE");
+  const [draftVersionLabel, setDraftVersionLabel] = useState("source-review-2026-11");
+  const [draftPayload, setDraftPayload] = useState<CurriculumDraftImportPayload | null>(null);
+  const [draftPreview, setDraftPreview] = useState<CurriculumDraftImportPreview | null>(null);
+  const [draftImportBusy, setDraftImportBusy] = useState(false);
+  const [draftImportError, setDraftImportError] = useState("");
+  const [draftFileName, setDraftFileName] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -175,6 +282,124 @@ export default function PlatformCurriculaPage() {
     review: versions.filter(({ version }) => version.status === "IN_REVIEW").length,
     draft: versions.filter(({ version }) => version.status === "DRAFT").length,
   }), [versions]);
+
+  async function previewDraftImport() {
+    setDraftImportError("");
+    setDraftPreview(null);
+    setDraftPayload(null);
+    if (!draftFile) {
+      setDraftImportError("Choose a CSV file first.");
+      return;
+    }
+    if (draftFile.size > 1024 * 1024) {
+      setDraftImportError("CSV files must be 1 MB or smaller.");
+      return;
+    }
+    setDraftImportBusy(true);
+    try {
+      const matrix = parseCsv(await draftFile.text());
+      if (matrix.length < 2) throw new Error("The CSV must contain a header and at least one data row.");
+      const headers = (matrix[0] ?? []).map((value) => value.trim().toLowerCase());
+      const required = ["curriculum_code", "grade", "learning_area_code", "source_label", "is_optional", "assessment_eligible", "source_url", "review_status"];
+      if (headers.length !== required.length || new Set(headers).size !== headers.length || required.some((header) => !headers.includes(header))) {
+        throw new Error("Use the eight source-review columns: curriculum_code, grade, learning_area_code, source_label, is_optional, assessment_eligible, source_url, review_status.");
+      }
+      const rows = matrix.slice(1).map((cells, index) => {
+        if (cells.length !== headers.length) throw new Error(`CSV row ${index + 2} has an unexpected number of columns.`);
+        const values = Object.fromEntries(headers.map((header, column) => [header, (cells[column] ?? "").trim()]));
+        const grade = values.grade ?? "";
+        const learningAreaCode = values.learning_area_code ?? "";
+        const sourceLabel = values.source_label ?? "";
+        const sourceUrl = values.source_url ?? "";
+        if (!/^GRADE_[1-9]$/.test(grade)) throw new Error(`CSV row ${index + 2} has an unsupported grade.`);
+        if (!/^[A-Z0-9]+(?:_[A-Z0-9]+)*$/.test(learningAreaCode)) throw new Error(`CSV row ${index + 2} has an invalid learning-area code.`);
+        if (sourceLabel.length < 2) throw new Error(`CSV row ${index + 2} is missing its exact source label.`);
+        try { new URL(sourceUrl); } catch { throw new Error(`CSV row ${index + 2} has an invalid source URL.`); }
+        const optionality = values.is_optional === "CORE" || values.is_optional === "OPTIONAL" ? values.is_optional : "UNKNOWN";
+        return {
+          grade,
+          learningAreaCode,
+          canonicalName: sourceLabel,
+          sourceLabel,
+          sourceUrl,
+          optionality,
+          sortOrder: index,
+        } satisfies CurriculumDraftImportRow;
+      });
+      if (rows.length > 500) throw new Error("A single curriculum import can contain at most 500 mappings.");
+      const curriculumCode = (matrix[1]?.[headers.indexOf("curriculum_code")] ?? "").trim();
+      if (!curriculumCode || !/^[A-Z0-9]+(?:_[A-Z0-9]+)*$/.test(curriculumCode)) throw new Error("The CSV must contain a valid curriculum_code.");
+      if (matrix.slice(1).some((cells) => (cells[headers.indexOf("curriculum_code")] ?? "").trim() !== curriculumCode)) {
+        throw new Error("All rows in one import must use the same curriculum_code.");
+      }
+      if (draftCurriculumName.trim().length < 2 || draftVersionLabel.trim().length < 1 || draftSourceTitle.trim().length < 3) {
+        throw new Error("Enter the curriculum name, version label and source title.");
+      }
+      try { new URL(draftSourceUrl); } catch { throw new Error("Enter a valid source document URL."); }
+      if (!draftRetrievedAt) throw new Error("Enter the date the source was retrieved.");
+      const payload: CurriculumDraftImportPayload = {
+        curriculumCode,
+        curriculumName: draftCurriculumName.trim(),
+        track: "REGULAR",
+        versionLabel: draftVersionLabel.trim(),
+        sourceTitle: draftSourceTitle.trim(),
+        sourceUrl: draftSourceUrl.trim(),
+        sourceRetrievedAt: new Date(`${draftRetrievedAt}T00:00:00.000Z`).toISOString(),
+        sourceSha256: await sha256Hex(await draftFile.arrayBuffer()),
+        rows,
+      };
+      const response = await apiRequest("/platform/curricula/import-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => null) as CurriculumDraftImportPreview & { message?: string | string[] } | null;
+      if (!response.ok || !result) {
+        const message = Array.isArray(result?.message) ? result.message.join(" ") : result?.message;
+        throw new Error(message ?? "The curriculum import preview failed validation.");
+      }
+      setDraftPayload(payload);
+      setDraftPreview(result);
+      setDraftFileName(draftFile.name);
+    } catch (cause) {
+      setDraftImportError(cause instanceof Error ? cause.message : "The CSV could not be validated.");
+    } finally {
+      setDraftImportBusy(false);
+    }
+  }
+
+  async function commitDraftImport() {
+    if (!draftPayload || !draftPreview?.valid) return;
+    setDraftImportBusy(true);
+    setDraftImportError("");
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiRequest("/platform/curricula/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draftPayload),
+      });
+      const result = await response.json().catch(() => null) as { version?: { id?: string }; message?: string | string[] } | null;
+      if (!response.ok || !result?.version?.id) {
+        const message = Array.isArray(result?.message) ? result.message.join(" ") : result?.message;
+        throw new Error(message ?? "The draft curriculum could not be imported.");
+      }
+      const versionId = result.version.id;
+      await loadCatalogue();
+      setSelectedId(versionId);
+      await loadDetail(versionId);
+      setDraftPayload(null);
+      setDraftPreview(null);
+      setDraftFile(null);
+      setDraftFileName("");
+      setNotice("Source data imported as a draft. No optionality or assessment eligibility was approved by the import.");
+    } catch (cause) {
+      setDraftImportError(cause instanceof Error ? cause.message : "The curriculum draft import failed.");
+    } finally {
+      setDraftImportBusy(false);
+    }
+  }
 
   async function saveMappingReview(area: GradeLearningArea) {
     if (!detail) return;
@@ -302,6 +527,64 @@ export default function PlatformCurriculaPage() {
             </div>
           ))}
         </section>
+
+        <details className="mt-6 overflow-hidden rounded-2xl border border-[#dce6f5] bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
+            <span><span className="block text-sm font-semibold text-[#172b4d]">Import source-review CSV</span><span className="mt-1 block text-xs text-[#64748b]">Create a draft catalogue version with source fingerprints and unresolved review flags.</span></span>
+            <span className="rounded-lg bg-[#eef4ff] px-3 py-2 text-xs font-semibold text-[#2457c5]">New draft</span>
+          </summary>
+          <div className="border-t border-[#edf0f5] p-5">
+            <p className="max-w-3xl text-xs leading-5 text-[#64748b]">This import accepts the KICD source-review CSV. Rows are always created as <strong>REVIEW_REQUIRED</strong>. Values such as REVIEW_REQUIRED or SOURCE_DIRECTORY_REVIEWED_NOT_PUBLISHED are not interpreted as evidence that a learning area is core, optional or assessment-eligible.</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <label className="text-[11px] font-semibold text-[#52647d]">Curriculum name
+                <input value={draftCurriculumName} onChange={(event) => setDraftCurriculumName(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+              </label>
+              <label className="text-[11px] font-semibold text-[#52647d]">Version label
+                <input value={draftVersionLabel} onChange={(event) => setDraftVersionLabel(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+              </label>
+              <label className="text-[11px] font-semibold text-[#52647d]">Track
+                <input value="REGULAR" readOnly className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-[#f8fafc] px-3 py-2.5 text-xs font-normal text-[#64748b]" />
+              </label>
+              <label className="text-[11px] font-semibold text-[#52647d] sm:col-span-2 xl:col-span-3">Source title
+                <input value={draftSourceTitle} onChange={(event) => setDraftSourceTitle(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+              </label>
+              <label className="text-[11px] font-semibold text-[#52647d] sm:col-span-2 xl:col-span-2">Primary source URL
+                <input type="url" value={draftSourceUrl} onChange={(event) => setDraftSourceUrl(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+              </label>
+              <label className="text-[11px] font-semibold text-[#52647d]">Retrieved on
+                <input type="date" value={draftRetrievedAt} onChange={(event) => setDraftRetrievedAt(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+              </label>
+              <label className="text-[11px] font-semibold text-[#52647d] sm:col-span-2 xl:col-span-3">Source-review CSV
+                <input type="file" accept=".csv,text/csv" onChange={(event) => { setDraftFile(event.target.files?.[0] ?? null); setDraftPreview(null); setDraftPayload(null); setDraftFileName(""); setDraftImportError(""); }} className="mt-1 block w-full rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-xs font-normal file:mr-3 file:rounded-md file:border-0 file:bg-[#eef4ff] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[#2457c5]" />
+              </label>
+            </div>
+            {draftFile ? <p className="mt-2 text-[11px] text-[#64748b]">Selected: {draftFile.name} · {(draftFile.size / 1024).toFixed(1)} KB</p> : null}
+            {draftImportError ? <p role="alert" className="mt-4 rounded-lg border border-[#f3d0d0] bg-[#fff7f7] px-3 py-2 text-xs text-[#a33b3b]">{draftImportError}</p> : null}
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button disabled={draftImportBusy || !draftFile} onClick={() => void previewDraftImport()} className="rounded-lg bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1d49a7] disabled:opacity-50">{draftImportBusy ? "Validating…" : "Validate import"}</button>
+              {draftFileName ? <span className="text-[11px] text-[#64748b]">Preview for {draftFileName}</span> : null}
+            </div>
+            {draftPreview ? (
+              <div className="mt-5 rounded-xl border border-[#e5eaf1] bg-[#f8fafc] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div><p className="text-xs font-semibold text-[#172b4d]">Import preview · {draftPreview.curriculumCode}</p><p className="mt-1 text-[11px] text-[#64748b]">Version {draftPreview.versionLabel}</p></div>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${draftPreview.valid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{draftPreview.valid ? "Ready to create draft" : "Resolve import errors"}</span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div><p className="text-[10px] text-[#94a3b8]">Rows</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.rowsReceived}</p></div>
+                  <div><p className="text-[10px] text-[#94a3b8]">Unique learning areas</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.uniqueLearningAreas}</p></div>
+                  <div><p className="text-[10px] text-[#94a3b8]">Grades covered</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.gradesCovered.length} / 9</p></div>
+                  <div><p className="text-[10px] text-[#94a3b8]">Optionality unresolved</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.unresolvedOptionality}</p></div>
+                </div>
+                {draftPreview.errors.length > 0 ? <ul className="mt-3 space-y-1 text-[11px] text-[#a33b3b]">{draftPreview.errors.map((item) => <li key={`${item.row}-${item.message}`}>Row {item.row}: {item.message}</li>)}</ul> : null}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#e5eaf1] pt-4">
+                  <p className="max-w-xl text-[11px] leading-5 text-[#64748b]">The imported version remains a draft. Independent review is still required before publication; the file's assessment-eligibility column is retained as unresolved source context, not activated.</p>
+                  <button disabled={!draftPreview.valid || draftImportBusy} onClick={() => void commitDraftImport()} className="rounded-lg bg-[#16734b] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#115d3d] disabled:opacity-50">{draftImportBusy ? "Importing…" : "Create draft version"}</button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </details>
 
         <div className="mt-6 grid min-h-[680px] gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
           <section className="overflow-hidden rounded-2xl border border-[#e5eaf1] bg-white">
