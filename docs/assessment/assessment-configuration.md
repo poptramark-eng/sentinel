@@ -46,6 +46,7 @@ All routes are nested under `/api/councils/:councilId` and require an authentica
 | POST | `/rubrics/:rubricId/versions` | Create a later draft version |
 | POST | `/rubrics/versions/:versionId/bands` | Add a band to a draft version |
 | POST | `/rubrics/versions/:versionId/submit-review` | Submit a version for independent review |
+| POST | `/rubrics/versions/:versionId/return-for-changes` | Return a submitted version to its author with a required reason |
 | POST | `/rubrics/versions/:versionId/publish` | Publish after governance approval |
 | GET | `/assessments` | List Council assessments and snapshots |
 | POST | `/assessments` | Create an assessment draft and freeze its source selections |
