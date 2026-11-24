@@ -116,6 +116,7 @@ test("ending a learner enrollment preserves the row and records a transfer reaso
       }),
       update: async ({ data }) => { records.updated = data; return { id: "20202020-2020-4020-8020-202020202020", ...data }; },
     },
+    assessmentCandidate: { updateMany: async ({ where, data }) => { records.withdrawal = { where, data }; return { count: 2 }; } },
     auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
   };
   const client = { ...tx, $transaction: async (callback) => callback(tx) };
@@ -128,5 +129,8 @@ test("ending a learner enrollment preserves the row and records a transfer reaso
   assert.ok(records.updated.endedAt instanceof Date);
   assert.equal(records.audit.action, "LEARNER_ENROLLMENT_ENDED");
   assert.equal(records.audit.reason, "Learner has moved to another registered school.");
+  assert.equal(records.withdrawal.data.status, "WITHDRAWN");
+  assert.deepEqual(records.withdrawal.where.assessment.is.status.in, ["SCHEDULED", "OPEN", "CLOSED"]);
+  assert.equal(records.audit.metadata.withdrawnAssessmentCandidates, 2);
   assert.equal(result.status, "TRANSFERRED");
 });
