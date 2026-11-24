@@ -16,8 +16,8 @@ export class UpdateCouncilGradeAreaDto {
   @IsBoolean()
   assessmentEligible!: boolean;
 
+  @Transform(({ value }) => typeof value === "string" && value.trim().length === 0 ? undefined : typeof value === "string" ? value.trim() : value)
   @IsOptional()
-  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
   @IsString()
   @Length(2, 180)
   displayLabel?: string;
