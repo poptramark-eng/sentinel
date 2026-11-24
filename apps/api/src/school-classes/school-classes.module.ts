@@ -5,10 +5,12 @@ import { SchoolClassesController } from "./school-classes.controller";
 import { SchoolClassService } from "./school-class.service";
 import { LearnerEnrollmentController } from "./learner-enrollment.controller";
 import { LearnerEnrollmentService } from "./learner-enrollment.service";
+import { SchoolAssessmentMarksController } from "./school-assessment-marks.controller";
+import { SchoolAssessmentMarkService } from "./school-assessment-mark.service";
 
 @Module({
   imports: [AuthModule, DatabaseModule],
-  controllers: [SchoolClassesController, LearnerEnrollmentController],
-  providers: [SchoolClassService, LearnerEnrollmentService],
+  controllers: [SchoolClassesController, LearnerEnrollmentController, SchoolAssessmentMarksController],
+  providers: [SchoolClassService, LearnerEnrollmentService, SchoolAssessmentMarkService],
 })
 export class SchoolClassesModule {}
