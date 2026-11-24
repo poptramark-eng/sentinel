@@ -116,3 +116,37 @@ test("Resend receives an escaped school-registration decision notification", asy
     assert.ok(request.body.html.includes("https://sentinel.example.org/school-registration"));
   });
 });
+
+
+test("Resend receives an escaped teacher school-membership notification", async () => {
+  await withEnvironment({
+    NODE_ENV: "production",
+    RESEND_API_KEY: "re_test_key",
+    EMAIL_FROM: "Sentinel <verify@example.org>",
+    WEB_APP_URL: "https://sentinel.example.org",
+  }, async () => {
+    const originalFetch = globalThis.fetch;
+    let request;
+    globalThis.fetch = async (url, init) => {
+      request = { url, body: JSON.parse(init.body) };
+      return new Response("{}", { status: 200 });
+    };
+    try {
+      await new EmailService().sendSchoolMembershipAddedEmail({
+        to: "teacher@example.org",
+        teacherName: "<Amina>",
+        schoolName: "Example <Primary>",
+        councilName: "Western Council",
+        action: "LINKED",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    assert.equal(request.body.subject, "You've been added as a Teacher in Sentinel");
+    assert.deepEqual(request.body.to, ["teacher@example.org"]);
+    assert.match(request.body.html, /&lt;Amina&gt;/);
+    assert.match(request.body.html, /Example &lt;Primary&gt;/);
+    assert.ok(request.body.html.includes("https://sentinel.example.org/workspace"));
+  });
+});

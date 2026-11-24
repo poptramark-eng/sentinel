@@ -266,3 +266,27 @@ Acceptance:
 - Successful changes are auditable.
 - CSV preview performs no writes; import is all-or-nothing and has a visible size/row limit.
 - The interface does not imply that create/import setup includes edit/delete capabilities.
+
+
+### Teacher onboarding experience
+
+- The School Administrator chooses one of their active, approved school registrations and sees only that school's teacher memberships.
+- To add a teacher, the administrator enters the exact email address the teacher has already verified on Sentinel. The UI explains that the existing global identity is linked rather than duplicated.
+- If the teacher is new, the administrator shares the account-registration route; the teacher creates and verifies their own account before the administrator links them.
+- The directory displays teacher name, masked email and membership state. Subject/class assignments are deliberately absent until the curriculum and assignment model is approved.
+
+
+## 9. Implemented School Administrator teacher-linking journey
+
+1. A School Administrator opens the teacher roster for one approved Council school registration.
+2. The administrator enters the exact email already verified on the teacher's global Sentinel account.
+3. The server confirms the caller's active School Administrator membership for that registration, resolves the exact verified identity, and rejects platform operators or duplicate active membership.
+4. The system creates a Council-registration-specific TEACHER membership and an audit event in a serializable transaction. A previously revoked membership may be reactivated; pending and suspended memberships are not silently changed.
+5. The teacher receives a best-effort email notification; the administrator sees a masked email and the current membership state.
+
+Acceptance:
+- The same Person identity is reused across schools; name-only matching is prohibited.
+- A teacher can be linked to more than one school registration without creating another Person or UserAccount.
+- A School Administrator cannot add themselves as a separate Teacher membership or link a Platform Administrator.
+- The UI explicitly states that new teacher invitation/provisioning and membership removal are not available in this first slice; it does not tell teachers to self-enroll.
+- Teacher membership alone does not imply class-teacher or subject-teacher authority.

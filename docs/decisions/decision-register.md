@@ -337,3 +337,20 @@ Registrants need timely feedback, but a third-party email outage must not block 
 This is best-effort delivery after commit, not a durable notification outbox. A process crash between commit and send can lose the email. Before relying on notifications for legally significant deadlines, implement a transactional outbox with retries and delivery status.
 
 **Confidence:** High that email is a useful secondary channel; low that direct post-commit delivery is sufficient for production-critical notification guarantees.
+
+
+## ADR-017 — School-controlled teacher membership linking
+
+**Decision**
+
+- Teacher identity is global and represented by one Person/UserAccount. School-specific access is represented by a TEACHER SchoolMembership attached to one CouncilSchoolRegistration. The same Person may hold teacher memberships at multiple schools.
+- A School Administrator links an existing Sentinel account using the exact email address that account has verified. No name-only matching, fuzzy matching or automatic Person merge is allowed.
+- The current implementation links only an existing active account with a verified email. New teacher invitation/provisioning remains unimplemented; do not treat public generic account registration as teacher enrollment or ask teachers to self-enroll as a workaround. School Administrators never set passwords on another person's behalf. This preserves account ownership and avoids duplicate global identities.
+- Linking creates a new TEACHER membership or reactivates only a previously REVOKED membership for the selected CouncilSchoolRegistration, after rechecking the caller's active School Administrator scope and the target account's active/verified state in a serializable transaction. PENDING and SUSPENDED memberships require separate governance workflows. A best-effort email notification is sent after commit.
+- Teacher membership does not itself grant subject-teacher or class-teacher privileges. Those capabilities require future school-specific StaffAssignment records once grade, class/stream and learning-area models are approved.
+
+**Consequences**
+
+- School onboarding is controlled by School Administrators while authentication credentials remain teacher-owned.
+- A teacher can work across schools without duplicated Person or UserAccount records.
+- The first version links by verified email only and exposes masked email in the school directory. Controlled teacher invitation/provisioning and staff assignments remain future work.

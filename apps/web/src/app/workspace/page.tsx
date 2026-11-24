@@ -14,7 +14,9 @@ interface CurrentUser {
     schoolMemberships?: Array<{
       id: string;
       role: string;
+      status: string;
       registration: {
+        id: string;
         status: string;
         school: { name: string };
         council: { name: string };
@@ -74,7 +76,7 @@ export default function WorkspacePage() {
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#172b4d]">Good to see you, {name}.</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748b]">Your account is authenticated. School-management capabilities become available after the relevant Council school registration has been approved.</p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {schoolMemberships.map((membership) => <article key={membership.id} className="rounded-2xl border border-[#e5eaf1] bg-white p-5"><p className="text-xs font-semibold text-[#2457c5]">{membership.role.replaceAll("_", " ")}</p><h2 className="mt-2 text-lg font-semibold text-[#172b4d]">{membership.registration.school.name}</h2><p className="mt-1 text-sm text-[#64748b]">{membership.registration.council.name}</p><span className="mt-4 inline-flex rounded-full bg-[#edf4ff] px-3 py-1 text-xs font-semibold text-[#2457c5]">{membership.registration.status}</span></article>)}
+          {schoolMemberships.map((membership) => <article key={membership.id} className="rounded-2xl border border-[#e5eaf1] bg-white p-5"><p className="text-xs font-semibold text-[#2457c5]">{membership.role.replaceAll("_", " ")}</p><h2 className="mt-2 text-lg font-semibold text-[#172b4d]">{membership.registration.school.name}</h2><p className="mt-1 text-sm text-[#64748b]">{membership.registration.council.name}</p><span className="mt-4 inline-flex rounded-full bg-[#edf4ff] px-3 py-1 text-xs font-semibold text-[#2457c5]">{membership.registration.status}</span>{membership.role === "SCHOOL_ADMINISTRATOR" && membership.status === "ACTIVE" && membership.registration.status === "APPROVED" ? <Link href={`/school/registrations/${membership.registration.id}/teachers`} className="mt-4 inline-flex text-xs font-semibold text-[#2457c5] hover:underline">Manage teachers</Link> : null}</article>)}
           {schoolMemberships.length === 0 ? <article className="rounded-2xl border border-dashed border-[#ccd8e8] bg-white p-6"><h2 className="font-semibold text-[#172b4d]">No active school workspace yet</h2><p className="mt-2 text-sm leading-6 text-[#64748b]">Start a school registration or review the status of a request you have already submitted. The school workspace appears here after approval.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/school-registration/new" className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1e49a6]">Register a school</Link><Link href="/school-registration" className="rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#52647d] hover:bg-[#f7f9fc]">My registrations</Link></div></article> : null}
         </div>
         {user.platformOperator?.status === "ACTIVE" ? <section className="mt-8 rounded-2xl border border-[#dbe7f7] bg-white p-5"><p className="text-xs font-semibold uppercase tracking-wide text-[#2457c5]">Platform operations</p><div className="mt-3 flex flex-wrap gap-3"><Link href="/platform/councils" className="rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#52647d] hover:bg-[#f7f9fc]">Manage Councils and geography</Link><Link href="/platform/school-registrations" className="rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#52647d] hover:bg-[#f7f9fc]">Review school registrations</Link></div></section> : null}

@@ -40,7 +40,7 @@
 | Cluster | Council via Zone | Cluster ID; Zone; name/code | Parent Zone must belong to same Council. | Operational; retention TBD |
 | School | Global canonical institution | School ID; canonical identity; status | One institution identity independent of Council registrations. Global identifier and canonical authority are TBD. | Institutional; retention TBD |
 | CouncilSchoolRegistration | Council + School | Registration ID; Council; School; Council-specific code; Cluster; status; approval; effective dates; initial administrator reference | Candidate unique (Council, School) and (Council, SchoolCode); Cluster must belong to same Council. Multiple Council registrations for one School are valid. | Institutional + contact data; retention TBD |
-| SchoolMembership | CouncilSchoolRegistration + Person | Membership ID; registration; Person; school role; status; dates | A membership belongs to one registration. Role and membership lifecycle are constrained by approved policy. | Personal/access control; retention TBD |
+| SchoolMembership | CouncilSchoolRegistration + Person | Membership ID; registration; Person; school role; status; dates | A membership belongs to one registration. The same global Person may hold TEACHER memberships in multiple registrations; unique (registration, Person, role) prevents duplicates within one school. Teacher linking requires an active account with a verified email. | Personal/access control; retention TBD |
 | StaffAssignment | SchoolMembership | Assignment ID; assignment type; optional grade/class/stream/learning-area; effective dates; status | Assignment cannot outlive or exceed membership. Subject/class capabilities are assignment-scoped, not global roles. | Personal/employment; retention TBD |
 
 ## 4. Curriculum and assessment dictionary
@@ -94,7 +94,7 @@ These are logical invariants to preserve in the eventual schema and service laye
 3. School participation: AssessmentParticipation references an Assessment and CouncilSchoolRegistration with equal Council IDs.
 4. Organizer authority: OrganizerAuthority's Council equals the Assessment Council whenever its scope is assessment-specific.
 5. Staff delegation: delegated permissions, scope and validity are subsets of parent authority; child cannot outlive parent.
-6. School membership: SchoolMembership references a Person and one CouncilSchoolRegistration; StaffAssignment references that membership.
+6. School membership: SchoolMembership references a Person and one CouncilSchoolRegistration; the same Person can have school memberships across multiple registrations. StaffAssignment references that membership.
 7. Candidate consistency: AssessmentCandidate's LearnerIdentity, Grade, AssessmentParticipation and Assessment must be mutually consistent.
 8. Mark consistency: Mark's candidate and AssessmentLearningArea must resolve to the same Assessment and grade applicability.
 9. Mark numeric rules: value is non-negative, no greater than configured maximum, and respects configured decimal precision.

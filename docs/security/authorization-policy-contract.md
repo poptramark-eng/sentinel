@@ -65,7 +65,8 @@ The action identifiers below are proposed stable policy keys. They are not a com
 | organizer.staff.delegate | OrganizationAdministrator | **Scoped** | Named, individually authenticated staff; active parent authority; permissions and scope are a strict subset; no onward delegation. |
 | organizer.assessment.act | OrganizationAdministrator / OrganizerStaff | **Scoped** | Current parent authority or effective delegated authority must cover this assessment and action. |
 | organizer.results.release | OrganizationAdministrator / OrganizerStaff | **Scoped** | Explicit current RELEASE_RESULTS permission, valid assessment scope, all validation/review gates satisfied, and correct workflow state. |
-| school.teacher.link_or_create | SchoolAdministrator | **Scoped** | Own approved school. Link existing verified global teacher identity where possible; never match by name alone or create a duplicate merely for a new school membership. |
+| school.teacher.list | SchoolAdministrator | **Scoped** | Own approved registration only; return teacher memberships and masked verified email only. |
+| school.teacher.link | SchoolAdministrator | **Scoped** | Own approved registration only; exact verified email match to an active global account. Reuse Person; never create duplicate identity or match by name. |
 | school.membership.manage | SchoolAdministrator | **Scoped / TBD** | Own approved school. Membership lifecycle, deactivation, and approval rules need final definition. |
 | school.assignment.manage | SchoolAdministrator | **Scoped** | Own school; grade/class/learning-area assignments are school-specific and time-bounded. Assignment catalogue and reassignment rules need finalization. |
 | marks.enter | Subject Teacher assignment | **Scoped** | Assigned learning area, grade/class, assessment participation, and open entry window. |
@@ -180,6 +181,9 @@ Every policy key implemented must have positive and negative tests. At minimum:
 | AUTHZ-020 | A Council registration is suspended | Other Council registrations and canonical School remain unaffected |
 | AUTHZ-021 | User loses membership while access token remains unexpired | Protected operation denied according to current membership state |
 | AUTHZ-022 | User changes filters, pagination, or export parameters to widen scope | Results remain bounded by server-resolved scope |
+| AUTHZ-023 | School Administrator links an unverified or nonexistent email as a teacher | Deny; no membership created |
+| AUTHZ-024 | Same global teacher is linked to a second approved school | Reuse Person; create only the second school membership |
+| AUTHZ-025 | School Administrator substitutes another school's registration ID when listing/linking teachers | Deny without data leakage |
 
 Also test race conditions: simultaneous approvals, authority revocation during a release, duplicate submissions, stale version writes, and export authorization changes between request and execution.
 

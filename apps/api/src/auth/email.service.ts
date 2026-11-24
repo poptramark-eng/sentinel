@@ -163,6 +163,79 @@ export class EmailService {
     }
   }
 
+  async sendSchoolMembershipAddedEmail(input: {
+    to: string;
+    teacherName: string;
+    schoolName: string;
+    councilName: string;
+    action: "LINKED" | "REACTIVATED";
+  }): Promise<void> {
+    const apiKey = process.env.RESEND_API_KEY?.trim();
+    const from = process.env.EMAIL_FROM?.trim();
+    const configuredWebUrl = process.env.WEB_APP_URL?.trim();
+    if (!apiKey || !from || !configuredWebUrl) {
+      throw new ServiceUnavailableException(
+        "Email delivery is temporarily unavailable.",
+      );
+    }
+
+    let workspaceUrl: string;
+    try {
+      workspaceUrl = new URL("/workspace", configuredWebUrl).toString();
+      if (
+        process.env.NODE_ENV === "production" &&
+        new URL(configuredWebUrl).protocol !== "https:"
+      ) {
+        throw new Error("Production email links must use HTTPS.");
+      }
+    } catch {
+      throw new ServiceUnavailableException(
+        "Email delivery is temporarily unavailable.",
+      );
+    }
+
+    const safeName = escapeHtml(input.teacherName);
+    const safeSchool = escapeHtml(input.schoolName);
+    const safeCouncil = escapeHtml(input.councilName);
+    const actionText = input.action === "REACTIVATED" ? "restored" : "added";
+    const subject = input.action === "REACTIVATED"
+      ? "Your Teacher access in Sentinel has been restored"
+      : "You've been added as a Teacher in Sentinel";
+    const text = [
+      `Hello ${input.teacherName},`,
+      "",
+      `A School Administrator ${actionText} your Teacher access at ${input.schoolName} under ${input.councilName}.`,
+      "",
+      `Sign in to Sentinel to view your school workspace: ${workspaceUrl}`,
+      "",
+      "If you do not recognize this school, contact the school administration before using the account.",
+    ].join("\n");
+    const html = `<!doctype html><html><body style="margin:0;background:#f5f7fb;font-family:Arial,sans-serif;color:#172b4d"><main style="max-width:560px;margin:40px auto;padding:36px;background:#fff;border:1px solid #e2e8f0;border-radius:18px"><p style="font-size:12px;font-weight:700;letter-spacing:2px;color:#2457c5">SENTINEL</p><h1 style="font-size:24px">Teacher access ${actionText}</h1><p>Hello ${safeName},</p><p>A School Administrator ${actionText} your <strong>Teacher</strong> access at <strong>${safeSchool}</strong> under ${safeCouncil}.</p><p style="margin:28px 0"><a href="${workspaceUrl}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:#2457c5;color:#fff;text-decoration:none;font-weight:700">Open Sentinel workspace</a></p><p style="font-size:13px;color:#64748b">If you do not recognize this school, contact the school administration before using the account.</p></main></body></html>`;
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [input.to],
+          subject,
+          text,
+          html,
+        }),
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!response.ok) throw new Error("Resend rejected the school membership email.");
+    } catch {
+      throw new ServiceUnavailableException(
+        "Email delivery is temporarily unavailable.",
+      );
+    }
+  }
+
   private createVerificationUrl(baseUrl: string, token: string): string {
     const url = new URL("/verify-email", baseUrl);
     url.searchParams.set("token", token);
