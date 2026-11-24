@@ -98,4 +98,19 @@ export class NotificationService {
       `Closes: ${closesAt}`, "",
       "Sign in to Sentinel to review the assessment and coordinate your school's participation.",
     ].join("\n");
-    const htmlBody = `<!doctype html><html><body style="margin:0;background:#f5f7fb;font-family:Arial,sans-serif;color:#172b4d"><main style="max-width:560px;margin:40px auto;padding:36px;background:#fff;border:1px solid #e2e8f0;border-radius:18px"><p style="font-size:12px;font-weight:700;letter-spacing:2px;color:#2457c5">SENTINEL</p><h1>Assessment scheduled</h1><p>Hello ${escapeHtml(input.recipientName)},</p><p>A new assessment has been scheduled for your Council.</p><p><strong>${escapeHtml(input.assessmentName)}</strong> (${escapeHtml(input.assessmentCode)})</p><p>Grade: ${escapeHtml(grade)} · Academic year: ${input.academicYear}</p><p>Opens: ${opensAt}<br>Closes: ${closesAt}</p><p>Sign in to Sentinel to
+    const htmlBody = [
+      '<!doctype html><html><body style="margin:0;background:#f5f7fb;font-family:Arial,sans-serif;color:#172b4d">',
+      '<main style="max-width:560px;margin:40px auto;padding:36px;background:#fff;border:1px solid #e2e8f0;border-radius:18px">',
+      '<p style="font-size:12px;font-weight:700;letter-spacing:2px;color:#2457c5">SENTINEL</p>',
+      '<h1>Assessment scheduled</h1>',
+      '<p>Hello ' + escapeHtml(input.recipientName) + ',</p>',
+      '<p>A new assessment has been scheduled for your Council.</p>',
+      '<p><strong>' + escapeHtml(input.assessmentName) + '</strong> (' + escapeHtml(input.assessmentCode) + ')</p>',
+      '<p>Grade: ' + escapeHtml(grade) + ' · Academic year: ' + input.academicYear + '</p>',
+      '<p>Opens: ' + escapeHtml(opensAt) + '<br>Closes: ' + escapeHtml(closesAt) + '</p>',
+      '<p>Sign in to Sentinel to review the assessment and coordinate your school\\'s participation.</p>',
+      '</main></body></html>',
+    ].join("");
+    return { subject, textBody, htmlBody };
+  }
+}

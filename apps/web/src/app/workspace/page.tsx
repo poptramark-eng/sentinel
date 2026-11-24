@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest, clearStoredCsrfToken } from "../../lib/api";
+import { NotificationCenter } from "./notification-center";
 
 interface CurrentUser {
   id: string;
@@ -66,6 +67,7 @@ export default function WorkspacePage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <Link href="/" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Examination Management</span></Link>
           <div className="flex items-center gap-3">
+            <NotificationCenter />
             <Link href="/school-registration" className="hidden text-xs font-semibold text-[#52647d] hover:text-[#2457c5] sm:inline">My registrations</Link>
             {user.platformOperator?.status === "ACTIVE" ? <Link href="/platform/councils" className="hidden text-xs font-semibold text-[#2457c5] hover:underline sm:inline">Platform setup</Link> : null}
             <button onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button>

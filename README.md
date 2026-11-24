@@ -38,6 +38,10 @@ Read:
 - `docs/integrations/provider-research.md` — Daraja, Paystack, SMS and privacy research
 - `docs/product/` — product scope and UX principles
 
+## Production deployment
+
+See [Vercel production setup](docs/deployment/vercel-production-setup.md) for the Vercel frontend, API hosting, environment variables, migrations and end-to-end checklist.
+
 ## Local development
 
 Requirements:
