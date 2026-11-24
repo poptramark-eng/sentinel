@@ -1,7 +1,7 @@
 # Data Dictionary and Integrity Constraints — Draft 0.1
 
-**Status:** Logical data dictionary baseline; selected design decisions are now adopted in `docs/decisions/decision-register.md` (ADR-001 through ADR-012).
-**Source baseline:** Sentinel domain model, tenant ownership matrix, workflow state machines, authorization policy contract, and current CBE requirements.
+**Status:** Logical data dictionary baseline; selected design decisions are adopted in `docs/decisions/decision-register.md` (ADR-001 through ADR-020).
+**Source baseline:** Sentinel domain model, tenant ownership matrix, workflow state machines, authorization policy contract, KICD source review and current CBE requirements.
 **Migration gate:** The first physical migration is limited to the foundation slice documented in `docs/architecture/physical-data-model-foundation.md`. Assessment/candidate/marks/results models remain separate implementation slices. External legal and registry validation gates still apply.
 
 ## 1. Design conventions
@@ -41,32 +41,37 @@
 | School | Global canonical institution | School ID; canonical identity; status | One institution identity independent of Council registrations. Global identifier and canonical authority are TBD. | Institutional; retention TBD |
 | CouncilSchoolRegistration | Council + School | Registration ID; Council; School; Council-specific code; Cluster; status; approval; effective dates; initial administrator reference | Candidate unique (Council, School) and (Council, SchoolCode); Cluster must belong to same Council. Multiple Council registrations for one School are valid. | Institutional + contact data; retention TBD |
 | SchoolMembership | CouncilSchoolRegistration + Person | Membership ID; registration; Person; school role; status; dates | A membership belongs to one registration. The same global Person may hold TEACHER memberships in multiple registrations; unique (registration, Person, role) prevents duplicates within one school. Teacher linking requires an active account with a verified email. | Personal/access control; retention TBD |
-| StaffAssignment | SchoolMembership | Assignment ID; assignment type; optional grade/class/stream/learning-area; effective dates; status | Assignment cannot outlive or exceed membership. Subject/class capabilities are assignment-scoped, not global roles. | Personal/employment; retention TBD |
+| SchoolClass | CouncilSchoolRegistration | Class ID; registration; academic year; grade; stream name/code; status | Class belongs to one approved school registration. Unique registration + academic year + grade + normalized stream code. | Operational; retention TBD |
+| LearnerEnrollment | SchoolClass + LearnerIdentity | Enrollment ID; class; learner; effective dates; status; transfer reference | Enrollment history is retained. Active enrollment must resolve to the same registration as the class. Transfers do not duplicate LearnerIdentity. | Highly sensitive child data; retention TBD |
+| StaffAssignment | SchoolMembership + SchoolClass | Assignment ID; assignment type (CLASS_TEACHER/SUBJECT_TEACHER); optional LearningArea; effective dates; status | Assignment cannot outlive membership. CLASS_TEACHER has no learning area; SUBJECT_TEACHER requires one. Teacher membership alone grants no class/mark access. | Personal/employment; retention TBD |
 
 ## 4. Curriculum and assessment dictionary
 
 | Concept | Ownership | Core attributes / references | Candidate integrity constraints | Sensitivity / retention |
 |---|---|---|---|---|
-| Curriculum | Proposed Council-owned/versioned | Curriculum ID; Council; version; effective dates; status | Ownership may change only if a shared canonical curriculum is explicitly approved. | Configuration; retain versions used by assessments |
-| Grade | Shared reference or Council-configured | Grade ID/code; display name; order | Grades 1–9 are in current scope. Exact global-vs-tenant reference strategy TBD. | Low sensitivity; retain |
-| LearningArea | Ownership TBD | LearningArea ID; canonical code/name or Council-specific metadata; status | Decide canonical catalogue versus Council-owned catalogue before uniqueness constraints. | Low sensitivity; retain versions |
-| GradeLearningArea | Curriculum + Grade + LearningArea | Applicability; order; effective version | A learning area appears at most once per curriculum/grade version. |
-| GradingRubric | Council/curriculum version | Rubric ID; version; grade/curriculum; effective dates | Never hard-code unapproved grade boundaries. Assessment must snapshot exact rubric version. | Configuration; retain versions used |
-| RubricLevel | GradingRubric | Code/label; numeric boundaries; order | Boundaries must not overlap or leave gaps unless explicitly permitted by rubric policy. Boundary policy requires Council approval. | Configuration; retain versions used |
+| Curriculum | Global platform-managed reference | Curriculum ID; code; name; version; source title/URL; publication/effective dates; status | Published versions are immutable. A curriculum update creates a new version; historical assessments retain their version. | Configuration; retain versions used |
+| Grade | Global canonical reference | Grade ID/code; display name; order | Grades 1–9 are canonical in the initial regular CBE track. Special Needs and Senior School are separate future tracks. | Low sensitivity; retain |
+| LearningArea | Global canonical catalogue | LearningArea ID; stable code; canonical name; localized/display labels; status | Canonical identity is global; Councils may alias for display but cannot create duplicate canonical areas. | Low sensitivity; retain versions |
+| GradeLearningArea | Curriculum version + Grade + LearningArea | Applicability; core/optional; order; source reference | A learning area appears at most once per curriculum/grade version. Grade applicability is explicit; grade bands do not replace grade-level records. | Configuration; retain versions used |
+| CouncilCurriculum | Council + Curriculum | Selected curriculum version; status; effective dates; assigned by | Council configuration is versioned/effective-dated. One active curriculum selection for new assessments at a time; historical assessments retain prior configuration. | Tenant configuration; retain versions used |
+| CouncilGradeLearningArea | CouncilCurriculum + GradeLearningArea | Enabled/disabled; display alias; order override; assessment eligibility | Configuration must reference a grade-learning-area mapping in the selected curriculum version. No cross-curriculum mapping. | Tenant configuration; retain versions used |
+| GradingRubric | Council + Curriculum version + Grade (+ optional LearningArea) | Rubric ID; version; scope; effective dates; status | Rubric boundaries are Council configuration, never hard-coded. Assessment snapshots exact published rubric. Grade-wide and learning-area-specific rubrics must not ambiguously overlap. | Configuration; retain versions used |
+| RubricLevel | GradingRubric | Code/label; optional numeric min/max; order; description | Configured bands must be valid and non-overlapping. Qualitative-only levels may omit numeric bounds when explicitly configured. | Configuration; retain versions used |
 | Assessment | One owning Council | Assessment ID; Council; Organization; title/reference; type; year/period; status; creator | Council ownership immutable in normal operations. Organizer must have current authority from same Council. | Confidential assessment metadata; retain |
 | AssessmentGrade | Assessment | Grade reference | Grade must be configured and valid for the assessment. | Operational; retain |
 | AssessmentLearningArea | Assessment + grade | LearningArea; maximum mark; precision; order; rubric version | Must apply to the grade and assessment. Unique assessment/grade/learning-area tuple. Maximum and precision are explicit configuration, not assumed. | Assessment confidential; retain |
-| AssessmentWindow | Assessment | Window type; opens/closes; timezone; state | Window types and transition policy must be explicit. Close/open boundaries must be validated. | Operational; retain |
+| AssessmentWindow | AssessmentSitting | Window type; opens/closes; timezone; state | Window types and transition policy must be explicit. Close/open boundaries must be validated. | Operational; retain |
+| AssessmentSitting | Assessment | Sitting ID; code/name; registration window; status; schedule | One Assessment may have multiple explicitly configured sittings. Sitting owns candidate uniqueness and candidate numbering scope. | Confidential assessment metadata; retain |
 | AssessmentParticipation | Assessment + CouncilSchoolRegistration | Participation ID; assessment; registration; status; lifecycle | Assessment Council must equal registration Council. Candidate participation cannot be created from a different Council's registration. | School assessment confidential; retain |
 
 ## 5. Learner, candidate and marks dictionary
 
 | Concept | Ownership | Core attributes / references | Candidate integrity constraints | Sensitivity / retention |
 |---|---|---|---|---|
-| LearnerIdentity | Global identity registry, issuer policy TBD | Learner ID; issuer; minimal identity attributes; status | Learner ID is globally unique only under a defined issuer/namespace policy. No login account or authentication secret. | Highly sensitive child data; retention TBD |
-| AssessmentCandidate | AssessmentParticipation + LearnerIdentity | Candidate ID; participation; learner; grade; candidate number; assessment-time snapshots | Candidate grade must be covered by assessment. One candidate per learner per assessment is provisional only; multi-paper/session/repeat rules are unresolved. | Highly sensitive child/assessment data; retention TBD |
+| LearnerIdentity | Global identity registry | Internal ID; issuer-scoped identifier; minimal identity attributes; status | Unique (issuer, normalized learner identifier). Learners have no UserAccount in current scope; identifiers are locators, never credentials. | Highly sensitive child data; retention TBD |
+| AssessmentCandidate | AssessmentSitting + AssessmentParticipation + LearnerIdentity | Candidate ID; sitting; participation; learner; grade; candidate number; assessment-time snapshots | Unique (AssessmentSitting, LearnerIdentity). Candidate number unique within sitting + responsible school participation. One candidate belongs to one participating school at registration close. | Highly sensitive child/assessment data; retention TBD |
 | Mark | AssessmentCandidate + AssessmentLearningArea | Mark ID; candidate; learning area; numeric value; entered by; timestamp; version/state | Candidate and learning area must belong to same assessment context; value within configured max and precision. | Highly sensitive educational data; retention TBD |
-| MarkRevision | Mark | Prior/new value; actor; reason; timestamp; approval context | Append-only history; corrections never silently overwrite history. Post-submission and post-release correction rules TBD. | Highly sensitive audit; retention TBD |
+| MarkRevision | Mark | Prior/new value; actor; reason; timestamp; approval context | Append-only history. Draft corrections require the active SubjectTeacher assignment; post-submission corrections follow a governed return/correction workflow; post-release corrections create a new result version. | Highly sensitive audit; retention TBD |
 | MarkEntryBatch | SchoolMembership/assignment + assessment participation | Batch ID; scope; idempotency key; status; counts; timestamps | Batch scope must be one authorized school/assessment/assignment context. Idempotency key prevents duplicate processing. | Sensitive; retention TBD |
 
 ## 6. Workflow, result and operational dictionary
@@ -95,14 +100,16 @@ These are logical invariants to preserve in the eventual schema and service laye
 4. Organizer authority: OrganizerAuthority's Council equals the Assessment Council whenever its scope is assessment-specific.
 5. Staff delegation: delegated permissions, scope and validity are subsets of parent authority; child cannot outlive parent.
 6. School membership: SchoolMembership references a Person and one CouncilSchoolRegistration; the same Person can have school memberships across multiple registrations. StaffAssignment references that membership.
-7. Candidate consistency: AssessmentCandidate's LearnerIdentity, Grade, AssessmentParticipation and Assessment must be mutually consistent.
+7. Candidate consistency: AssessmentCandidate's LearnerIdentity, Grade, AssessmentSitting, AssessmentParticipation and Assessment must be mutually consistent. Enforce unique (AssessmentSitting, LearnerIdentity) and candidate-number uniqueness within the sitting/participation scope.
 8. Mark consistency: Mark's candidate and AssessmentLearningArea must resolve to the same Assessment and grade applicability.
 9. Mark numeric rules: value is non-negative, no greater than configured maximum, and respects configured decimal precision.
 10. Workflow history: submissions, reviews, approvals, mark revisions and releases are append-only histories with actor and timestamp.
 11. Result immutability: ResultSnapshot belongs to exactly one ResultRelease; released snapshot payload is immutable.
 12. Export isolation: ExportJob scope is no broader than the requester's current permission at both execution and retrieval.
 13. Audit integrity: actor, tenant, and resource references must be mutually consistent; event records cannot be updated by ordinary application operations.
-14. Identity safety: teacher matching requires verified issuer identifiers or controlled review; learner IDs are never authentication credentials.
+14. Identity safety: teacher matching requires an exact verified email identifier; learner IDs are never authentication credentials.
+15. School class consistency: SchoolClass belongs to one registration and academic year; LearnerEnrollment resolves through that class to the same registration.
+16. Staff assignment consistency: StaffAssignment references an active SchoolMembership and a class under the same registration; SUBJECT_TEACHER requires a learning area, CLASS_TEACHER forbids one. Assignment validity cannot exceed membership validity.
 
 ## 8. Decisions adopted since draft 0.1
 
@@ -120,6 +127,10 @@ The earlier open items have been resolved as working engineering defaults by the
 | Governance lifecycle | Separate Council governance and release approver roles; two-person SchoolAdministrator replacement with audited recovery | ADR-008 |
 | Export and retention | Allowlisted fields, async reauthorization, aggregate-only cross-Council reporting by default; retention durations await legal review | ADR-009 |
 | Tenant enforcement | Application scope plus tenant IDs/composite constraints; RLS deferred until connection/transaction context is proven | ADR-010 |
+| Teacher membership linking | Existing global Person is linked by exact verified email; no name-only match; invitation/provisioning is a separate future workflow | ADR-017 |
+| Curriculum source and publication | Canonical platform catalogue; versioned KICD source; Council grade-area configuration; immutable assessment snapshot | ADR-018 |
+| Candidate uniqueness and mark correction | Candidate unique per AssessmentSitting + LearnerIdentity; append-only mark revisions and governed post-submission/release correction | ADR-019 |
+| School classes and staff assignments | School-scoped classes/enrollments; CLASS_TEACHER and SUBJECT_TEACHER are effective-dated assignment capabilities | ADR-020 |
 
 ## 9. External validation gates
 
@@ -132,7 +143,7 @@ The earlier open items have been resolved as working engineering defaults by the
 
 These gates do not block synthetic-data development, unit tests, physical schema prototyping or non-production vertical slices. They do block real learner-data onboarding and production launch.
 
-## 9. Recommended next review sequence
+## 10. Recommended next review sequence
 
 1. Resolve canonical School and registration history.
 2. Resolve Person, UserAccount, TeacherIdentity and LearnerIdentity issuer/uniqueness policies.
@@ -147,7 +158,7 @@ These gates do not block synthetic-data development, unit tests, physical schema
 No real learner or candidate data should be used in development or test fixtures. Use synthetic identities and marks only.
 
 
-## 10. Foundation implementation alignment — 24 November 2026
+## 11. Foundation implementation alignment — 24 November 2026
 
 The first Prisma foundation slice now implements the following refinements:
 

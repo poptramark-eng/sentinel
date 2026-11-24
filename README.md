@@ -83,9 +83,11 @@ The marks-entry prototype uses synthetic data and local page state only. It does
 
 Platform Council setup supports manual hierarchy entry and a validated, preview-first CSV import (2,000 rows / 1 MB, atomic commit). No real Kenyan geography dataset has been loaded; validate the authoritative source before production import.
 
-School Administrators can link a teacher's existing verified Sentinel account to an approved school. New teachers register and verify their own accounts first; linking reuses the global Person and creates only a school-specific membership. Grade/class/learning-area assignments are a later slice.
+School Administrators can link an existing verified Sentinel account to an approved school. Linking reuses the global Person and creates only a school-specific membership. Teacher invitation/provisioning is not implemented yet. Grade/class/learning-area assignments are a later slice.
 
 The API also provides school-scoped teacher roster and linking endpoints under `/api/school/registrations/:registrationId/teachers`. Linking reuses a global Person with an active account and verified email; it never creates a duplicate identity.
+
+The KICD regular curriculum source review and a 120-row Grades 1–9 directory extraction are available under `docs/research/` and `data/curriculum/`. These are review artifacts only: optionality and assessment eligibility remain unapproved, and no production curriculum seed is published.
 
 The API provides first-party `POST /api/auth/register`, `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `POST /api/auth/logout-all`, and `GET /api/auth/me` endpoints, plus authenticated school-registration submission/status and PlatformAdministrator review endpoints. The web app includes account registration, explicit email verification, sign-in, a registrant-facing school registration form, an authenticated workspace, Platform Administrator Council/geography setup and a registration review workspace. Public account registration creates no role or tenant membership; the school-registration request remains a separate approval workflow. Password reset is not yet implemented.
 

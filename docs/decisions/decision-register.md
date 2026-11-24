@@ -354,3 +354,65 @@ This is best-effort delivery after commit, not a durable notification outbox. A 
 - School onboarding is controlled by School Administrators while authentication credentials remain teacher-owned.
 - A teacher can work across schools without duplicated Person or UserAccount records.
 - The first version links by verified email only and exposes masked email in the school directory. Controlled teacher invitation/provisioning and staff assignments remain future work.
+
+## ADR-018 — KICD source hierarchy and versioned curriculum publication
+
+**Decision**
+
+- This ADR elaborates ADR-004. LearningArea remains a canonical, platform-managed reference catalogue with stable codes and display labels. Councils do not create duplicate canonical learning areas for spelling/display variations.
+- Curriculum versions are platform-managed and source-linked. `CouncilCurriculum` selects/configures a published curriculum for a Council; `GradeLearningArea` and Council curriculum configuration records capture individual grade applicability, enabled/optional state, ordering and display aliases.
+- Grades 1–9 are canonical grade references. Grade bands are useful source groupings, but they do not replace grade-specific applicability records.
+- The first curriculum track is the regular KICD CBE/CBC Grades 1–9 curriculum. Special Needs Education adaptations and Senior School (Grades 10–12) are separate future tracks.
+- CRE, HRE and IRE, and the available indigenous/foreign language options remain distinct LearningArea records wherever the KICD source distinguishes them. No generic combined mark column is inferred from a broad category label.
+- Councils may configure grading rubrics independently of the canonical curriculum catalogue. Rubric versions are Council-owned, effective-dated, and assessment snapshots reference the exact curriculum, grade-learning-area configuration and rubric versions used.
+- No PL/EE/ME/AE/BE numeric boundaries are assumed by application code. Boundary sets are Council configuration data and must be validated for the configured scale before publication.
+- Published curriculum versions and their canonical mappings are immutable. Corrections or KICD updates require a new version with source URL, source title, publication/effective date and review metadata.
+
+**Source basis**
+
+The current KICD online curriculum-design library exposes shared Lower Primary (Grades 1–3) and Upper Primary (Grades 4–6) directories and separate Grade 7, 8 and 9 directories. The KICD Basic Education Curriculum Framework defines learning areas as subjects taught at different education levels. The December 2024 Orange Book addendum is corroborating material-list evidence, not a replacement for the live curriculum-design library. Source URLs, exact source labels and the review-only 120-row extraction are recorded in `docs/research/kicd-curriculum-source-review.md` and `data/curriculum/kicd-regular-cbe-grades-1-9-review.csv`.
+
+**Consequences**
+
+- Reports and mark-entry forms resolve learning areas through the assessment's curriculum snapshot, preventing a grade report from displaying unrelated grade areas.
+- A Council can configure its own rubric without changing canonical learning-area identity.
+- Exact first-version grade mappings must be reconciled against the grade-level KICD designs before production publication. No curriculum seed is published by this ADR alone.
+
+## ADR-019 — AssessmentSitting candidate uniqueness and immutable mark revisions
+
+**Decision**
+
+- LearnerIdentity is global with an issuer-scoped identifier `(issuer, normalized learner identifier)`. The issuer is explicit; no assumption is made that every Council or school uses one universal learner identifier. Learners have no UserAccount in current scope, and learner identifiers are never credentials.
+- An Assessment has one or more AssessmentSittings. A sitting has its own registration window and status. Learning areas/papers belong to the assessment/sitting configuration; a learner is not duplicated for every subject.
+- AssessmentCandidate represents one learner's registration for one AssessmentSitting. Candidate uniqueness is `(assessmentSitting, learnerIdentity)`, not simply `(assessment, learner)`, allowing explicitly configured repeat/sittings while preventing duplicate entry in the same sitting.
+- Each candidate is associated with one participating school registration at registration close. A controlled transfer workflow may change responsible school before close; after close it requires a governed transfer record and cannot silently rewrite historical ownership. Candidate number is unique within the sitting and responsible school participation.
+- A Mark is unique per AssessmentCandidate and AssessmentLearningArea. Its value is bounded by the configured maximum and decimal precision.
+- Before school submission, only an active SubjectTeacher StaffAssignment covering the school, assessment, grade/class and learning area may enter or correct draft marks while the entry window is open. Every change creates an append-only MarkRevision with actor, timestamp and reason/context.
+- SchoolAdministrator performs the final school submission after completeness checks. Submission freezes the submitted version for ordinary teacher editing. A SchoolAdministrator cannot silently edit marks by virtue of being administrator.
+- After submission, a mark change requires a correction request with reason/evidence. The designated reviewer returns or approves the request according to the assessment workflow; original and corrected values remain in append-only revision history.
+- After result release, corrections require a formal correction case and a new result release version. Released snapshots are never updated in place.
+
+**Consequences**
+
+- Database uniqueness prevents a learner being entered twice in the same sitting while allowing explicitly configured repeat sittings.
+- Candidate import must detect duplicates before writing and produce a reviewable error report.
+- Mark history is auditable, and reports can identify the exact submitted/released version.
+- No candidate lookup endpoint may disclose learner data using the identifier alone.
+
+## ADR-020 — School class and staff assignment scope
+
+**Decision**
+
+- SchoolClass belongs to one approved CouncilSchoolRegistration and one academic year, with a grade and optional stream label/code. Classes are school-scoped, not global.
+- LearnerEnrollment links a global LearnerIdentity to a SchoolClass for a bounded academic period. Enrollment history is retained; a learner may transfer schools without duplicating the global identity.
+- StaffAssignment links one active SchoolMembership to one SchoolClass. Assignment types are `CLASS_TEACHER` and `SUBJECT_TEACHER`; these are scoped capabilities, not global account roles.
+- A CLASS_TEACHER assignment has no learning area and coordinates class-level completeness/progress. A SUBJECT_TEACHER assignment requires a learning area and is the only assignment that grants mark-entry capability for that class/area.
+- A Class Teacher can review completeness and coordinate readiness but cannot bypass subject assignment rules or independently finalize the school's submission. SchoolAdministrator performs final submission.
+- Assignments are effective-dated and must not outlive the SchoolMembership. A teacher may have different assignments across schools and classes.
+- Assignment uniqueness is enforced for active scopes: at most one active Class Teacher per class; default to one active Subject Teacher per class/learning area. Co-teaching requires an explicit configuration rather than being inferred.
+
+**Consequences**
+
+- School Administrator creates/changes classes and staff assignments; teachers cannot self-assign classes or subjects.
+- Teacher membership alone grants no mark-entry or class-wide learner-data access.
+- Class/assignment schema and API are implemented after the curriculum and learning-area catalogue is physically established.
