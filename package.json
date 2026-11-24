@@ -1,0 +1,23 @@
+{
+  "name": "cbe-platform",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @cbe/web --filter @cbe/api dev",
+    "dev:web": "pnpm --filter @cbe/web dev",
+    "dev:api": "pnpm --filter @cbe/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @cbe/database generate",
+    "db:validate": "pnpm --filter @cbe/database validate",
+    "db:migrate": "pnpm --filter @cbe/database migrate"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
