@@ -779,6 +779,94 @@ export class CouncilAssessmentService {
     }
   }
 
+  async returnLearningAreaMarksForCorrection(
+    actor: CouncilActor,
+    councilId: string,
+    assessmentId: string,
+    classId: string,
+    learningAreaId: string,
+    reason: string,
+  ) {
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length < 10 || normalizedReason.length > 2000) {
+      throw new BadRequestException("A correction reason between 10 and 2,000 characters is required.");
+    }
+    try {
+      return await this.prisma.client.$transaction(async (tx) => {
+        const assessment = await tx.assessment.findFirst({
+          where: { id: assessmentId, councilId, status: "CLOSED" },
+          select: { id: true, grade: true, academicYear: true },
+        });
+        if (!assessment) throw new NotFoundException("A closed assessment was not found in this Council.");
+
+        const schoolClass = await tx.schoolClass.findFirst({
+          where: { id: classId, councilId, grade: assessment.grade, academicYear: assessment.academicYear },
+          select: { id: true, registrationId: true },
+        });
+        if (!schoolClass) throw new NotFoundException("The class is not part of this assessment grade and academic year.");
+
+        const area = await tx.assessmentLearningArea.findFirst({
+          where: { id: learningAreaId, assessmentId },
+          select: { id: true, councilGradeLearningAreaId: true, canonicalName: true },
+        });
+        if (!area) throw new NotFoundException("The learning area is not part of this assessment.");
+
+        const candidates = await tx.assessmentCandidate.findMany({
+          where: { assessmentId, schoolClassId: classId, status: "ACTIVE" },
+          select: { id: true },
+        });
+        if (candidates.length === 0) throw new ConflictException("This class has no active candidates in the assessment.");
+
+        const marks = await tx.assessmentMark.findMany({
+          where: { assessmentId, assessmentLearningAreaId: area.id, candidateId: { in: candidates.map((candidate) => candidate.id) } },
+          select: { id: true, marks: true, status: true },
+        });
+        if (marks.length !== candidates.length || marks.some((mark) => mark.status !== "SUBMITTED" || mark.marks === null)) {
+          throw new ConflictException("A learning area can be returned only when every candidate mark has been submitted.");
+        }
+
+        await tx.assessmentMark.updateMany({
+          where: { id: { in: marks.map((mark) => mark.id) }, status: "SUBMITTED" },
+          data: { status: "RETURNED", returnedReason: normalizedReason, submittedAt: null },
+        });
+        await tx.assessmentMarkRevision.createMany({
+          data: marks.map((mark) => ({
+            markId: mark.id,
+            actorAccountId: actor.accountId,
+            action: "RETURNED" as const,
+            previousMarks: mark.marks,
+            newMarks: mark.marks,
+            reason: normalizedReason,
+          })),
+        });
+
+        const reopened = await tx.assessment.update({
+          where: { id: assessmentId },
+          data: { status: "OPEN" },
+          select: { id: true, status: true },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorAccountId: actor.accountId,
+            councilId,
+            action: "ASSESSMENT_LEARNING_AREA_MARKS_RETURNED_FOR_CORRECTION",
+            resourceType: "Assessment",
+            resourceId: assessmentId,
+            decision: "ALLOW",
+            reason: normalizedReason,
+            metadata: { classId, registrationId: schoolClass.registrationId, learningAreaId: area.id, councilGradeLearningAreaId: area.councilGradeLearningAreaId, learningAreaName: area.canonicalName, candidateCount: candidates.length, markCount: marks.length },
+          },
+        });
+        return { ...reopened, classId, learningAreaId: area.id, candidateCount: candidates.length, markCount: marks.length, reason: normalizedReason };
+      }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 30_000 });
+    } catch (error) {
+      if (prismaCode(error) === "P2034") {
+        throw new ConflictException("Assessment marks changed during moderation. Refresh and try again.");
+      }
+      throw error;
+    }
+  }
+
   async openAssessment(actor: CouncilActor, councilId: string, assessmentId: string) {
     return this.prisma.client.$transaction(async (tx) => {
       const assessment = await tx.assessment.findFirst({
