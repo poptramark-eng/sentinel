@@ -285,6 +285,31 @@ try {
       [id(), ids.councilB, draftVersionId],
     ),
   );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "CurriculumVersion"
+       SET "status" = 'PUBLISHED', "reviewedByAccountId" = $2, "publishedAt" = NOW(), "updatedAt" = NOW()
+       WHERE "id" = $1`,
+      [curriculumVersionId, ids.accountB],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "CurriculumVersion" SET "status" = 'PUBLISHED' WHERE "id" = $1`,
+      [curriculumVersionId],
+    ),
+  );
+  await client.query(
+    `UPDATE "GradeLearningArea"
+     SET "optionality" = 'CORE', "reviewStatus" = 'REVIEWED', "reviewNote" = 'Synthetic independent review',
+         "updatedAt" = NOW()
+     WHERE "id" = $1`,
+    [gradeLearningAreaId],
+  );
+  await client.query(
+    `UPDATE "CurriculumVersion" SET "status" = 'IN_REVIEW', "updatedAt" = NOW() WHERE "id" = $1`,
+    [curriculumVersionId],
+  );
   await client.query(
     `UPDATE "CurriculumVersion"
      SET "status" = 'PUBLISHED', "reviewedByAccountId" = $2, "publishedAt" = NOW(), "updatedAt" = NOW()
@@ -304,6 +329,9 @@ try {
       `UPDATE "CurriculumVersion" SET "sourceTitle" = 'Tampered' WHERE "id" = $1`,
       [curriculumVersionId],
     ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(`DELETE FROM "CurriculumVersion" WHERE "id" = $1`, [curriculumVersionId]),
   );
   await client.query(
     `INSERT INTO "CouncilCurriculum" ("id", "councilId", "curriculumVersionId", "updatedAt")
