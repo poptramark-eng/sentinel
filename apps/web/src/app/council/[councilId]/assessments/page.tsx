@@ -109,9 +109,11 @@ export default function CouncilAssessmentsPage() {
 
   useEffect(() => {
     let active = true;
-    void load().catch((cause) => {
-      if (active) setError(cause instanceof Error ? cause.message : "Unable to load assessment workspace.");
-    }).finally(() => { if (active) setLoading(false); });
+    queueMicrotask(() => {
+      void load().catch((cause) => {
+        if (active) setError(cause instanceof Error ? cause.message : "Unable to load assessment workspace.");
+      }).finally(() => { if (active) setLoading(false); });
+    });
     return () => { active = false; };
   }, [load]);
 
