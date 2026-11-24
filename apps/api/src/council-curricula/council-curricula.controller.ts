@@ -21,6 +21,11 @@ import { CouncilCurriculumService } from "./council-curriculum.service";
 export class CouncilCurriculaController {
   constructor(private readonly curricula: CouncilCurriculumService) {}
 
+  @Get("catalogue")
+  listPublished() {
+    return this.curricula.listPublished();
+  }
+
   @Get()
   getCurrent(@Param("councilId", new ParseUUIDPipe()) councilId: string) {
     return this.curricula.getCurrent(councilId);
