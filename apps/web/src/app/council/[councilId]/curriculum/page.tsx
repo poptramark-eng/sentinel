@@ -155,7 +155,7 @@ export default function CouncilCurriculumPage() {
       if (!response.ok) throw new Error(Array.isArray(payload?.message) ? payload.message.join(" ") : payload?.message ?? "The curriculum could not be selected.");
       setDrafts({});
       await load();
-      setNotice("Published curriculum selected. Learning areas are enabled for configuration, but none are assessment-eligible yet.");
+      setNotice("Published curriculum selected. Learning areas are disabled by default; enable only the areas this Council offers, then approve assessment eligibility separately.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The curriculum selection failed.");
     } finally {
