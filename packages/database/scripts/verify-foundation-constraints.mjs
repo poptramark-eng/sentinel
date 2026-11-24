@@ -599,7 +599,7 @@ try {
     [assessmentId],
   );
   await client.query(
-    `UPDATE "AssessmentMark" SET "marks" = 76.25, "returnedReason" = NULL, "updatedAt" = NOW() WHERE "id" = $1`,
+    `UPDATE "AssessmentMark" SET "status" = 'DRAFT', "marks" = 76.25, "returnedReason" = NULL, "updatedAt" = NOW() WHERE "id" = $1`,
     [ids.markA],
   );
   await client.query(
