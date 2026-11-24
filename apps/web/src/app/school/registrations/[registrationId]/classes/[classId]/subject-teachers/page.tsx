@@ -85,7 +85,7 @@ export default function SubjectTeachersPage() {
     finally { setEndingId(""); }
   }
 
-  return <WorkspaceShell section="School workspace" title="Subject Teacher assignments" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Classes", href: `/school/registrations/${registrationId}/classes` }, { label: "Subject Teachers", href: "#subject-teachers", active: true }]} actions={<><Link href={`/school/registrations/${registrationId}/classes`} className="cbe-button cbe-button-secondary">Back to classes</Link><button type="button" onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }} className="cbe-button cbe-button-secondary">Sign out</button></>}>
+  return <WorkspaceShell section="School workspace" title="Subject Teacher assignments" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Classes", href: `/school/registrations/${registrationId}/classes` }, { label: "Subject Teachers", href: `/school/registrations/${registrationId}/classes/${classId}/subject-teachers`, active: true }]} actions={<><Link href={`/school/registrations/${registrationId}/classes`} className="cbe-button cbe-button-secondary">Back to classes</Link><button type="button" onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }} className="cbe-button cbe-button-secondary">Sign out</button></>}>
 
     
     <section className="mx-auto max-w-5xl px-5 py-9 sm:px-8 sm:py-12">
