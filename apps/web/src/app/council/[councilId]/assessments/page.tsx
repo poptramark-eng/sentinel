@@ -75,6 +75,7 @@ export default function CouncilAssessmentsPage() {
   const [curriculum, setCurriculum] = useState<CurriculumResponse | null>(null);
   const [rubrics, setRubrics] = useState<RubricVersion[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [permissions, setPermissions] = useState({ canManage: false, canModerate: false });
   const [grade, setGrade] = useState<Grade>("GRADE_1");
   const [selectedAreas, setSelectedAreas] = useState<Record<string, { selected: boolean; maxMarks: string; decimalPlaces: number }>>({});
   const [form, setForm] = useState({ name: "", code: "", academicYear: String(new Date().getFullYear()), type: "SUMMATIVE" as AssessmentType, rubricVersionId: "" });
@@ -105,12 +106,13 @@ export default function CouncilAssessmentsPage() {
     const [curriculumData, rubricData, assessmentData] = await Promise.all([
       curriculumResponse.json() as Promise<CurriculumResponse>,
       rubricResponse.json() as Promise<{ code: string; name: string; versions: Omit<RubricVersion, "rubric">[] }[]>,
-      assessmentResponse.json() as Promise<Assessment[]>,
+      assessmentResponse.json() as Promise<{ canManage: boolean; canModerate: boolean; assessments: Assessment[] }>,
     ]);
     setCurriculum(curriculumData);
     const versions = rubricData.flatMap((rubric) => (rubric.versions ?? []).map((version) => ({ ...version, rubric: { code: rubric.code, name: rubric.name } }))).filter((version) => version.status === "PUBLISHED");
     setRubrics(versions);
-    setAssessments(assessmentData);
+    setAssessments(assessmentData.assessments);
+    setPermissions({ canManage: assessmentData.canManage, canModerate: assessmentData.canModerate });
     setForm((previous) => ({ ...previous, rubricVersionId: previous.rubricVersionId || versions[0]?.id || "" }));
   }, [councilId, router]);
 
@@ -235,7 +237,7 @@ export default function CouncilAssessmentsPage() {
         {notice ? <div role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div> : null}
         {loading ? <div className="mt-8 rounded-2xl border border-[#e5eaf1] bg-white p-8 text-sm text-[#64748b]">Loading assessment workspace…</div> : null}
         {!loading ? <>
-          <section className="mt-7 rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6">
+          {permissions.canManage ? <section className="mt-7 rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div><h2 className="text-base font-semibold text-[#172b4d]">Create assessment</h2><p className="mt-1 text-xs leading-5 text-[#64748b]">Only enabled, reviewed and assessment-eligible learning areas can be selected.</p></div>
               <span className="rounded-full bg-[#f1f5fb] px-3 py-1 text-[11px] font-medium text-[#52647d]">{rubrics.length} published rubric versions</span>
@@ -265,7 +267,7 @@ export default function CouncilAssessmentsPage() {
                 </div>
                 <div className="flex justify-end border-t border-[#edf0f5] pt-4"><button type="submit" disabled={busy || !form.rubricVersionId || availableAreas.length === 0} className="rounded-xl bg-[#2457c5] px-5 py-3 text-xs font-semibold text-white hover:bg-[#1e49a6] disabled:opacity-50">{busy ? "Saving…" : "Create assessment draft"}</button></div>
               </form>}
-          </section>
+          </section> : null}
           <section className="mt-8">
             <div className="mb-4 flex items-end justify-between gap-3"><div><h2 className="text-lg font-semibold text-[#172b4d]">Assessment register</h2><p className="mt-1 text-xs text-[#64748b]">Lifecycle actions are validated by the API and database.</p></div><span className="text-xs text-[#64748b]">{assessments.length} assessments</span></div>
             {assessments.length === 0 ? <div className="rounded-2xl border border-dashed border-[#ccd8e8] bg-white p-8 text-center text-sm text-[#64748b]">No assessments have been created for this Council yet.</div> :
@@ -275,7 +277,7 @@ export default function CouncilAssessmentsPage() {
                 {assessment.status === "DRAFT" ? <div className="mt-5 grid gap-3 border-t border-[#edf0f5] pt-4 sm:grid-cols-[1fr_1fr_auto]"><label className="text-[11px] font-medium text-[#64748b]">Opens at<input type="datetime-local" value={schedule[assessment.id]?.opensAt ?? ""} onChange={(event) => setSchedule((previous) => ({ ...previous, [assessment.id]: { opensAt: event.target.value, closesAt: previous[assessment.id]?.closesAt ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-2.5 py-2 text-sm text-[#172b4d]" /></label><label className="text-[11px] font-medium text-[#64748b]">Closes at<input type="datetime-local" value={schedule[assessment.id]?.closesAt ?? ""} onChange={(event) => setSchedule((previous) => ({ ...previous, [assessment.id]: { opensAt: previous[assessment.id]?.opensAt ?? "", closesAt: event.target.value } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-2.5 py-2 text-sm text-[#172b4d]" /></label><button disabled={busy || !schedule[assessment.id]?.opensAt || !schedule[assessment.id]?.closesAt} onClick={() => void transition(assessment, "schedule")} className="self-end rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#2457c5] disabled:opacity-40">Schedule</button></div> : null}
                 {assessment.status === "SCHEDULED" ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0f5] pt-4"><p className="text-xs text-[#64748b]">Opens {dateTime(assessment.opensAt)} · Closes {dateTime(assessment.closesAt)}</p><button disabled={busy} onClick={() => void transition(assessment, "open")} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-40">Open assessment</button></div> : null}
                 {assessment.status === "OPEN" ? <div className="mt-4 flex justify-end border-t border-[#edf0f5] pt-4"><button disabled={busy} onClick={() => void transition(assessment, "close")} className="rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#52647d] disabled:opacity-40">Close assessment</button></div> : null}
-                {assessment.status === "CLOSED" ? <div className="mt-4 border-t border-[#edf0f5] pt-4">
+                {assessment.status === "CLOSED" && permissions.canModerate ? <div className="mt-4 border-t border-[#edf0f5] pt-4">
                   <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-[#172b4d]">Mark moderation</p><p className="text-[11px] text-[#64748b]">Return an entire class sheet with a reason; submitted marks remain locked otherwise.</p></div>
                   {assessment.candidates.filter((candidate, index, all) => all.findIndex((item) => item.schoolClassId === candidate.schoolClassId) === index).length === 0
                     ? <p className="mt-3 text-xs text-[#64748b]">No active class candidates remain in this assessment.</p>
