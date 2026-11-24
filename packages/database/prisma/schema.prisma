@@ -131,6 +131,35 @@ enum CouncilCurriculumStatus {
   SUPERSEDED
 }
 
+enum RubricScaleType {
+  NUMERIC_BANDS
+  PERFORMANCE_LEVELS
+  DESCRIPTIVE
+}
+
+enum RubricVersionStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  RETIRED
+}
+
+enum AssessmentType {
+  FORMATIVE
+  SUMMATIVE
+  PRACTICE
+  OTHER
+}
+
+enum AssessmentStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  CLOSED
+  RELEASED
+  CANCELLED
+}
+
 model Person {
   id          String   @id @default(uuid()) @db.Uuid
   givenName   String
@@ -165,6 +194,9 @@ model UserAccount {
   reviewedRegistrations   CouncilSchoolRegistration[] @relation("RegistrationReviewer")
   createdCurriculumVersions  CurriculumVersion[] @relation("CurriculumVersionAuthor")
   reviewedCurriculumVersions CurriculumVersion[] @relation("CurriculumVersionReviewer")
+  createdRubricVersions   GradingRubricVersion[] @relation("GradingRubricVersionAuthor")
+  reviewedRubricVersions  GradingRubricVersion[] @relation("GradingRubricVersionReviewer")
+  createdAssessments      Assessment[] @relation("AssessmentAuthor")
   auditEvents             AuditEvent[]
 
   @@index([status])
@@ -229,6 +261,8 @@ model Council {
   registrations        CouncilSchoolRegistration[]
   regions               Region[]
   curriculumSelections CouncilCurriculum[]
+  gradingRubrics        GradingRubric[]
+  assessments           Assessment[]
   auditEvents           AuditEvent[]
 
   @@index([status, name])
@@ -593,6 +627,7 @@ model CouncilCurriculum {
   council           Council           @relation(fields: [councilId], references: [id], onDelete: Restrict)
   curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
   gradeAreas        CouncilGradeLearningArea[]
+  assessments       Assessment[]
 
   @@unique([id, councilId, curriculumVersionId])
   @@unique([councilId, curriculumVersionId, effectiveFrom])
@@ -616,9 +651,155 @@ model CouncilGradeLearningArea {
 
   councilCurriculum CouncilCurriculum @relation(fields: [councilCurriculumId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
   gradeLearningArea GradeLearningArea @relation(fields: [gradeLearningAreaId, curriculumVersionId], references: [id, curriculumVersionId], onDelete: Restrict)
+  assessmentItems   AssessmentLearningArea[]
 
   @@unique([councilCurriculumId, gradeLearningAreaId])
   @@unique([id, councilId, curriculumVersionId])
   @@index([councilId, enabled, assessmentEligible])
   @@index([councilCurriculumId, sortOrder])
 }
+
+model GradingRubric {
+  id          String   @id @default(uuid()) @db.Uuid
+  councilId   String   @db.Uuid
+  code        String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  council  Council                @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  versions GradingRubricVersion[]
+
+  @@unique([id, councilId])
+  @@unique([councilId, code])
+  @@index([councilId, name])
+}
+
+model GradingRubricVersion {
+  id                String             @id @default(uuid()) @db.Uuid
+  rubricId          String             @db.Uuid
+  councilId         String             @db.Uuid
+  versionLabel      String
+  status            RubricVersionStatus @default(DRAFT)
+  scaleType         RubricScaleType
+  scoreUnit         String?
+  minScore          Decimal?           @db.Decimal(10, 4)
+  maxScore          Decimal?           @db.Decimal(10, 4)
+  createdByAccountId String            @db.Uuid
+  reviewedByAccountId String?          @db.Uuid
+  publishedAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  rubric     GradingRubric @relation(fields: [rubricId, councilId], references: [id, councilId], onDelete: Restrict)
+  author     UserAccount   @relation("GradingRubricVersionAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
+  reviewer   UserAccount?  @relation("GradingRubricVersionReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
+  bands      RubricBand[]
+  assessments Assessment[]
+
+  @@unique([id, councilId])
+  @@unique([id, rubricId])
+  @@unique([rubricId, versionLabel])
+  @@index([councilId, status, createdAt])
+  @@index([rubricId, status])
+}
+
+model RubricBand {
+  id               String   @id @default(uuid()) @db.Uuid
+  rubricVersionId  String   @db.Uuid
+  code             String
+  label            String
+  description      String?
+  lowerBound       Decimal? @db.Decimal(10, 4)
+  upperBound       Decimal? @db.Decimal(10, 4)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  rubricVersion GradingRubricVersion @relation(fields: [rubricVersionId], references: [id], onDelete: Restrict)
+  assessmentSnapshots AssessmentRubricBand[]
+
+  @@unique([id, rubricVersionId])
+  @@unique([rubricVersionId, code])
+  @@unique([rubricVersionId, sortOrder])
+  @@index([rubricVersionId, lowerBound, upperBound])
+}
+
+model Assessment {
+  id                    String          @id @default(uuid()) @db.Uuid
+  councilId             String          @db.Uuid
+  councilCurriculumId   String          @db.Uuid
+  curriculumVersionId   String          @db.Uuid
+  rubricVersionId       String          @db.Uuid
+  name                  String
+  code                  String
+  academicYear          Int
+  grade                 SchoolGrade
+  type                  AssessmentType
+  status                AssessmentStatus @default(DRAFT)
+  opensAt               DateTime?
+  closesAt              DateTime?
+  createdByAccountId    String          @db.Uuid
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  council           Council                @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  councilCurriculum CouncilCurriculum      @relation(fields: [councilCurriculumId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  rubricVersion     GradingRubricVersion   @relation(fields: [rubricVersionId, councilId], references: [id, councilId], onDelete: Restrict)
+  author            UserAccount            @relation("AssessmentAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
+  learningAreas     AssessmentLearningArea[]
+  rubricBands       AssessmentRubricBand[]
+
+  @@unique([id, councilId, curriculumVersionId])
+  @@unique([id, rubricVersionId])
+  @@unique([councilId, code, academicYear])
+  @@index([councilId, academicYear, grade, status])
+  @@index([councilCurriculumId, status])
+  @@index([rubricVersionId])
+}
+
+model AssessmentLearningArea {
+  id                       String   @id @default(uuid()) @db.Uuid
+  assessmentId             String   @db.Uuid
+  councilId                String   @db.Uuid
+  curriculumVersionId      String   @db.Uuid
+  councilGradeLearningAreaId String @db.Uuid
+  grade                    SchoolGrade
+  learningAreaCode         String
+  canonicalName            String
+  sourceLabel              String
+  displayLabel             String?
+  maxMarks                 Decimal  @db.Decimal(8, 2)
+  decimalPlaces            Int      @default(0)
+  sortOrder                Int      @default(0)
+  createdAt                DateTime @default(now())
+
+  assessment Assessment @relation(fields: [assessmentId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  councilGradeLearningArea CouncilGradeLearningArea @relation(fields: [councilGradeLearningAreaId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+
+  @@unique([assessmentId, councilGradeLearningAreaId])
+  @@index([assessmentId, sortOrder])
+  @@index([councilGradeLearningAreaId])
+}
+
+model AssessmentRubricBand {
+  id               String   @id @default(uuid()) @db.Uuid
+  assessmentId     String   @db.Uuid
+  rubricVersionId  String   @db.Uuid
+  sourceRubricBandId String @db.Uuid
+  code             String
+  label            String
+  description      String?
+  lowerBound       Decimal? @db.Decimal(10, 4)
+  upperBound       Decimal? @db.Decimal(10, 4)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  assessment Assessment @relation(fields: [assessmentId, rubricVersionId], references: [id, rubricVersionId], onDelete: Restrict)
+  sourceBand  RubricBand @relation(fields: [sourceRubricBandId, rubricVersionId], references: [id, rubricVersionId], onDelete: Restrict)
+
+  @@unique([assessmentId, sourceRubricBandId])
+  @@index([assessmentId, sortOrder])
+}
+
