@@ -228,27 +228,27 @@ export class AuthService {
             givenName: true,
             familyName: true,
             displayName: true,
-          },
-        },
-        councilMemberships: {
-          where: { status: "ACTIVE" },
-          select: {
-            id: true,
-            role: true,
-            council: { select: { id: true, name: true, slug: true } },
-          },
-        },
-        schoolMemberships: {
-          where: { status: "ACTIVE" },
-          select: {
-            id: true,
-            role: true,
-            registration: {
+            councilMemberships: {
+              where: { status: "ACTIVE" },
               select: {
                 id: true,
-                status: true,
-                school: { select: { id: true, name: true } },
-                council: { select: { id: true, name: true } },
+                role: true,
+                council: { select: { id: true, name: true, slug: true } },
+              },
+            },
+            schoolMemberships: {
+              where: { status: "ACTIVE" },
+              select: {
+                id: true,
+                role: true,
+                registration: {
+                  select: {
+                    id: true,
+                    status: true,
+                    school: { select: { id: true, name: true } },
+                    council: { select: { id: true, name: true } },
+                  },
+                },
               },
             },
           },
