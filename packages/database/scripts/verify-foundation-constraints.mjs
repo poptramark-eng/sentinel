@@ -16,7 +16,7 @@ const ids = {
   subcountyA: id(), subcountyB: id(), zoneA: id(), zoneB: id(),
   clusterA: id(), clusterB: id(),
   registrationA: id(), registrationDuplicate: id(), registrationHistory: id(),
-  membershipA: id(), membershipB: id(), membershipC: id(), classA: id(), classDuplicate: id(), assignmentA: id(), assignmentB: id(),
+  membershipA: id(), membershipB: id(), membershipC: id(), classA: id(), classB: id(), classDuplicate: id(), assignmentA: id(), assignmentB: id(),
 };
 
 async function expectConstraintFailure(constraint, operation) {
@@ -190,6 +190,11 @@ try {
       [ids.classDuplicate, ids.registrationA, ids.councilA],
     ),
   );
+  await client.query(
+    `INSERT INTO "SchoolClass" ("id", "registrationId", "councilId", "grade", "academicYear", "streamCode", "updatedAt")
+     VALUES ($1, $2, $3, 'GRADE_5', 2026, 'MAIN', NOW())`,
+    [ids.classB, ids.registrationA, ids.councilA],
+  );
   await expectConstraintFailure("SchoolClass_streamCode_normalized_check", () =>
     client.query(
       `INSERT INTO "SchoolClass" ("id", "registrationId", "councilId", "grade", "academicYear", "streamCode", "updatedAt")
@@ -213,7 +218,7 @@ try {
     client.query(
       `INSERT INTO "StaffAssignment" ("id", "registrationId", "councilId", "schoolClassId", "membershipId", "type", "status", "startsAt", "updatedAt")
        VALUES ($1, $2, $3, $4, $5, 'CLASS_TEACHER', 'ACTIVE', NOW(), NOW())`,
-      [id(), ids.registrationA, ids.councilA, ids.classA, ids.membershipC],
+      [id(), ids.registrationA, ids.councilA, ids.classB, ids.membershipC],
     ),
   );
 

@@ -446,3 +446,31 @@ A School Administrator needs to represent the school's grade/stream structure an
 - School Administrators can create class structures and assign/end class coordinators.
 - Subject-specific authority remains closed until the curriculum configuration is published.
 - The database migration adds composite tenant-bound foreign keys, uniqueness for the class key, and a partial unique index for one active Class Teacher per class.
+
+## ADR-022 — Child-data processing release gate
+
+**Status:** Accepted engineering safety gate; legal role allocation and controller approvals remain open.
+
+**Context**
+
+Sentinel's learner, candidate, marks and results workflows process personal data relating to children. The Kenya Data Protection Act and the ODPC's 2025 children's-data guidance impose additional best-interest, parental/guardian, age-verification, accountability and security requirements. A product design that stores only a learner ID still processes personal data if the learner can be identified or linked.
+
+**Decision**
+
+- No real learner identity, enrollment, candidate, marks, result, parent-contact or child-sensitive data may be onboarded until the responsible controller(s) and processor(s), purposes, lawful basis, parental/guardian safeguards, best-interest assessment, DPIA, rights workflow, retention schedule, security controls and processor/cross-border arrangements are documented and approved.
+- Lawful basis and parental/guardian consent/notification are modelled separately. Do not implement one boolean as proof of both. The applicable legal basis must be established for each processing purpose; parent/guardian authority and consent evidence must be separately recorded where required by the Act and ODPC guidance.
+- Child status is determined through a proportionate age-verification approach approved by the DPIA. Grade alone is not treated as proof that a learner is under 18 or that a particular adult has parental authority.
+- Learner identity is minimised: internal opaque ID plus issuer-scoped external identifier only where necessary. Learner IDs are never authentication secrets. Full names, dates of birth, parent contacts, photos, health/disability data, ethnicity and religious beliefs are excluded by default.
+- Parent/guardian access, correction, restriction, deletion and appeal requests require verified authority, child-best-interest review, legal retention checks and audit history before learner data is used in production.
+- Hosting, email, SMS, analytics, backups and support providers are assessed as processors/subprocessors. Cross-border access/transfers require a documented section 48 assessment and appropriate safeguards.
+- Synthetic learner/candidate data may be used for engineering. Production onboarding remains blocked until the release gates in `docs/research/kenya-child-data-privacy-review.md` are evidenced.
+
+**Source basis**
+
+Data Protection Act, 2019 (sections 25, 26, 30–33, 41 and 48); ODPC Guidance Notes for Processing Children's Data (2025), particularly the sections on lawful basis versus parental/guardian consent, best interests, verification, age verification, rights, retention, security and DPIA. Source URLs and findings are recorded in `docs/research/kenya-child-data-privacy-review.md`.
+
+**Consequences**
+
+- School classes and staff assignments can be implemented with school/teacher data and synthetic fixtures.
+- Learner enrollment, candidate/marks/results production onboarding cannot be enabled by a technical migration alone. It requires explicit privacy/legal release approval.
+- The product must not market or represent itself as legally compliant solely because these engineering controls exist.

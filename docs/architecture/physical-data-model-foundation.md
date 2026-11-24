@@ -1,11 +1,11 @@
 # Physical Data Model — Foundation Slice
 
 **Status:** Physical design baseline for the first implementation slice.
-**Scope:** Platform identity, Council tenant, geography, canonical School, Council registration episodes, school membership and audit.
-**Not included yet:** Assessment, candidate, marks, curriculum, result, payment or external-provider tables. Those are separate bounded contexts and will be added after the foundation is exercised.
+**Scope:** Platform identity, Council tenant, geography, canonical School, Council registration episodes, school membership, school classes, Class Teacher assignments and audit.
+**Not included yet:** Assessment, candidate, marks, curriculum, result, payment or external-provider tables. Those are separate bounded contexts and will be added after the foundation is exercised. Learner records remain blocked by the child-data privacy release gate.
 **Database:** PostgreSQL. ORM: Prisma 7.
 **Schema implementation:** packages/database/prisma/schema.prisma.
-**Migration:** `202611240001_foundation` is generated from the reviewed Prisma schema and includes the PostgreSQL partial unique index for one active registration episode per Council/School. CI applies it to an ephemeral PostgreSQL 18 service and verifies tenant-boundary constraints. It has not been applied to a persistent development, staging or production database.
+**Migrations:** `202611240001_foundation` establishes identity, tenant, geography, registration, membership and audit. `202611240003_school_classes` adds school-scoped classes and Class Teacher assignments with composite Council/registration foreign keys, a partial unique index for one active Class Teacher per class, and academic-year/stream/date checks. CI applies migrations to an ephemeral PostgreSQL 18 service and verifies constraints. Neither migration has been applied to a persistent development, staging or production database.
 
 ## 1. First vertical slice
 
@@ -19,7 +19,7 @@ The first real workflow is:
 6. On approval, the SchoolMembership becomes ACTIVE. Only then may the SchoolAdministrator perform school operations.
 7. Rejected or withdrawn registration history is retained; a reapplication creates a new registration episode.
 
-The initial implementation will use synthetic test data only.
+The initial implementation uses synthetic test data only. School classes and Class Teacher assignments are now implemented as a separate migration/vertical slice. No learner enrollment or personal learner data is stored.
 
 ## 2. Logical ERD
 
@@ -188,3 +188,26 @@ Every operation must resolve an ACTIVE SchoolMembership against an APPROVED Coun
 - RLS, until Prisma transaction-local tenant context is proven.
 - External notifications and integrations.
 - Production retention jobs and real learner data.
+
+
+## 9. School class and Class Teacher slice (`202611240003_school_classes`)
+
+`SchoolClass` belongs to exactly one `CouncilSchoolRegistration` and Council. Its natural uniqueness key is `(registrationId, academicYear, grade, streamCode)`. Grades are explicit `GRADE_1` through `GRADE_9` values. `streamCode` is normalized to uppercase and defaults to `MAIN`. A new academic year creates a new class identity; historical classes are retained and may later be archived.
+
+`StaffAssignment` is separate from `SchoolMembership`. The first implemented assignment type is `CLASS_TEACHER`, scoped to one class and one active TEACHER membership in the same school registration. A partial unique index allows at most one active Class Teacher per class. Reassignment ends the existing row and creates a new row, preserving history. Composite foreign keys ensure class and membership share the same registration and Council.
+
+The application service also verifies the target teacher account is active, the teacher membership is active/effective, and the caller is an active School Administrator for an approved school. Class creation and assignment changes are serializable and audited. The Class Teacher assignment grants coordination only: no learner roster, marks, subject, assessment or results access. Subject Teacher assignments require the versioned curriculum and Council learning-area configuration and are not yet implemented.
+
+The migration includes these additional database constraints:
+
+~~~sql
+CREATE UNIQUE INDEX "StaffAssignment_one_active_class_teacher"
+ON "StaffAssignment" ("schoolClassId")
+WHERE "type" = 'CLASS_TEACHER' AND "status" = 'ACTIVE' AND "endsAt" IS NULL;
+
+CHECK ("academicYear" BETWEEN 2000 AND 2100);
+CHECK ("streamCode" = upper(btrim("streamCode")) AND length("streamCode") BETWEEN 1 AND 20);
+CHECK ("endsAt" IS NULL OR "endsAt" >= "startsAt");
+~~~
+
+The PostgreSQL integration constraint script exercises class uniqueness, stream normalization, one active Class Teacher per class and tenant-bound assignment membership. Real learner data remains blocked until `docs/research/kenya-child-data-privacy-review.md` release gates are satisfied.

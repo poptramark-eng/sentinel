@@ -4,7 +4,7 @@ A multi-council platform for configuring and administering assessments, managing
 
 ## Project status
 
-The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id account registration/email verification/login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: password recovery, complete authorization, assessment/candidate/marks/results modules, remaining onboarding workflows and production operations remain incomplete. Account registration/email verification and the foundation migrations are implemented and CI-tested; production email and Upstash credentials still need owner configuration. Use synthetic learner and assessment data only.
+The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id account registration/email verification/login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: password recovery, complete authorization, assessment/candidate/marks/results modules, remaining onboarding workflows and production operations remain incomplete. Account registration/email verification and the foundation migrations are implemented and CI-tested; production email and Upstash credentials still need owner configuration. Use synthetic learner and assessment data only. See `docs/research/kenya-child-data-privacy-review.md`; real learner-data onboarding is blocked until the documented privacy/legal release gates are evidenced.
 
 ## Architecture
 

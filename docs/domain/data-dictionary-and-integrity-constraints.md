@@ -2,7 +2,7 @@
 
 **Status:** Logical data dictionary baseline; selected design decisions are adopted in `docs/decisions/decision-register.md` (ADR-001 through ADR-020).
 **Source baseline:** Sentinel domain model, tenant ownership matrix, workflow state machines, authorization policy contract, KICD source review and current CBE requirements.
-**Migration gate:** The first physical migration is limited to the foundation slice documented in `docs/architecture/physical-data-model-foundation.md`. Assessment/candidate/marks/results models remain separate implementation slices. External legal and registry validation gates still apply.
+**Migration gate:** Foundation and school-class slices are implemented. Assessment/candidate/marks/results models remain separate implementation slices. Real learner data is blocked until the child-data release gates in `docs/research/kenya-child-data-privacy-review.md` are evidenced.
 
 ## 1. Design conventions
 
@@ -131,6 +131,8 @@ The earlier open items have been resolved as working engineering defaults by the
 | Curriculum source and publication | Canonical platform catalogue; versioned KICD source; Council grade-area configuration; immutable assessment snapshot | ADR-018 |
 | Candidate uniqueness and mark correction | Candidate unique per AssessmentSitting + LearnerIdentity; append-only mark revisions and governed post-submission/release correction | ADR-019 |
 | School classes and staff assignments | School-scoped classes/enrollments; CLASS_TEACHER and SUBJECT_TEACHER are effective-dated assignment capabilities | ADR-020 |
+| School class and Class Teacher | Class keyed by registration/year/grade/stream; one active Class Teacher assignment per class; coordination only | ADR-021 |
+| Child-data processing | No real learner data until lawful basis, parental/guardian safeguards, DPIA, rights, retention and processor/transfer controls are evidenced | ADR-022 |
 
 ## 9. External validation gates
 
