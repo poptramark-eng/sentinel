@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiRequest } from "../../../../../../../../lib/api";
+import { apiRequest } from "../../../../../../../../../lib/api";
 
 interface LearningArea { id: string; learningAreaCode: string; canonicalName: string; displayLabel: string | null; maxMarks: number; decimalPlaces: number; sortOrder: number }
 interface MarkCell { id: string; assessmentLearningAreaId: string; marks: number | null; status: "DRAFT" | "SUBMITTED" | "RETURNED"; submittedAt: string | null }
