@@ -388,6 +388,7 @@ test("governance moderation returns every submitted mark for one class and reope
     },
     schoolClass: { findFirst: async () => ({ id: classId, registrationId }) },
     assessmentCandidate: { findMany: async () => [{ id: candidateId }] },
+    assessmentLearningArea: { count: async () => 2 },
     assessmentMark: {
       findMany: async () => markIds.map((id) => ({ id, marks: 72, status: "SUBMITTED" })),
       updateMany: async ({ where, data }) => { records.markUpdate = { where, data }; return { count: 2 }; },
@@ -423,6 +424,7 @@ test("moderation cannot return a class while any mark is missing or unsubmitted"
     },
     schoolClass: { findFirst: async () => ({ id: classId, registrationId: "23232323-2323-4323-8323-232323232323" }) },
     assessmentCandidate: { findMany: async () => [{ id: "24242424-2424-4424-8424-242424242424" }] },
+    assessmentLearningArea: { count: async () => 1 },
     assessmentMark: { findMany: async () => [{ id: "25252525-2525-4525-8525-252525252525", marks: null, status: "DRAFT" }] },
   };
   await assert.rejects(
