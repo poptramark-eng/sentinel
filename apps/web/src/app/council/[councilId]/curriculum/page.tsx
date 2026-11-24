@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "../../../../lib/api";
+import { CouncilWorkspaceShell } from "../../../../components/council-workspace-shell";
 
 type Optionality = "UNKNOWN" | "CORE" | "OPTIONAL";
 type ReviewStatus = "REVIEW_REQUIRED" | "REVIEWED";
@@ -199,17 +200,7 @@ export default function CouncilCurriculumPage() {
   const activeVersionId = current?.selection?.curriculumVersion.id ?? "";
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb]">
-      <header className="border-b border-[#e5eaf1] bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/workspace" className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span>
-            <span className="text-sm font-semibold text-[#172b4d]">Council workspace</span>
-          </Link>
-          <Link href="/workspace" className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Back to workspace</Link>
-        </div>
-      </header>
-
+    <CouncilWorkspaceShell councilId={councilId} active="curriculum">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -325,6 +316,6 @@ export default function CouncilCurriculumPage() {
           </>
         ) : null}
       </div>
-    </main>
+    </CouncilWorkspaceShell>
   );
 }
