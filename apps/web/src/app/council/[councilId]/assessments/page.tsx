@@ -165,11 +165,14 @@ export default function CouncilAssessmentsPage() {
       setError("Choose both an opening and closing time before scheduling.");
       return;
     }
+    const scheduleBody = action === "schedule" && timing
+      ? { opensAt: new Date(timing.opensAt).toISOString(), closesAt: new Date(timing.closesAt).toISOString() }
+      : null;
     setBusy(true); setError(""); setNotice("");
     try {
       const response = await apiRequest(`/councils/${councilId}/assessments/${assessment.id}/${action}`, {
         method: "POST",
-        ...(action === "schedule" && timing ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opensAt: new Date(timing.opensAt).toISOString(), closesAt: new Date(timing.closesAt).toISOString() }) } : {}),
+        ...(scheduleBody ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(scheduleBody) } : {}),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(messageOf(payload, `Assessment could not be ${action}d.`));
