@@ -58,6 +58,13 @@ export function setAuthCookies(
   ]);
 }
 
+export function setCsrfCookie(reply: CookieReply, csrfToken: string): void {
+  reply.header(
+    "Set-Cookie",
+    `${CSRF_COOKIE}=${encodeURIComponent(csrfToken)}; ${cookieOptions(false, "/api", 60 * 60 * 24 * 30)}`,
+  );
+}
+
 export function clearAuthCookies(reply: CookieReply): void {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   reply.header("Set-Cookie", [
