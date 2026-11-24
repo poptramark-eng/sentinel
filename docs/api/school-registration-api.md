@@ -25,6 +25,7 @@
 | GET | /api/school-registrations/mine/:id | Registrant | Read own registration status and decision feedback |
 | GET | /api/platform/school-registrations | PlatformAdministrator | Review queue with filters and pagination |
 | GET | /api/platform/school-registrations/:id | PlatformAdministrator | Read registration and evidence for review |
+| POST | /api/platform/school-registrations/:id/verify-identifier | PlatformAdministrator | Verify a claimed school identifier against its issuer |
 | POST | /api/platform/school-registrations/:id/approve | PlatformAdministrator | Approve pending registration |
 | POST | /api/platform/school-registrations/:id/reject | PlatformAdministrator | Reject pending registration with reason |
 | POST | /api/school-registrations/:id/withdraw | Original registrant | Withdraw own pending registration |
@@ -83,6 +84,7 @@ The response does not disclose reviewer details or other registrants' records.
 - Reject duplicate Council registration code where supplied.
 - Reject a conflicting school identifier claim and route to identity review; never silently reassign it.
 - Create registration and pending SchoolAdministrator membership in one transaction.
+- Store a claimed identifier as unverified; it must be explicitly verified by a PlatformAdministrator before registration approval.
 - Append an audit event in the same transaction.
 
 ## 4. Registrant read endpoints
@@ -119,7 +121,30 @@ Review detail contains:
 
 Do not return password hashes, authentication tokens, unrelated memberships or learner data.
 
-## 6. Approve registration
+## 6. Verify a claimed school identifier
+
+### Request
+
+~~~json
+{
+  "identifierId": "uuid",
+  "reason": "Checked against the authoritative school registry."
+}
+~~~
+
+The reviewer must independently verify the identifier with its stated issuer. A user-submitted identifier claim is not proof of canonical School identity.
+
+### Preconditions and transaction
+
+- Actor is an active PlatformAdministrator and is not the registration's initial registrant.
+- Registration is still PENDING_REVIEW.
+- Identifier belongs to the registration's canonical School and is currently unverified.
+- Mark the identifier verified, increment the registration version, and append SCHOOL_IDENTIFIER_VERIFIED audit event with reviewer and reason.
+- Return the new registration version; the reviewer must use that version for a subsequent approve/reject decision.
+
+Registration approval is blocked while any identifier claim attached to the School remains unverified. A registration without an identifier claim may still be reviewed using the institution's other evidence.
+
+## 7. Approve registration
 
 ### Request
 
@@ -153,7 +178,7 @@ Do not return password hashes, authentication tokens, unrelated memberships or l
 
 Returns the registration ID, APPROVED status, new version and decision timestamp. It does not return credentials.
 
-## 7. Reject registration
+## 8. Reject registration
 
 ### Request
 
@@ -177,11 +202,11 @@ Reason is required and must be meaningful, not a generic placeholder.
 
 Reapplication creates a new registration episode. It must not overwrite the rejected decision.
 
-## 8. Withdraw registration
+## 9. Withdraw registration
 
 Only the initial registrant may withdraw their own PENDING_REVIEW registration. Withdrawal records actor/time/reason, changes status to WITHDRAWN, revokes the pending SchoolAdministrator membership and appends an audit event. Approved registrations cannot be withdrawn through this endpoint; they require a governed suspension/closure workflow.
 
-## 9. Error contract
+## 10. Error contract
 
 | HTTP | Code | Meaning |
 |---|---|---|
@@ -197,7 +222,7 @@ Only the initial registrant may withdraw their own PENDING_REVIEW registration. 
 
 Error responses must not reveal whether a foreign Council's school registration exists.
 
-## 10. Audit catalogue
+## 11. Audit catalogue
 
 - SCHOOL_REGISTRATION_SUBMITTED
 - SCHOOL_REGISTRATION_APPROVED
@@ -208,7 +233,7 @@ Error responses must not reveal whether a foreign Council's school registration 
 
 Each event records actor account, Person where appropriate, Council scope, registration resource, decision/reason, correlation ID, timestamp and minimal metadata. Never include passwords, tokens or unnecessary personal data.
 
-## 11. Acceptance criteria
+## 12. Acceptance criteria
 
 1. A pending registrant can see only their own registration status.
 2. A pending SchoolAdministrator cannot create staff, assignments, assessments or school data.
