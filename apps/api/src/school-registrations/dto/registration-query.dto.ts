@@ -1,6 +1,6 @@
 import { Type } from "class-transformer";
 import {
-  IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -8,12 +8,23 @@ import {
   Max,
   Min,
 } from "class-validator";
-import { RegistrationStatus } from "../../../packages/database/src/generated/prisma/enums";
+
+export const REGISTRATION_STATUSES = [
+  "PENDING_REVIEW",
+  "APPROVED",
+  "REJECTED",
+  "SUSPENDED",
+  "WITHDRAWN",
+  "EXPIRED",
+] as const;
+
+export type RegistrationStatusFilter =
+  (typeof REGISTRATION_STATUSES)[number];
 
 export class RegistrationQueryDto {
   @IsOptional()
-  @IsEnum(RegistrationStatus)
-  status?: RegistrationStatus;
+  @IsIn(REGISTRATION_STATUSES)
+  status?: RegistrationStatusFilter;
 
   @IsOptional()
   @IsUUID()
