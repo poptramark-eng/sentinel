@@ -20,13 +20,13 @@ export class LoginDto {
 }
 
 export class RegisterDto {
-  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
+  @Transform(({ value }) => typeof value === "string" ? value.trim().replace(/\s+/g, " ") : value)
   @IsString()
   @MinLength(1)
   @MaxLength(80)
   givenName!: string;
 
-  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
+  @Transform(({ value }) => typeof value === "string" ? value.trim().replace(/\s+/g, " ") : value)
   @IsString()
   @MinLength(1)
   @MaxLength(80)

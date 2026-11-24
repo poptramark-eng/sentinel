@@ -3,9 +3,10 @@ import { AuthModule } from "./auth/auth.module";
 import { DatabaseModule } from "./database/database.module";
 import { HealthController } from "./health/health.controller";
 import { SchoolRegistrationsModule } from "./school-registrations/school-registrations.module";
+import { PlatformCouncilsModule } from "./platform-councils/platform-councils.module";
 
 @Module({
-  imports: [DatabaseModule, AuthModule, SchoolRegistrationsModule],
+  imports: [DatabaseModule, AuthModule, SchoolRegistrationsModule, PlatformCouncilsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

@@ -97,12 +97,13 @@ These are hypotheses to validate with representative users; no user interviews o
 1. Registrant creates a global account with name, email and password.
 2. System sends a one-time email verification link; opening the page does not consume the link until the user explicitly confirms.
 3. Email verification activates the account only. It does not create a CouncilMembership, SchoolMembership or role.
-4. The verified registrant submits school details and becomes the proposed initial School Administrator.
-5. System creates a pending CouncilSchoolRegistration and pending initial SchoolAdministrator membership.
-6. User receives a clear pending state and cannot provision staff or access school-management actions.
-7. Platform Administrator reviews the registration and records approval or rejection with reason.
-8. On approval, the initial School Administrator receives access to school management.
-9. The school dashboard guides the administrator through profile completion and staff onboarding.
+4. A Platform Administrator first configures the Council and its Region → County → Subcounty → Zone → Cluster directory. Only active Councils and clusters appear in registration choices.
+5. The verified registrant selects a Council/cluster, submits school details and becomes the proposed initial School Administrator.
+6. System creates a pending CouncilSchoolRegistration and pending initial SchoolAdministrator membership.
+7. User receives a clear pending state and cannot provision staff or access school-management actions.
+8. Platform Administrator reviews the registration and records approval or rejection with reason.
+9. On approval, the initial School Administrator receives access to school management.
+10. The school dashboard guides the administrator through profile completion and staff onboarding.
 
 Acceptance:
 - Email verification cannot be triggered by a link scanner or page prefetch; an explicit confirmation is required.
@@ -230,3 +231,37 @@ Before production use:
 - Test desktop/laptop bulk entry, tablet review and mobile status/approval.
 - Run keyboard-only and screen-reader checks on critical forms and tables.
 - Record findings, distinguish observed behavior from assumptions and update the prototype accordingly.
+
+
+## 8. Implemented school onboarding and platform geography journeys
+
+### Verified registrant journey
+
+1. Create a personal account and verify its email address.
+2. Sign in and open **My registrations**.
+3. Choose an active Council and then an active Cluster; the selector shows its Region/County/Subcounty/Zone path.
+4. Enter the official school name and, optionally, a claimed school identifier and Council registration code.
+5. Review the statement that a claim is not proof of identity, then submit.
+6. Track the request status, review feedback and submission time. A pending request can be withdrawn with a reason; rejected/withdrawn history is retained.
+7. After approval, the initial School Administrator membership becomes active and the school workspace appears.
+
+Acceptance:
+- Council and Cluster options are fetched from the server, not free-text tenant identifiers.
+- No active Council/Cluster produces a clear unavailable state rather than a dead-end submit button.
+- The UI distinguishes account verification from school approval.
+- Pending registrations never imply school-management permission.
+- Conflict and stale-version responses are shown as recoverable errors.
+
+### Platform Administrator geography setup journey
+
+1. Open Platform setup and create a Council with a unique slug.
+2. Select the Council and add Region, County, Subcounty, Zone and Cluster nodes in parent-first order.
+3. Review the nested tree and counts.
+4. Registrants can then select only active clusters under that Council.
+
+Acceptance:
+- Platform-only controls are hidden from ordinary users and server-protected by PlatformOperatorGuard.
+- The UI never allows a child node to be created without a valid parent.
+- The API independently validates parent Council and active status.
+- Successful changes are auditable.
+- The interface does not imply that create-only setup includes edit/delete capabilities.

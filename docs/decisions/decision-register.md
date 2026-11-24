@@ -293,3 +293,45 @@ These gates do not block synthetic-data development, domain tests, physical sche
 **Implementation references:** [Resend Email API](https://resend.com/features/email-api) and [Resend REST example](https://resend.com/aws-lambda).
 
 **Confidence:** High for the security and lifecycle boundaries; sender-domain and deliverability setup remains an owner-operated deployment task.
+
+
+## ADR-015 — Platform-managed Council and geography setup
+
+**Decision**
+
+- PlatformAdministrator may create Council tenant roots and maintain their geography hierarchy. This is platform configuration and tenant provisioning, not routine Council or school management.
+- Geography levels are Region → County → Subcounty → Zone → Cluster. A Region belongs directly to one Council; every child node must reference an active parent in the same Council. Existing composite foreign keys are the final cross-tenant integrity guard.
+- Only active Councils and fully active geography paths are exposed to authenticated school registrants. A school registration must select an active Cluster from its chosen Council.
+- Every Council/geography creation is recorded in AuditEvent. No hard-delete API is provided; future deactivation/suspension must preserve history and block new participation.
+- The initial UI creates one geography node at a time. Bulk import should be a separate validated, atomic workflow and must not be implemented as partial row-by-row writes.
+
+**Consequences**
+
+- PlatformAdministrator receives narrow Council-root/geography setup capabilities without a general-purpose database or tenant bypass.
+- School registrants can complete the Council/cluster selection step once platform configuration exists.
+- Council suspension/reactivation, geography deactivation, bulk import and data-source verification remain future work.
+
+**Confidence:** High for ownership boundaries; the authoritative source and import format for Kenyan geography data still need confirmation before loading production records.
+
+
+## ADR-015 — Platform-owned Council and geography configuration
+
+**Decision**
+
+- Only an active Platform Administrator can create Council tenant records and manage the initial Council geography catalogue. Council Administrators manage within an existing Council; they cannot create another tenant boundary.
+- Geography is hierarchical and Council-owned: Region → County → Subcounty → Zone → Cluster. Every non-Region node requires an active parent from the same Council. The API validates this relationship transactionally and PostgreSQL composite foreign keys enforce it.
+- Registrants receive read-only discovery of active Councils and active Clusters with active ancestors. The full geography path is returned for clear selection. Registration submission revalidates all IDs and status server-side.
+- The initial platform UI supports create and inspect only. No edit, delete, merge, deactivate, reparent or bulk import is exposed until a governed history-preserving change process is designed.
+- Council and geography creation emits immutable audit events in the same transaction.
+
+**Rationale**
+
+Council is the tenant boundary, so allowing ordinary users or Council-level actors to create tenant records would blur platform governance and tenant administration. Restricting parent selection and database references prevents cross-Council geography. Read-only options give registrants a controlled catalogue without granting configuration permissions.
+
+**Consequences**
+
+- Initial Council and geography data must be provisioned by a Platform Administrator. The UI does not invent or import Kenyan administrative units automatically.
+- A school registration cannot be submitted until its Council has at least one active Cluster with an active Region/County/Subcounty/Zone path.
+- Institutional source validation and bulk geography import remain future operational work.
+
+**Confidence:** High for the security boundary and hierarchy; official catalogue completeness must be verified by the institution before production.

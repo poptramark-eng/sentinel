@@ -97,3 +97,28 @@ Development may set `DEV_EMAIL_PREVIEW=true` to return a local verification URL 
 - The verification page uses `Referrer-Policy: no-referrer` because its URL contains a short-lived token.
 - Email delivery occurs after the account/token transaction. If the provider is unavailable, the failure is logged without recipient/token details and the endpoint retains its generic `202 Accepted` response; the account remains pending and a fresh link can be requested when delivery recovers. Delivery timing can still differ for eligible and ineligible addresses, so generic responses reduce but do not eliminate all enumeration side channels.
 - Do not use real learner data for account tests. Do not expose the API to production until password recovery, full authorization, abuse monitoring and operational controls are complete.
+
+
+## School registration and Council directory
+
+| Method and path | Purpose | Protection |
+|---|---|---|
+| `GET /school-registrations/options/councils` | List active Councils | Access token |
+| `GET /school-registrations/options/councils/:councilId/clusters` | List active clusters with full geography path | Access token; Council-scoped query |
+| `POST /school-registrations` | Submit school registration and proposed initial School Administrator membership | Access token + CSRF |
+| `GET /school-registrations/mine` | List the caller's own registration history | Access token |
+| `GET /school-registrations/mine/:id` | Read one registration initiated by the caller | Access token |
+| `POST /school-registrations/:id/withdraw` | Withdraw a pending registration with expected version and reason | Access token + CSRF |
+
+The registration form is available at `/school-registration`. It requires a verified account, an active Council and an active Cluster in that Council. An external school identifier is optional at submission but any claimed identifier must be verified by the Platform Administrator before approval.
+
+## Platform Council setup
+
+| Method and path | Purpose | Protection |
+|---|---|---|
+| `GET /platform/councils` | List Councils and setup counts | PlatformAdministrator + access token |
+| `POST /platform/councils` | Create an active Council with a unique slug | PlatformAdministrator + access token + CSRF |
+| `GET /platform/councils/:councilId/geography` | Read the Council geography tree | PlatformAdministrator + access token |
+| `POST /platform/councils/:councilId/geography/nodes` | Create a Region, County, Subcounty, Zone or Cluster | PlatformAdministrator + access token + CSRF |
+
+Geography creation is parent-scoped: a Region belongs to a Council; every lower level requires an active parent in the same Council. The database's composite foreign keys remain the final integrity boundary. No hard-delete endpoint is provided. Council and geography setup is platform configuration, not routine school management.

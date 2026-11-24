@@ -6,10 +6,11 @@ import { CsrfGuard } from "./csrf.guard";
 import { AuthRateLimitGuard } from "./rate-limit.guard";
 import { RateLimitService } from "./rate-limit.service";
 import { EmailService } from "./email.service";
+import { PlatformOperatorGuard } from "./platform-operator.guard";
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, AccessTokenGuard, CsrfGuard, AuthRateLimitGuard, RateLimitService, EmailService],
-  exports: [AuthService, AccessTokenGuard, CsrfGuard, RateLimitService],
+  providers: [AuthService, AccessTokenGuard, CsrfGuard, AuthRateLimitGuard, RateLimitService, EmailService, PlatformOperatorGuard],
+  exports: [AuthService, AccessTokenGuard, CsrfGuard, RateLimitService, PlatformOperatorGuard],
 })
 export class AuthModule {}

@@ -26,6 +26,18 @@ export class SchoolRegistrationsController {
     private readonly registrations: SchoolRegistrationService,
   ) {}
 
+  @Get("options/councils")
+  listCouncilOptions() {
+    return this.registrations.listActiveCouncils();
+  }
+
+  @Get("options/councils/:councilId/clusters")
+  listClusterOptions(
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+  ) {
+    return this.registrations.listActiveClusters(councilId);
+  }
+
   @Post()
   submit(
     @Req() request: AuthenticatedRequest,

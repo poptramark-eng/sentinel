@@ -21,7 +21,7 @@ export default function HomePage() {
           <span className="grid size-10 place-items-center rounded-xl bg-[#2457c5] text-sm font-bold text-white">CBE</span>
           <span className="text-sm font-semibold tracking-tight">Examination Management</span>
         </a>
-        <div className="flex items-center gap-3"><span className="hidden rounded-full border border-[#dbe5f2] bg-white px-3 py-1.5 text-xs font-medium text-[#64748b] sm:inline">Platform foundation</span><a href="/login" className="rounded-xl border border-[#dbe3ee] bg-white px-4 py-2.5 text-sm font-semibold text-[#2457c5] transition hover:bg-[#f2f6ff]">Sign in</a></div>
+        <div className="flex items-center gap-3"><span className="hidden rounded-full border border-[#dbe5f2] bg-white px-3 py-1.5 text-xs font-medium text-[#64748b] sm:inline">Platform foundation</span><div className="flex items-center gap-2"><a href="/register" className="hidden rounded-xl px-3 py-2.5 text-sm font-semibold text-[#64748b] hover:text-[#2457c5] sm:inline">Create account</a><a href="/login" className="rounded-xl border border-[#dbe3ee] bg-white px-4 py-2.5 text-sm font-semibold text-[#2457c5] transition hover:bg-[#f2f6ff]">Sign in</a></div></div>
       </header>
 
       <section className="mx-auto grid w-full max-w-7xl gap-12 px-6 pb-20 pt-12 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:px-10 lg:pb-28 lg:pt-20">

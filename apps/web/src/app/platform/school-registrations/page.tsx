@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest, clearStoredCsrfToken } from "../../../lib/api";
 
@@ -166,7 +167,7 @@ export default function PlatformSchoolRegistrationsPage() {
       <header className="border-b border-[#e5eaf1] bg-white">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-4 sm:px-8">
           <a href="/" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Platform operations</span></a>
-          <div className="flex items-center gap-4"><span className="hidden text-xs text-[#64748b] sm:inline">Governance · School onboarding</span><button onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button></div>
+          <div className="flex items-center gap-4"><Link href="/platform/councils" className="hidden text-xs font-semibold text-[#2457c5] hover:underline sm:inline">Council setup</Link><span className="hidden text-xs text-[#64748b] sm:inline">Governance · School onboarding</span><button onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button></div>
         </div>
       </header>
 

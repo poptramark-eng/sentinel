@@ -20,6 +20,8 @@
 
 | Method | Path | Actor | Purpose |
 |---|---|---|---|
+| GET | /api/school-registrations/options/councils | Authenticated registrant | List active Councils available for registration |
+| GET | /api/school-registrations/options/councils/:councilId/clusters | Authenticated registrant | List active clusters and their geography path for one active Council |
 | POST | /api/school-registrations | Authenticated, verified registrant | Submit a school registration |
 | GET | /api/school-registrations/mine | Registrant | List own submitted registration episodes |
 | GET | /api/school-registrations/mine/:id | Registrant | Read own registration status and decision feedback |
@@ -32,7 +34,17 @@
 
 No endpoint is provided for arbitrary membership activation, reviewer assignment, registration status patching, school merge, or platform-admin self-provisioning.
 
-## 3. Submit registration
+## 3. Registration option catalog
+
+The registrant-facing form does not accept free-text Council or cluster names. It first loads the active Council catalogue, then requests clusters for the selected Council. These read-only endpoints require an active authenticated account and return only the minimum display fields.
+
+`GET /api/school-registrations/options/councils` returns active Council `id`, `name` and `slug` values ordered by name.
+
+`GET /api/school-registrations/options/councils/:councilId/clusters` requires an active Council and returns active clusters whose Zone, Subcounty, County and Region ancestors are also active and belong to that Council. Each item includes the full Region/County/Subcounty/Zone/Cluster display path. An inactive or unknown Council returns a non-enumerating unavailable response.
+
+The options endpoints are informational only. The submission service independently revalidates Council and Cluster status and same-Council ownership inside its transaction; client-provided IDs are never trusted as authorization evidence.
+
+## 4. Submit registration
 
 ### Request
 
@@ -87,7 +99,7 @@ The response does not disclose reviewer details or other registrants' records.
 - Store a claimed identifier as unverified; it must be explicitly verified by a PlatformAdministrator before registration approval.
 - Append an audit event in the same transaction.
 
-## 4. Registrant read endpoints
+## 5. Registrant read endpoints
 
 The registrant can only read registration episodes whose initialRegistrantPersonId matches the authenticated Person. Do not allow access merely because the caller knows the registration UUID or shares the same school name.
 
@@ -98,7 +110,7 @@ List query:
 
 Response is a page envelope with items, page, pageSize and total. Only status, submitted/decision dates, school name and decision feedback are returned.
 
-## 5. Platform review queue
+## 6. Platform review queue
 
 ### GET /api/platform/school-registrations
 
@@ -121,7 +133,7 @@ Review detail contains:
 
 Do not return password hashes, authentication tokens, unrelated memberships or learner data.
 
-## 6. Verify a claimed school identifier
+## 7. Verify a claimed school identifier
 
 ### Request
 
@@ -144,7 +156,7 @@ The reviewer must independently verify the identifier with its stated issuer. A 
 
 Registration approval is blocked while any identifier claim attached to the School remains unverified. A registration without an identifier claim may still be reviewed using the institution's other evidence.
 
-## 7. Approve registration
+## 8. Approve registration
 
 ### Request
 
@@ -178,7 +190,7 @@ Registration approval is blocked while any identifier claim attached to the Scho
 
 Returns the registration ID, APPROVED status, new version and decision timestamp. It does not return credentials.
 
-## 8. Reject registration
+## 9. Reject registration
 
 ### Request
 
@@ -202,11 +214,11 @@ Reason is required and must be meaningful, not a generic placeholder.
 
 Reapplication creates a new registration episode. It must not overwrite the rejected decision.
 
-## 9. Withdraw registration
+## 10. Withdraw registration
 
 Only the initial registrant may withdraw their own PENDING_REVIEW registration. Withdrawal records actor/time/reason, changes status to WITHDRAWN, revokes the pending SchoolAdministrator membership and appends an audit event. Approved registrations cannot be withdrawn through this endpoint; they require a governed suspension/closure workflow.
 
-## 10. Error contract
+## 11. Error contract
 
 | HTTP | Code | Meaning |
 |---|---|---|
@@ -222,7 +234,7 @@ Only the initial registrant may withdraw their own PENDING_REVIEW registration. 
 
 Error responses must not reveal whether a foreign Council's school registration exists.
 
-## 11. Audit catalogue
+## 12. Audit catalogue
 
 - SCHOOL_REGISTRATION_SUBMITTED
 - SCHOOL_REGISTRATION_APPROVED
@@ -233,7 +245,7 @@ Error responses must not reveal whether a foreign Council's school registration 
 
 Each event records actor account, Person where appropriate, Council scope, registration resource, decision/reason, correlation ID, timestamp and minimal metadata. Never include passwords, tokens or unnecessary personal data.
 
-## 12. Acceptance criteria
+## 13. Acceptance criteria
 
 1. A pending registrant can see only their own registration status.
 2. A pending SchoolAdministrator cannot create staff, assignments, assessments or school data.

@@ -43,6 +43,79 @@ function normalizeIdentifier(value: string): string {
 export class SchoolRegistrationService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listActiveCouncils() {
+    return this.prisma.client.council.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    });
+  }
+
+  async listActiveClusters(councilId: string) {
+    const council = await this.prisma.client.council.findFirst({
+      where: { id: councilId, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (!council) {
+      throw new NotFoundException("The selected Council is unavailable.");
+    }
+
+    const clusters = await this.prisma.client.cluster.findMany({
+      where: {
+        councilId,
+        status: "ACTIVE",
+        zone: {
+          is: {
+            status: "ACTIVE",
+            subcounty: {
+              is: {
+                status: "ACTIVE",
+                county: {
+                  is: {
+                    status: "ACTIVE",
+                    region: { is: { status: "ACTIVE" } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        zone: {
+          select: {
+            name: true,
+            subcounty: {
+              select: {
+                name: true,
+                county: {
+                  select: {
+                    name: true,
+                    region: { select: { name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return clusters.map((cluster) => ({
+      id: cluster.id,
+      name: cluster.name,
+      code: cluster.code,
+      region: cluster.zone.subcounty.county.region.name,
+      county: cluster.zone.subcounty.county.name,
+      subcounty: cluster.zone.subcounty.name,
+      zone: cluster.zone.name,
+    }));
+  }
+
   async submit(
     actor: RegistrationActor,
     input: SubmitSchoolRegistrationDto,
@@ -59,6 +132,22 @@ export class SchoolRegistrationService {
               id: input.clusterId,
               councilId: input.councilId,
               status: "ACTIVE",
+              zone: {
+                is: {
+                  status: "ACTIVE",
+                  subcounty: {
+                    is: {
+                      status: "ACTIVE",
+                      county: {
+                        is: {
+                          status: "ACTIVE",
+                          region: { is: { status: "ACTIVE" } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
             select: { id: true },
           });

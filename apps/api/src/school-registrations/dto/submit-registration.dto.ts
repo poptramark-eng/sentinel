@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsEnum,
   IsOptional,
@@ -19,16 +19,19 @@ export class SchoolIdentifierClaimDto {
   @IsEnum(SchoolIdentifierClaimType)
   type!: SchoolIdentifierClaimType;
 
+  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
   @IsString()
   @Length(2, 120)
   issuer!: string;
 
+  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
   @IsString()
   @Length(2, 120)
   value!: string;
 }
 
 export class SchoolDetailsDto {
+  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
   @IsString()
   @Length(2, 180)
   name!: string;
@@ -51,6 +54,7 @@ export class SubmitSchoolRegistrationDto {
   school!: SchoolDetailsDto;
 
   @IsOptional()
+  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
   @IsString()
   @MaxLength(80)
   registrationCode?: string;
