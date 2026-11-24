@@ -280,11 +280,14 @@ export class PlatformCurriculumService {
     return this.prisma.client.$transaction(async (tx) => {
       const version = await tx.curriculumVersion.findUnique({
         where: { id: versionId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, createdByAccountId: true },
       });
       if (!version) throw new NotFoundException("Curriculum version not found.");
       if (version.status !== "IN_REVIEW") {
         throw new ConflictException("Grade mappings can only be reviewed while the version is under review.");
+      }
+      if (version.createdByAccountId === actor.accountId) {
+        throw new ConflictException("The curriculum author cannot review their own mappings.");
       }
 
       const mapping = await tx.gradeLearningArea.findFirst({
