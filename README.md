@@ -72,7 +72,7 @@ The marks-entry prototype uses synthetic data and local page state only. It does
 
 The API now provides first-party `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, and `GET /api/auth/me` endpoints. Login is currently limited to pre-provisioned accounts with verified email identifiers. There is no public account signup or password reset yet.
 
-To bootstrap the first PlatformAdministrator in a local database, build the workspace, set `BOOTSTRAP_ADMIN_GIVEN_NAME`, `BOOTSTRAP_ADMIN_FAMILY_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD` in the local environment, then run:
+After the reviewed foundation migration has been generated and applied to a local database, bootstrap the first PlatformAdministrator by building the workspace, setting `BOOTSTRAP_ADMIN_GIVEN_NAME`, `BOOTSTRAP_ADMIN_FAMILY_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD` in the local environment, then run:
 
 ```bash
 pnpm build
