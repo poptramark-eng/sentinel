@@ -225,3 +225,50 @@ test("rubric read access denies accounts without an active Council governance me
 
   await assert.rejects(guard.canActivate(context), (error) => error.getStatus() === 403);
 });
+
+
+test("independent reviewer can return a rubric for changes with an auditable reason", async () => {
+  let updated;
+  let audit;
+  const service = serviceFor({
+    gradingRubricVersion: {
+      findFirst: async () => ({
+        id: rubricVersionId,
+        createdByAccountId: "99999999-9999-4999-8999-999999999999",
+        versionLabel: "v2",
+      }),
+      update: async ({ data }) => { updated = data; return { id: rubricVersionId, status: data.status, versionLabel: "v2" }; },
+    },
+    auditEvent: { create: async ({ data }) => { audit = data; return data; } },
+  });
+
+  const result = await service.returnRubricForChanges(
+    { accountId },
+    councilId,
+    rubricVersionId,
+    "Clarify the evidence required for this descriptor.",
+  );
+  assert.equal(result.status, "DRAFT");
+  assert.deepEqual(updated, { status: "DRAFT" });
+  assert.equal(audit.action, "GRADING_RUBRIC_RETURNED_FOR_CHANGES");
+  assert.equal(audit.reason, "Clarify the evidence required for this descriptor.");
+});
+
+test("rubric author cannot return their own version for changes", async () => {
+  let updateCalled = false;
+  const service = serviceFor({
+    gradingRubricVersion: {
+      findFirst: async () => ({
+        id: rubricVersionId,
+        createdByAccountId: accountId,
+        versionLabel: "v2",
+      }),
+      update: async () => { updateCalled = true; },
+    },
+  });
+  await assert.rejects(
+    service.returnRubricForChanges({ accountId }, councilId, rubricVersionId, "Review reason is long enough."),
+    (error) => error instanceof ConflictException && /cannot return their own/.test(error.message),
+  );
+  assert.equal(updateCalled, false);
+});
