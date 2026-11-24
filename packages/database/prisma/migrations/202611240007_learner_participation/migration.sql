@@ -91,6 +91,8 @@ CREATE INDEX "AssessmentMark_enteredByAccountId_updatedAt_idx" ON "AssessmentMar
 CREATE INDEX "AssessmentMarkRevision_markId_createdAt_idx" ON "AssessmentMarkRevision"("markId", "createdAt");
 CREATE INDEX "AssessmentMarkRevision_actorAccountId_createdAt_idx" ON "AssessmentMarkRevision"("actorAccountId", "createdAt");
 
+CREATE UNIQUE INDEX "AssessmentLearningArea_id_assessmentId_key" ON "AssessmentLearningArea"("id", "assessmentId");
+
 ALTER TABLE "SchoolLearnerEnrollment" ADD CONSTRAINT "SchoolLearnerEnrollment_learnerId_fkey"
   FOREIGN KEY ("learnerId") REFERENCES "Learner"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "SchoolLearnerEnrollment" ADD CONSTRAINT "SchoolLearnerEnrollment_registrationId_councilId_fkey"
