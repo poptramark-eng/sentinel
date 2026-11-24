@@ -570,7 +570,7 @@ export class CouncilAssessmentService {
           councilId,
           status: "ACTIVE",
           endedAt: null,
-          registration: { is: { status: "APPROVED", school: { is: { status: "ACTIVE" } } } },
+          registration: { is: { status: "APPROVED", school: { is: { status: "ACTIVE" } }, council: { is: { status: "ACTIVE" } } } },
           schoolClass: { is: { grade: assessment.grade, academicYear: assessment.academicYear, status: "ACTIVE" } },
         },
         select: {
