@@ -148,4 +148,4 @@ Extended the Astryx shared workspace into the core school administration and ass
 
 The change is presentation and navigation only. It does not change school roles, class access, learner identity, teacher membership, subject assignment rules, mark validation, submission locking, publication, ranking or result calculations. No API routes, schema migrations or UI dependencies were added.
 
-CI run 416 is validating the cumulative PR #5 head after this increment. Browser/device/print QA remains pending; Vercel preview deployments are blocked by the account's daily deployment quota.
+Active navigation items now resolve to their actual route destinations. CI runs 413, 414 and 415 passed on earlier increments; run 420 is validating the latest cumulative PR #5 head. Browser/device/print QA remains pending; Vercel preview deployments are blocked by the account's daily deployment quota.
