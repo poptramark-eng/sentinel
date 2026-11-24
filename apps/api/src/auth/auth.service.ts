@@ -4,8 +4,9 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
-import { verifyPassword } from "./password";
+import { hashPassword, verifyPassword } from "./password";
 import {
+  createCsrfToken,
   createRefreshToken,
   hashRefreshToken,
   signAccessToken,
@@ -15,10 +16,7 @@ const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
-  private readonly dummyHash = verifyPassword(
-    "not-a-real-password",
-    "scrypt$32768$8$1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-  );
+  private readonly dummyHash = hashPassword("sentinel-dummy-password-not-a-user");
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -39,7 +37,7 @@ export class AuthService {
     });
 
     if (!identifier || !identifier.verifiedAt) {
-      await this.dummyHash;
+      await verifyPassword(password, await this.dummyHash);
       throw new UnauthorizedException("Invalid email or password.");
     }
 
@@ -264,6 +262,6 @@ export class AuthService {
   }
 
   private createCsrfToken(): string {
-    return randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
+    return createCsrfToken();
   }
 }
