@@ -23,10 +23,16 @@ try {
   $env:RESET_ADMIN_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
 
   pnpm install
+  if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
+
   pnpm db:generate
+  if ($LASTEXITCODE -ne 0) { throw "Prisma client generation failed." }
+
   pnpm --filter @cbe/database build
+  if ($LASTEXITCODE -ne 0) { throw "Database package build failed." }
+
   pnpm --filter @cbe/api build
-  if ($LASTEXITCODE -ne 0) { throw "Build failed; password was not reset." }
+  if ($LASTEXITCODE -ne 0) { throw "API build failed; password was not reset." }
 
   pnpm --filter @cbe/api reset:platform-admin-password
   if ($LASTEXITCODE -ne 0) { throw "Password recovery failed. Review the error above." }
