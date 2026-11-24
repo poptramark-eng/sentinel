@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { storeCsrfToken } from "../../lib/api";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api";
@@ -38,6 +39,9 @@ export default function LoginPage() {
         );
         return;
       }
+
+      const loginPayload = (await response.json()) as { csrfToken?: string };
+      if (loginPayload.csrfToken) storeCsrfToken(loginPayload.csrfToken);
 
       const currentResponse = await fetch(`${API_BASE}/auth/me`, {
         credentials: "include",
