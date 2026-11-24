@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "../../../../lib/api";
+import { CouncilWorkspaceShell } from "../../../../components/council-workspace-shell";
 
 const GRADES = ["GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6", "GRADE_7", "GRADE_8", "GRADE_9"] as const;
 type Grade = typeof GRADES[number];
@@ -219,13 +220,7 @@ export default function CouncilAssessmentsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb]">
-      <header className="border-b border-[#e5eaf1] bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/workspace" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Council workspace</span></Link>
-          <div className="flex gap-4"><Link href={`/council/${councilId}/rubrics`} className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Rubric settings</Link><Link href={`/council/${councilId}/curriculum`} className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Curriculum settings</Link></div>
-        </div>
-      </header>
+    <CouncilWorkspaceShell councilId={councilId} active="assessments">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Assessment operations</p>
@@ -297,6 +292,6 @@ export default function CouncilAssessmentsPage() {
           </section>
         </> : null}
       </div>
-    </main>
+    </CouncilWorkspaceShell>
   );
 }
