@@ -29,6 +29,10 @@ export default function ClassLearnersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedLearnerId, setSelectedLearnerId] = useState("");
+  const [endingId, setEndingId] = useState("");
+  const [endStatus, setEndStatus] = useState<"TRANSFERRED" | "WITHDRAWN" | "COMPLETED">("TRANSFERRED");
+  const [endReason, setEndReason] = useState("");
+  const [ending, setEnding] = useState(false);
 
   const load = useCallback(async () => {
     const response = await apiRequest(`/school/registrations/${registrationId}/classes/${classId}/learners`);
@@ -54,6 +58,22 @@ export default function ClassLearnersPage() {
       if (!response.ok) throw new Error(await messageOf(response, "Learner search failed."));
       setSearchResults(await response.json() as SearchResult[]);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Learner search failed."); }
+  }
+
+  async function endEnrollment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (endReason.trim().length < 10) { setError("Provide a reason of at least 10 characters."); return; }
+    setEnding(true); setError(""); setNotice("");
+    try {
+      const response = await apiRequest(`/school/registrations/${registrationId}/learners/${endingId}/end`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: endStatus, reason: endReason.trim() }),
+      });
+      if (!response.ok) throw new Error(await messageOf(response, "Learner enrollment could not be ended."));
+      setNotice(`Learner enrollment updated: ${endStatus.toLowerCase()}.`);
+      setEndingId(""); setEndReason(""); await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Learner enrollment could not be ended."); }
+    finally { setEnding(false); }
   }
 
   async function enroll(event: FormEvent<HTMLFormElement>) {
@@ -85,7 +105,7 @@ export default function ClassLearnersPage() {
       {loading ? <div className="mt-8 rounded-2xl border border-[#e5eaf1] bg-white p-8 text-sm text-[#64748b]">Loading learner roster…</div> : data ? <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-base font-semibold text-[#172b4d]">Enrolled learners</h2><p className="mt-1 text-xs text-[#7b8ba2]">{data.learners.length} active learner{data.learners.length === 1 ? "" : "s"}</p></div><span className="rounded-full bg-[#edf4ff] px-3 py-1.5 text-[11px] font-semibold text-[#2457c5]">{data.accessRole === "TEACHER" ? "Assigned Class Teacher" : "School Administrator"}</span></div>
-          {data.learners.length === 0 ? <div className="mt-6 rounded-xl border border-dashed border-[#ccd8e8] p-8 text-center"><p className="text-sm font-semibold text-[#172b4d]">No learners enrolled</p><p className="mt-2 text-xs text-[#7b8ba2]">Learners added to this class will appear here.</p></div> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[560px] text-left"><thead><tr className="border-b border-[#edf0f5] text-[10px] font-semibold uppercase tracking-wide text-[#8a99ad]"><th className="px-3 py-3">Learner</th><th className="px-3 py-3">System ID</th><th className="px-3 py-3">Admission no.</th><th className="px-3 py-3">Enrolled</th></tr></thead><tbody>{data.learners.map((learner) => <tr key={learner.enrollmentId} className="border-b border-[#f0f3f7] last:border-0"><td className="px-3 py-3 text-sm font-medium text-[#263b5b]">{learner.name}</td><td className="px-3 py-3 font-mono text-xs text-[#64748b]">{learner.learnerNumber}</td><td className="px-3 py-3 text-xs text-[#64748b]">{learner.admissionNumber || "—"}</td><td className="px-3 py-3 text-xs text-[#64748b]">{new Intl.DateTimeFormat("en-KE", { dateStyle: "medium" }).format(new Date(learner.enrolledAt))}</td></tr>)}</tbody></table></div>}
+          {data.learners.length === 0 ? <div className="mt-6 rounded-xl border border-dashed border-[#ccd8e8] p-8 text-center"><p className="text-sm font-semibold text-[#172b4d]">No learners enrolled</p><p className="mt-2 text-xs text-[#7b8ba2]">Learners added to this class will appear here.</p></div> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[560px] text-left"><thead><tr className="border-b border-[#edf0f5] text-[10px] font-semibold uppercase tracking-wide text-[#8a99ad]"><th className="px-3 py-3">Learner</th><th className="px-3 py-3">System ID</th><th className="px-3 py-3">Admission no.</th><th className="px-3 py-3">Enrolled</th>{data.accessRole === "SCHOOL_ADMINISTRATOR" ? <th className="px-3 py-3">Actions</th> : null}</tr></thead><tbody>{data.learners.map((learner) => <tr key={learner.enrollmentId} className="border-b border-[#f0f3f7] last:border-0"><td className="px-3 py-3 text-sm font-medium text-[#263b5b]">{learner.name}</td><td className="px-3 py-3 font-mono text-xs text-[#64748b]">{learner.learnerNumber}</td><td className="px-3 py-3 text-xs text-[#64748b]">{learner.admissionNumber || "—"}</td><td className="px-3 py-3 text-xs text-[#64748b]">{new Intl.DateTimeFormat("en-KE", { dateStyle: "medium" }).format(new Date(learner.enrolledAt))}</td>{data.accessRole === "SCHOOL_ADMINISTRATOR" ? <td className="px-3 py-3"><button type="button" onClick={() => { setEndingId(learner.enrollmentId); setEndReason(""); }} className="text-[11px] font-semibold text-[#a15a38] hover:underline">End enrollment</button></td> : null}</tr>)}</tbody></table></div>}{endingId && data.accessRole === "SCHOOL_ADMINISTRATOR" ? <form onSubmit={endEnrollment} className="mt-5 rounded-xl border border-[#f0dfd4] bg-[#fffaf7] p-4"><p className="text-xs font-semibold text-[#8b4b2b]">End this learner enrollment</p><div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr]"><select value={endStatus} onChange={(event) => setEndStatus(event.target.value as "TRANSFERRED" | "WITHDRAWN" | "COMPLETED")} className="rounded-lg border border-[#e7d6cb] bg-white px-3 py-2 text-xs"><option value="TRANSFERRED">Transferred</option><option value="WITHDRAWN">Withdrawn</option><option value="COMPLETED">Completed</option></select><input value={endReason} onChange={(event) => setEndReason(event.target.value)} minLength={10} maxLength={1000} placeholder="Reason (minimum 10 characters)" className="rounded-lg border border-[#e7d6cb] bg-white px-3 py-2 text-xs" /></div><div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setEndingId("")} className="rounded-lg border border-[#e7d6cb] px-3 py-2 text-xs font-semibold text-[#8b4b2b]">Cancel</button><button disabled={ending} className="rounded-lg bg-[#8b4b2b] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{ending ? "Saving…" : "Confirm status change"}</button></div></form> : null}
           <p className="mt-5 rounded-xl bg-[#f7faff] p-3 text-[11px] leading-5 text-[#73839a]">Learner system IDs are identifiers only. They are not passwords, login codes or proof of identity.</p>
         </section>
         {data.accessRole === "SCHOOL_ADMINISTRATOR" ? <aside className="space-y-5">
