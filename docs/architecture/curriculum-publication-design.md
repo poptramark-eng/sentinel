@@ -16,7 +16,7 @@ The current KICD extraction is a review artifact only. It has 120 grade-to-learn
 - Implemented: versioned curriculum catalogue, grade-specific mappings, source URL/retrieval/hash provenance, author/reviewer separation, database-enforced review lifecycle and published-version immutability.
 - Implemented: Platform Administrator API and workspace for catalogue inspection, source-review CSV preview/import, per-mapping Core/Optional review notes, return-to-draft and independent publication.
 - Every imported mapping starts as `REVIEW_REQUIRED`. Unknown optionality remains `UNKNOWN`; the import does not infer assessment eligibility from source-directory labels.
-- Implemented: Council Administrator-scoped published catalogue access, effective-dated selection history, Council-specific grade-area configuration and audited enablement/assessment-eligibility decisions. New selections enable mappings for configuration but leave assessment eligibility disabled.
+- Implemented: Council Administrator-scoped published catalogue access, effective-dated selection history, Council-specific grade-area configuration and audited enablement/assessment-eligibility decisions. New selections create disabled Council mappings; Council Administrators must explicitly enable offerings, and assessment eligibility remains disabled until separately approved.
 - Still pending: rubric governance, assessment curriculum snapshots, and the final legal/operational approval of authoritative source mappings.
 - The initial KICD review CSV remains review material, not a published or authoritative curriculum catalogue.
 
