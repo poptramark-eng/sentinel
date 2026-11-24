@@ -32,11 +32,21 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        setError(
-          response.status === 401
-            ? "The email or password is incorrect."
-            : "We could not sign you in. Please try again.",
-        );
+        if (response.status === 401) {
+          setError("The email or password is incorrect.");
+        } else if (response.status === 429) {
+          const retryAfter = Number(response.headers.get("Retry-After"));
+          const wait = Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter >= 60
+              ? `about ${Math.ceil(retryAfter / 60)} minute(s)`
+              : `${retryAfter} second(s)`
+            : "a few minutes";
+          setError(`Too many sign-in attempts. Please wait ${wait} before trying again.`);
+        } else if (response.status === 503) {
+          setError("Sign-in protection is temporarily unavailable. Please try again shortly.");
+        } else {
+          setError("We could not sign you in. Please try again.");
+        }
         return;
       }
 

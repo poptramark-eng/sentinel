@@ -39,6 +39,7 @@ export class RateLimitService {
 
     try {
       const redis = new Redis({ url, token });
+      const namespace = process.env.APP_ENV ?? process.env.NODE_ENV ?? "development";
       const shared = {
         redis,
         analytics: false,
@@ -49,17 +50,17 @@ export class RateLimitService {
       this.loginIpLimiter = new Ratelimit({
         ...shared,
         limiter: Ratelimit.slidingWindow(30, "15 m"),
-        prefix: "sentinel:auth:login:ip",
+        prefix: `sentinel:${namespace}:auth:login:ip`,
       });
       this.loginEmailLimiter = new Ratelimit({
         ...shared,
         limiter: Ratelimit.slidingWindow(5, "15 m"),
-        prefix: "sentinel:auth:login:email",
+        prefix: `sentinel:${namespace}:auth:login:email`,
       });
       this.refreshIpLimiter = new Ratelimit({
         ...shared,
         limiter: Ratelimit.slidingWindow(60, "5 m"),
-        prefix: "sentinel:auth:refresh:ip",
+        prefix: `sentinel:${namespace}:auth:refresh:ip`,
       });
     } catch (error) {
       this.initializationError = error;
