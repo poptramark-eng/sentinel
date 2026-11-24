@@ -10,9 +10,9 @@
     "dev": "pnpm --parallel --filter @cbe/web --filter @cbe/api dev",
     "dev:web": "pnpm --filter @cbe/web dev",
     "dev:api": "pnpm --filter @cbe/api dev",
-    "build": "pnpm -r build",
+    "build": "pnpm db:generate && pnpm -r build",
     "lint": "eslint apps packages",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm db:generate && pnpm -r typecheck",
     "db:generate": "pnpm --filter @cbe/database generate",
     "db:validate": "pnpm --filter @cbe/database validate",
     "db:migrate": "pnpm --filter @cbe/database migrate"
