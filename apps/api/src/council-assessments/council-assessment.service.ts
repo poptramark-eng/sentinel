@@ -42,7 +42,10 @@ function validateRubricBands(
       }
     }
     for (let index = 1; index < ordered.length; index += 1) {
-      if (ordered[index].lowerBound! < ordered[index - 1].upperBound!) {
+      const current = ordered[index];
+      const previous = ordered[index - 1];
+      if (current && previous && current.lowerBound !== undefined && previous.upperBound !== undefined &&
+        current.lowerBound < previous.upperBound) {
         throw new ConflictException("Numeric rubric bands cannot overlap.");
       }
     }
@@ -270,7 +273,11 @@ export class CouncilAssessmentService {
           throw new ConflictException("Every numeric rubric band needs valid bounds within the rubric score range.");
         }
         for (let index = 1; index < bounds.length; index += 1) {
-          if (bounds[index].lower! < bounds[index - 1].upper!) throw new ConflictException("Numeric rubric bands cannot overlap.");
+          const current = bounds[index];
+          const previous = bounds[index - 1];
+          if (current?.lower !== undefined && previous?.upper !== undefined && current.lower < previous.upper) {
+            throw new ConflictException("Numeric rubric bands cannot overlap.");
+          }
         }
       } else if (version.minScore !== null || version.maxScore !== null ||
         version.bands.some((band) => band.lowerBound !== null || band.upperBound !== null)) {
