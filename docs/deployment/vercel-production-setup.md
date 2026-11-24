@@ -4,24 +4,35 @@ Vercel hosts the Next.js web application from apps/web. The NestJS/Fastify API i
 
 ## 1. Vercel project settings
 
-Use the existing Git-linked project for poptramark-eng/sentinel:
+Frontend project:
 
+- Repository: poptramark-eng/sentinel
 - Production branch: main
 - Framework preset: Next.js
 - Root Directory: apps/web
 - Include source files outside the Root Directory: enabled
-- Node.js version: 24.x (or another supported version at or above 22.12)
-- Build and install commands: automatic from the monorepo configuration
+- Node.js version: 24.x
+
+API project:
+
+- Same repository and production branch
+- Framework preset: NestJS
+- Root Directory: apps/api
+- Include source files outside the Root Directory: enabled
+- Node.js version: 24.x
+- Function region: sin1 (Singapore)
+- Build command: generate Prisma Client, build @cbe/database, build @cbe/api, then run pnpm db:migrate:deploy
 
 For public production access, attach the intended custom domain in Settings → Domains. Review Settings → Deployment Protection: the current project has Vercel Authentication protection enabled for non-custom domains. Disable or adjust protection only if the site should be publicly accessible.
 
 ## 2. Provision the external services
 
-Create:
-- A managed PostgreSQL database (Neon or another PostgreSQL provider).
+Provision:
+- A managed PostgreSQL database (Neon is the current production provider).
 - Optional: an Upstash Redis database for distributed authentication rate limits. When Upstash REST credentials are absent, Sentinel uses the PostgreSQL-backed rate-limit event store in Neon.
-- A Node.js API service for apps/api (for example, Render or the existing managed VM).
 - A Resend account with a verified sending domain.
+
+The API is deployed as a Vercel Function; a separate Railway or Render API host is not required.
 
 Keep database and provider credentials in the respective provider secret stores. Do not commit .env files or paste secrets into source control.
 
@@ -32,7 +43,7 @@ Configure these variables on the API host:
 | Variable | Required value |
 | --- | --- |
 | NODE_ENV | production |
-| DATABASE_URL | Production PostgreSQL connection string; use the provider's pooled/runtime URL if required by that provider |
+| DATABASE_URL | Neon pooled/runtime PostgreSQL connection string for application traffic |\n| MIGRATION_DATABASE_URL | Neon direct PostgreSQL connection string for Prisma migrations |
 | WEB_ORIGIN | Exact public frontend origin, e.g. https://sentinel.example.com |
 | WEB_APP_URL | Same canonical frontend origin; used in verification links |
 | ACCESS_TOKEN_SECRET | Independent random secret of at least 32 bytes |
@@ -45,7 +56,7 @@ Configure these variables on the API host:
 | APP_ENV | production (keeps rate-limit keys isolated by environment) |
 | TRUST_PROXY | Leave false unless the API host is behind a known proxy; then use only its documented IP/CIDR allowlist |
 
-The API listens on the host-provided PORT when available, then API_PORT, then 4000. Expose /api/health as the service health-check path.
+The API exposes /api/health as its health-check path. Vercel automatically adapts the NestJS entrypoint to a Function.
 
 Generate independent secrets locally with openssl rand -base64 48. Never share or commit the generated values.
 
@@ -68,11 +79,9 @@ The rewrite sends browser requests to the same-origin /api path, preserving the 
 
 After confirming the production database URL and taking a backup:
 
-1. Run pnpm install --frozen-lockfile.
-2. Set DATABASE_URL in the deployment shell or a secure one-off migration job.
-3. Run pnpm db:generate.
-4. Run pnpm db:migrate:deploy from the repository root.
-5. Build the API and run the platform-administrator bootstrap script once, using BOOTSTRAP_ADMIN_GIVEN_NAME, BOOTSTRAP_ADMIN_FAMILY_NAME, BOOTSTRAP_ADMIN_EMAIL, and BOOTSTRAP_ADMIN_PASSWORD.
+1. Confirm DATABASE_URL (pooled) and MIGRATION_DATABASE_URL (direct) are configured in the API project's Production environment.
+2. The API project's production build runs pnpm db:generate, builds the database and API packages, then runs pnpm db:migrate:deploy.
+3. Run the platform-administrator bootstrap script once after deployment, using BOOTSTRAP_ADMIN_GIVEN_NAME, BOOTSTRAP_ADMIN_FAMILY_NAME, BOOTSTRAP_ADMIN_EMAIL, and BOOTSTRAP_ADMIN_PASSWORD. Use a one-off secure environment and remove bootstrap credentials immediately afterward.
 
 Do not run prisma migrate dev against production. Do not run the bootstrap script repeatedly without checking whether the operator already exists.
 
@@ -81,7 +90,7 @@ Do not run prisma migrate dev against production. Do not run the bootstrap scrip
 - Open the public frontend and confirm /api/health is reachable through the same-origin proxy.
 - Register an account, receive the verification email, and verify the account.
 - Sign in and confirm cookies are set as Secure/HttpOnly where appropriate.
-- Confirm rate limiting works with Upstash configured.
+- Confirm rate limiting works with the Neon PostgreSQL fallback or Upstash when configured.
 - Bootstrap and sign in as the Platform Administrator; approve a test school registration.
 - Test school administrator provisioning, teacher membership, class/learner workflows, assessment scheduling, mark submission, results publication, and the notification centre.
 - Confirm Resend delivery and inspect audit records.
@@ -89,4 +98,4 @@ Do not run prisma migrate dev against production. Do not run the bootstrap scrip
 
 ## Current project status
 
-The Git-linked Vercel deployment is the frontend only. The API host, production database, Upstash credentials, Resend credentials, and production migrations must be configured before real account or assessment workflows can operate. A successful frontend build is not proof of end-to-end readiness.
+Sentinel's frontend and NestJS API are deployed as separate Vercel projects. Neon PostgreSQL, the PostgreSQL rate-limit table, Resend, and the production migrations are configured. The initial Platform Administrator still needs to be bootstrapped before council oversight and school approval workflows can be used.
