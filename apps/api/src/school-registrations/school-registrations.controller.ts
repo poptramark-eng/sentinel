@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
+import { CsrfGuard } from "../auth/csrf.guard";
 import {
   AccessTokenGuard,
   AuthenticatedRequest,
