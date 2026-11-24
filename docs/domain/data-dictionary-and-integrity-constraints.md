@@ -134,3 +134,16 @@ These are logical invariants to preserve in the eventual schema and service laye
 9. Only then generate Prisma models and migrations.
 
 No real learner or candidate data should be used in development or test fixtures. Use synthetic identities and marks only.
+
+
+## 10. Foundation implementation alignment — 24 November 2026
+
+The first Prisma foundation slice now implements the following refinements:
+
+- PlatformOperator is a separate provisioned record linked one-to-one to UserAccount; platform authority is not a user-editable global role field.
+- RefreshToken stores only a keyed token hash, family ID, expiry, revocation timestamp and replacement reference. Raw refresh tokens are not persisted.
+- CouncilSchoolRegistration stores submittedSchoolName separately from the canonical School name so reviewers can inspect what the registrant claimed without mutating canonical identity.
+- SchoolIdentifier claims are initially unverified. A PlatformAdministrator must verify the claim with its issuer before the registration can be approved.
+- AuditEvent captures account authentication and registration lifecycle decisions.
+
+The schema is validated in CI. These are schema-level structures only; no migration has yet been generated or applied.
