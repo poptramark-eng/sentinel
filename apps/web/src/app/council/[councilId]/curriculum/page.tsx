@@ -227,12 +227,13 @@ export default function CouncilCurriculumPage() {
                 <span className="rounded-full bg-[var(--surface-subtle)] px-3 py-1 text-[11px] font-medium text-[var(--muted)]">{catalogue.length} published versions</span>
               </div>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <select value={selectedVersionId} onChange={(event) => setSelectedVersionId(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-[var(--line-strong)] bg-white px-3 py-3 text-sm text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[#eaf1ff]" disabled={catalogue.length === 0}>
+                <label className="min-w-0 flex-1 text-xs font-semibold text-[var(--muted)]">Curriculum version<select aria-label="Published curriculum version" value={selectedVersionId} onChange={(event) => setSelectedVersionId(event.target.value)} className="mt-1.5 w-full min-w-0 rounded-xl border border-[var(--line-strong)] bg-white px-3 py-3 text-sm font-normal text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[#eaf1ff]" disabled={catalogue.length === 0}>
                   {catalogue.length === 0 ? <option value="">No published curriculum versions available</option> : null}
                   {catalogue.map((version) => <option key={version.id} value={version.id}>{version.curriculum.name} · {version.versionLabel} · {version._count.gradeLearningAreas} grade mappings</option>)}
-                </select>
+                </select></label>
                 <button onClick={() => void selectCurriculum()} disabled={busy || !selectedVersionId || selectedVersionId === activeVersionId} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Saving…" : activeVersionId ? "Switch curriculum" : "Select curriculum"}</button>
               </div>
+              {catalogue.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--surface-subtle)] px-4 py-3 text-xs leading-5 text-[var(--muted)]">There are no published curriculum versions available to this Council yet. A curriculum must complete review and publication before it can be selected here.</p> : null}
               {current?.selection ? (
                 <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--line)] pt-4 text-xs text-[var(--muted)]">
                   <span><strong className="text-[var(--ink-strong)]">Current:</strong> {current.selection.curriculumVersion.curriculum.name} · {current.selection.curriculumVersion.versionLabel}</span>
