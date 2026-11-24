@@ -128,8 +128,8 @@ ALTER TABLE "SchoolLearnerEnrollment" ADD CONSTRAINT "SchoolLearnerEnrollment_ad
   CHECK ("admissionNumber" IS NULL OR ("admissionNumber" = upper(btrim("admissionNumber")) AND length("admissionNumber") BETWEEN 1 AND 40));
 
 -- A learner may have only one active class enrollment within a school registration.
-CREATE UNIQUE INDEX "SchoolLearnerEnrollment_one_active_school"
-ON "SchoolLearnerEnrollment" ("learnerId", "registrationId")
+CREATE UNIQUE INDEX "SchoolLearnerEnrollment_one_active_learner"
+ON "SchoolLearnerEnrollment" ("learnerId")
 WHERE "status" = 'ACTIVE' AND "endedAt" IS NULL;
 
 CREATE FUNCTION sentinel_lock_assessment_candidates() RETURNS trigger AS $function$
