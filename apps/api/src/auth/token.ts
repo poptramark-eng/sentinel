@@ -1,5 +1,6 @@
 import {
   createHmac,
+  randomUUID,
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
@@ -8,6 +9,9 @@ export interface AccessClaims {
   sub: string;
   personId: string;
   av: number;
+  iss: string;
+  aud: string;
+  jti: string;
   iat: number;
   exp: number;
 }
@@ -40,6 +44,9 @@ export function signAccessToken(
       sub: accountId,
       personId,
       av: authVersion,
+      iss: "sentinel-api",
+      aud: "sentinel-web",
+      jti: randomUUID(),
       iat: now,
       exp: now + 10 * 60,
     } satisfies AccessClaims),
@@ -82,6 +89,9 @@ export function verifyAccessToken(
       typeof claims.sub !== "string" ||
       typeof claims.personId !== "string" ||
       !Number.isInteger(claims.av) ||
+      claims.iss !== "sentinel-api" ||
+      claims.aud !== "sentinel-web" ||
+      typeof claims.jti !== "string" ||
       !Number.isInteger(claims.iat) ||
       !Number.isInteger(claims.exp) ||
       claims.exp <= now ||
