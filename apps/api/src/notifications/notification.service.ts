@@ -108,7 +108,7 @@ export class NotificationService {
       '<p><strong>' + escapeHtml(input.assessmentName) + '</strong> (' + escapeHtml(input.assessmentCode) + ')</p>',
       '<p>Grade: ' + escapeHtml(grade) + ' · Academic year: ' + input.academicYear + '</p>',
       '<p>Opens: ' + escapeHtml(opensAt) + '<br>Closes: ' + escapeHtml(closesAt) + '</p>',
-      '<p>Sign in to Sentinel to review the assessment and coordinate your school\\'s participation.</p>',
+      '<p>Sign in to Sentinel to review the assessment and coordinate your school\'s participation.</p>',
       '</main></body></html>',
     ].join("");
     return { subject, textBody, htmlBody };
