@@ -1,6 +1,6 @@
 # Curriculum publication and Council configuration — technical design
 
-**Status:** Proposed implementation design; no schema migration or production publication yet.  
+**Status:** Schema, publication safeguards, source-backed draft import and the initial Platform review workspace are implemented. Council selection, Council grade-area configuration and assessment snapshots remain pending. No curriculum is published or selected by default.  
 **Related decisions:** ADR-018 (curriculum source/versioning), ADR-020 (staff assignment scope), ADR-022 (child-data release gate).  
 **Source review:** `docs/research/kicd-curriculum-source-review.md`.  
 **Initial review data:** `data/curriculum/kicd-regular-cbe-grades-1-9-review.csv`.
@@ -10,6 +10,14 @@
 Separate the global, platform-managed curriculum catalogue from each Council's decision about which grade-level learning areas it offers and assesses. Import source material into an immutable draft, review grade mappings and optionality, publish a version, then let a Council select a published version and enable its own learning areas. An assessment snapshots the exact curriculum mapping and rubric version it uses.
 
 The current KICD extraction is a review artifact only. It has 120 grade-to-learning-area rows; optionality and assessment eligibility remain `REVIEW_REQUIRED`. Do not seed these rows as published or assume all listed areas are compulsory or assessed by every Council.
+
+### Implementation checkpoint
+
+- Implemented: versioned curriculum catalogue, grade-specific mappings, source URL/retrieval/hash provenance, author/reviewer separation, database-enforced review lifecycle and published-version immutability.
+- Implemented: Platform Administrator API and workspace for catalogue inspection, source-review CSV preview/import, per-mapping Core/Optional review notes, return-to-draft and independent publication.
+- Every imported mapping starts as `REVIEW_REQUIRED`. Unknown optionality remains `UNKNOWN`; the import does not infer assessment eligibility from source-directory labels.
+- Still pending: Council curriculum selection and grade-area configuration, rubric governance, assessment curriculum snapshots, and the final legal/operational approval of authoritative source mappings.
+- The initial KICD review CSV remains review material, not a published or authoritative curriculum catalogue.
 
 ## 2. Goals and non-goals
 
@@ -128,8 +136,8 @@ Validation:
 
 1. Finalize the canonical code list and grade mappings against the actual KICD grade-level design documents; resolve any source-page terminology changes and optionality with an authorized curriculum reviewer.
 2. Add Curriculum, CurriculumVersion, LearningArea, GradeLearningArea, CouncilCurriculum and CouncilGradeLearningArea models and constraints.
-3. Implement import preview and draft creation using the review CSV; do not publish it automatically.
-4. Add reviewer workflow and immutable publication.
+3. Implemented: import preview and draft creation using the review CSV; imports remain drafts and are not published automatically.
+4. Implemented: reviewer workflow, per-mapping review evidence and immutable publication safeguards.
 5. Add Council selection and per-grade learning-area enablement.
 6. Add AssessmentLearningArea and GradingRubricVersion snapshots in a separate assessment migration.
 7. Enable Subject Teacher assignments only when the target class grade has an enabled CouncilGradeLearningArea.
