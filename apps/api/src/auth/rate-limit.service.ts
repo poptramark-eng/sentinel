@@ -265,7 +265,10 @@ export class RateLimitService {
           const lockKeys = [...new Set(keyedChecks.map((check) => check.keyHash))].sort();
           for (const keyHash of lockKeys) {
             await tx.$queryRaw(
-              Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${keyHash}, 0))`,
+              Prisma.sql`WITH advisory_lock AS MATERIALIZED (
+                SELECT pg_advisory_xact_lock(hashtextextended(${keyHash}, 0))
+              )
+              SELECT 1::int AS locked FROM advisory_lock`,
             );
           }
 
