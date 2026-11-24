@@ -17,6 +17,7 @@ import { CreateAssessmentDto } from "./dto/create-assessment.dto";
 import { CreateRubricDto, CreateRubricVersionDto, CreateRubricBandDto } from "./dto/create-rubric.dto";
 import { ScheduleAssessmentDto } from "./dto/schedule-assessment.dto";
 import { ReturnRubricForChangesDto } from "./dto/return-rubric-for-changes.dto";
+import { ReturnAssessmentMarksDto } from "./dto/return-assessment-marks.dto";
 import { CouncilAssessmentService } from "./council-assessment.service";
 
 @Controller("councils/:councilId")
@@ -139,6 +140,24 @@ export class CouncilAssessmentsController {
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
   ) {
     return this.assessments.openAssessment({ accountId: request.auth!.accountId }, councilId, assessmentId);
+  }
+
+  @Post("assessments/:assessmentId/classes/:classId/return-marks")
+  @UseGuards(CouncilGovernanceApproverGuard)
+  returnClassMarksForCorrection(
+    @Req() request: AuthenticatedRequest,
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+    @Param("classId", new ParseUUIDPipe()) classId: string,
+    @Body() body: ReturnAssessmentMarksDto,
+  ) {
+    return this.assessments.returnClassMarksForCorrection(
+      { accountId: request.auth!.accountId },
+      councilId,
+      assessmentId,
+      classId,
+      body.reason.trim(),
+    );
   }
 
   @Post("assessments/:assessmentId/close")
