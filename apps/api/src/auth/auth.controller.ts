@@ -17,12 +17,28 @@ import {
   hasTrustedOrigin,
   hasValidCsrf,
   setAuthCookies,
+  setCsrfCookie,
 } from "./cookie";
 import { AccessTokenGuard, AuthenticatedRequest } from "./access-token.guard";
 
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get("csrf")
+  csrf(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: CookieReply,
+  ) {
+    if (!hasTrustedOrigin(request)) {
+      throw new UnauthorizedException("Request origin is not trusted.");
+    }
+    const token = require("./token") as never;
+    void token;
+    const csrfToken = this.authService.issueCsrfToken();
+    setCsrfCookie(reply, csrfToken);
+    return { csrfToken };
+  }
 
   @Post("login")
   async login(
@@ -40,7 +56,7 @@ export class AuthController {
       result.refreshToken,
       result.csrfToken,
     );
-    return { user: result.user };
+    return { user: result.user, csrfToken: result.csrfToken };
   }
 
   @Post("refresh")
@@ -63,7 +79,7 @@ export class AuthController {
       result.refreshToken,
       result.csrfToken,
     );
-    return { status: "REFRESHED" };
+    return { status: "REFRESHED", csrfToken: result.csrfToken };
   }
 
   @UseGuards(AccessTokenGuard)
