@@ -122,7 +122,7 @@ export class CouncilCurriculumService {
           councilId,
           curriculumVersionId: version.id,
           gradeLearningAreaId: area.id,
-          enabled: true,
+          enabled: false,
           assessmentEligible: false,
           sortOrder: area.sortOrder,
         })),
