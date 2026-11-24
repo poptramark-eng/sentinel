@@ -108,6 +108,29 @@ enum StaffAssignmentStatus {
   REVOKED
 }
 
+enum CurriculumVersionStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  RETIRED
+}
+
+enum CurriculumOptionality {
+  UNKNOWN
+  CORE
+  OPTIONAL
+}
+
+enum CurriculumReviewStatus {
+  REVIEW_REQUIRED
+  REVIEWED
+}
+
+enum CouncilCurriculumStatus {
+  ACTIVE
+  SUPERSEDED
+}
+
 model Person {
   id          String   @id @default(uuid()) @db.Uuid
   givenName   String
@@ -140,6 +163,8 @@ model UserAccount {
   loginIdentifiers        LoginIdentifier[]
   emailVerificationTokens EmailVerificationToken[]
   reviewedRegistrations   CouncilSchoolRegistration[] @relation("RegistrationReviewer")
+  createdCurriculumVersions  CurriculumVersion[] @relation("CurriculumVersionAuthor")
+  reviewedCurriculumVersions CurriculumVersion[] @relation("CurriculumVersionReviewer")
   auditEvents             AuditEvent[]
 
   @@index([status])
@@ -200,10 +225,11 @@ model Council {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  memberships   CouncilMembership[]
-  registrations CouncilSchoolRegistration[]
-  regions       Region[]
-  auditEvents   AuditEvent[]
+  memberships          CouncilMembership[]
+  registrations        CouncilSchoolRegistration[]
+  regions               Region[]
+  curriculumSelections CouncilCurriculum[]
+  auditEvents           AuditEvent[]
 
   @@index([status, name])
 }
@@ -472,4 +498,127 @@ model RefreshToken {
   @@index([accountId, revokedAt])
   @@index([familyId, revokedAt])
   @@index([expiresAt])
+}
+
+
+model Curriculum {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  track     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions CurriculumVersion[]
+
+  @@index([track, name])
+}
+
+model CurriculumVersion {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  curriculumId       String                  @db.Uuid
+  versionLabel       String
+  status             CurriculumVersionStatus @default(DRAFT)
+  sourceTitle        String
+  sourceUrl          String
+  sourceRetrievedAt  DateTime
+  sourceSha256       String                  @db.VarChar(64)
+  effectiveFrom      DateTime?
+  effectiveTo        DateTime?
+  createdByAccountId String                  @db.Uuid
+  reviewedByAccountId String?                @db.Uuid
+  publishedAt        DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  curriculum Curriculum   @relation(fields: [curriculumId], references: [id], onDelete: Restrict)
+  author     UserAccount  @relation("CurriculumVersionAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
+  reviewer   UserAccount? @relation("CurriculumVersionReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
+  gradeLearningAreas GradeLearningArea[]
+  councilCurricula   CouncilCurriculum[]
+
+  @@unique([curriculumId, versionLabel])
+  @@unique([id, curriculumId])
+  @@index([status, createdAt])
+  @@index([curriculumId, status])
+}
+
+model LearningArea {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  canonicalName String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  gradeLearningAreas GradeLearningArea[]
+
+  @@index([canonicalName])
+}
+
+model GradeLearningArea {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  curriculumVersionId String                @db.Uuid
+  learningAreaId     String                 @db.Uuid
+  grade              SchoolGrade
+  sourceLabel        String
+  sourceUrl          String
+  sortOrder          Int                    @default(0)
+  optionality        CurriculumOptionality  @default(UNKNOWN)
+  reviewStatus       CurriculumReviewStatus @default(REVIEW_REQUIRED)
+  reviewNote         String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
+  learningArea      LearningArea      @relation(fields: [learningAreaId], references: [id], onDelete: Restrict)
+  councilConfigurations CouncilGradeLearningArea[]
+
+  @@unique([curriculumVersionId, grade, learningAreaId])
+  @@unique([id, curriculumVersionId])
+  @@index([curriculumVersionId, grade, sortOrder])
+  @@index([learningAreaId, grade])
+  @@index([reviewStatus, optionality])
+}
+
+model CouncilCurriculum {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  councilId          String                  @db.Uuid
+  curriculumVersionId String                 @db.Uuid
+  status             CouncilCurriculumStatus @default(ACTIVE)
+  effectiveFrom      DateTime                @default(now())
+  effectiveTo        DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  council           Council           @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
+  gradeAreas        CouncilGradeLearningArea[]
+
+  @@unique([id, councilId, curriculumVersionId])
+  @@unique([councilId, curriculumVersionId, effectiveFrom])
+  @@index([councilId, status, effectiveFrom])
+  @@index([curriculumVersionId, status])
+}
+
+model CouncilGradeLearningArea {
+  id                  String   @id @default(uuid()) @db.Uuid
+  councilCurriculumId String   @db.Uuid
+  councilId           String   @db.Uuid
+  curriculumVersionId String   @db.Uuid
+  gradeLearningAreaId String   @db.Uuid
+  enabled             Boolean  @default(true)
+  assessmentEligible  Boolean  @default(false)
+  displayLabel        String?
+  sortOrder           Int      @default(0)
+  reviewNote          String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  councilCurriculum CouncilCurriculum @relation(fields: [councilCurriculumId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  gradeLearningArea GradeLearningArea @relation(fields: [gradeLearningAreaId, curriculumVersionId], references: [id, curriculumVersionId], onDelete: Restrict)
+
+  @@unique([councilCurriculumId, gradeLearningAreaId])
+  @@unique([id, councilId, curriculumVersionId])
+  @@index([councilId, enabled, assessmentEligible])
+  @@index([councilCurriculumId, sortOrder])
 }
