@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
+import { CsrfGuard } from "../auth/csrf.guard";
 import {
   AccessTokenGuard,
   AuthenticatedRequest,
@@ -20,7 +21,7 @@ import { RegistrationQueryDto } from "./dto/registration-query.dto";
 import { SchoolRegistrationService } from "./school-registration.service";
 
 @Controller("platform/school-registrations")
-@UseGuards(AccessTokenGuard, PlatformOperatorGuard)
+@UseGuards(AccessTokenGuard, PlatformOperatorGuard, CsrfGuard)
 export class PlatformSchoolRegistrationsController {
   constructor(
     private readonly registrations: SchoolRegistrationService,
