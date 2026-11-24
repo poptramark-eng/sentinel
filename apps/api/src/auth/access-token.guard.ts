@@ -5,11 +5,10 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
-import { getAccessCookie } from "./cookie";
+import { CookieRequest, getAccessCookie } from "./cookie";
 import { verifyAccessToken } from "./token";
 
-export interface AuthenticatedRequest {
-  headers: Record<string, string | string[] | undefined>;
+export interface AuthenticatedRequest extends CookieRequest {
   auth?: {
     accountId: string;
     personId: string;
