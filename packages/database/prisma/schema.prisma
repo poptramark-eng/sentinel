@@ -297,6 +297,7 @@ model CouncilSchoolRegistration {
   schoolId                 String             @db.Uuid
   clusterId                String             @db.Uuid
   registrationCode         String?
+  submittedSchoolName      String
   status                   RegistrationStatus @default(PENDING_REVIEW)
   initialRegistrantPersonId String            @db.Uuid
   reviewedByAccountId      String?            @db.Uuid
