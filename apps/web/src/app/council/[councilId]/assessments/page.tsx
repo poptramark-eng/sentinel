@@ -160,12 +160,16 @@ export default function CouncilAssessmentsPage() {
   }
 
   async function transition(assessment: Assessment, action: "schedule" | "open" | "close") {
+    const timing = schedule[assessment.id];
+    if (action === "schedule" && (!timing?.opensAt || !timing.closesAt)) {
+      setError("Choose both an opening and closing time before scheduling.");
+      return;
+    }
     setBusy(true); setError(""); setNotice("");
     try {
-      const timing = schedule[assessment.id];
       const response = await apiRequest(`/councils/${councilId}/assessments/${assessment.id}/${action}`, {
         method: "POST",
-        ...(action === "schedule" ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opensAt: new Date(timing.opensAt).toISOString(), closesAt: new Date(timing.closesAt).toISOString() }) } : {}),
+        ...(action === "schedule" && timing ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opensAt: new Date(timing.opensAt).toISOString(), closesAt: new Date(timing.closesAt).toISOString() }) } : {}),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(messageOf(payload, `Assessment could not be ${action}d.`));
