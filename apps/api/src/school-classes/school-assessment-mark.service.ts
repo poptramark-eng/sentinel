@@ -173,7 +173,9 @@ export class SchoolAssessmentMarkService {
           select: { id: true, marks: true, status: true },
         });
         if (!existing) throw new NotFoundException("The assessment mark row was not initialized.");
-        if (existing.status !== "DRAFT") throw new ConflictException("Submitted marks are locked and require the formal correction process.");
+        if (existing.status !== "DRAFT" && existing.status !== "RETURNED") {
+          throw new ConflictException("Submitted marks are locked and require the formal correction process.");
+        }
         const updated = await tx.assessmentMark.update({
           where: { id: existing.id },
           data: { marks: String(input.marks), enteredByAccountId: actor.accountId, returnedReason: null },
@@ -216,13 +218,15 @@ export class SchoolAssessmentMarkService {
         select: { id: true, marks: { select: { id: true, marks: true, status: true } } },
       });
       if (candidates.length === 0) throw new ConflictException("There are no active assessment candidates in this class.");
-      const incomplete = candidates.flatMap((candidate) => candidate.marks.filter((mark) => mark.marks === null || mark.status !== "DRAFT").map((mark) => mark.id));
+      const incomplete = candidates.flatMap((candidate) => candidate.marks.filter((mark) =>
+        mark.marks === null || (mark.status !== "DRAFT" && mark.status !== "RETURNED"),
+      ).map((mark) => mark.id));
       if (incomplete.length > 0) {
         throw new ConflictException(`${incomplete.length} mark entries are missing or already submitted. Complete every learning area before submitting this class.`);
       }
       const markIds = candidates.flatMap((candidate) => candidate.marks.map((mark) => mark.id));
       await tx.assessmentMark.updateMany({
-        where: { id: { in: markIds }, status: "DRAFT" },
+        where: { id: { in: markIds }, status: { in: ["DRAFT", "RETURNED"] } },
         data: { status: "SUBMITTED", submittedAt: new Date(), enteredByAccountId: actor.accountId },
       });
       await tx.assessmentMarkRevision.createMany({
