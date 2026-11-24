@@ -206,8 +206,8 @@ BEGIN
   END IF;
 
   IF TG_OP = 'INSERT' THEN
-    IF NEW."marks" IS NOT NULL OR NEW."status" <> 'DRAFT' THEN
-      RAISE EXCEPTION 'Mark rows must be initialized empty in draft state' USING ERRCODE = '55000';
+    IF target_status <> 'DRAFT' OR NEW."marks" IS NOT NULL OR NEW."status" <> 'DRAFT' THEN
+      RAISE EXCEPTION 'Mark rows must be initialized empty while the assessment is in draft' USING ERRCODE = '55000';
     END IF;
   ELSE
     IF target_status <> 'OPEN' THEN
@@ -237,6 +237,16 @@ $function$ LANGUAGE plpgsql;
 CREATE TRIGGER "AssessmentMark_validate"
 BEFORE INSERT OR UPDATE ON "AssessmentMark"
 FOR EACH ROW EXECUTE FUNCTION sentinel_validate_assessment_mark();
+
+CREATE FUNCTION sentinel_reject_assessment_mark_delete() RETURNS trigger AS $function$
+BEGIN
+  RAISE EXCEPTION 'Assessment mark rows cannot be deleted; use the formal correction workflow' USING ERRCODE = '55000';
+END;
+$function$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "AssessmentMark_no_delete"
+BEFORE DELETE ON "AssessmentMark"
+FOR EACH ROW EXECUTE FUNCTION sentinel_reject_assessment_mark_delete();
 
 CREATE FUNCTION sentinel_immutable_assessment_mark_revision() RETURNS trigger AS $function$
 BEGIN
