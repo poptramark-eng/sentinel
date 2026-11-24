@@ -4,7 +4,7 @@
 
 A learner is a global education identity, not a login account. Sentinel creates a system-wide learner number when a new learner is registered. The identifier is for record linkage and must never be treated as a password, authentication token or proof of identity.
 
-A learner can have historical school enrolments, but the database permits only one active school enrolment at a time. An enrolment is attached to a school registration, Council and class through composite foreign keys. Transfers, withdrawals and completion end an enrolment rather than deleting it. A later school can reuse the existing global learner identity after the previous active enrolment has ended.
+A learner can have historical school enrolments, but the database permits only one active school enrolment at a time. An enrolment is attached to a school registration, Council and class through composite foreign keys. Transfers, withdrawals and completion end an enrolment rather than deleting it. If the learner is already on a scheduled, open or closed assessment roster, ending the enrolment also withdraws that candidate from the affected assessment while retaining the candidate snapshot and audit history. A later school can reuse the existing global learner identity after the previous active enrolment has ended.
 
 The initial learner profile deliberately collects only names and system/school identifiers. Additional demographic fields require a documented reporting purpose, data-minimisation review and retention rules.
 
