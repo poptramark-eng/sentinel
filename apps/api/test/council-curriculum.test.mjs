@@ -150,3 +150,50 @@ test("Council selection supersedes history and starts all grade areas disabled",
   assert.ok(createdRows.every((row) => row.enabled === false && row.assessmentEligible === false));
   assert.equal(auditEvent.action, "COUNCIL_CURRICULUM_SELECTED");
 });
+
+
+test("Council Administrator guard scopes access to an active membership in the route Council", async () => {
+  const { CouncilAdministratorGuard } = await import("../dist/auth/council-administrator.guard.js");
+  let membershipWhere;
+  const guard = new CouncilAdministratorGuard({
+    client: {
+      userAccount: { findUnique: async () => ({ personId: "77777777-7777-4777-8777-777777777777" }) },
+      councilMembership: {
+        findFirst: async ({ where }) => {
+          membershipWhere = where;
+          return { id: "66666666-6666-4666-8666-666666666666" };
+        },
+      },
+    },
+  });
+  const context = {
+    switchToHttp: () => ({
+      getRequest: () => ({ auth: { accountId: actor.accountId }, params: { councilId } }),
+    }),
+  };
+
+  assert.equal(await guard.canActivate(context), true);
+  assert.equal(membershipWhere.councilId, councilId);
+  assert.equal(membershipWhere.role, "COUNCIL_ADMINISTRATOR");
+  assert.equal(membershipWhere.status, "ACTIVE");
+});
+
+test("Council Administrator guard denies accounts without a Council membership", async () => {
+  const { CouncilAdministratorGuard } = await import("../dist/auth/council-administrator.guard.js");
+  const guard = new CouncilAdministratorGuard({
+    client: {
+      userAccount: { findUnique: async () => ({ personId: "77777777-7777-4777-8777-777777777777" }) },
+      councilMembership: { findFirst: async () => null },
+    },
+  });
+  const context = {
+    switchToHttp: () => ({
+      getRequest: () => ({ auth: { accountId: actor.accountId }, params: { councilId } }),
+    }),
+  };
+
+  await assert.rejects(
+    guard.canActivate(context),
+    (error) => error.getStatus() === 403,
+  );
+});
