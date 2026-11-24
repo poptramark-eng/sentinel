@@ -7,6 +7,16 @@ datasource db {
   provider = "postgresql"
 }
 
+enum PlatformOperatorRole {
+  PLATFORM_ADMINISTRATOR
+}
+
+enum PlatformOperatorStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
 enum AccountStatus {
   PENDING_VERIFICATION
   ACTIVE
@@ -98,11 +108,25 @@ model UserAccount {
   lastLoginAt  DateTime?
 
   person                Person                     @relation(fields: [personId], references: [id], onDelete: Restrict)
+  platformOperator      PlatformOperator?
   loginIdentifiers      LoginIdentifier[]
   reviewedRegistrations CouncilSchoolRegistration[] @relation("RegistrationReviewer")
   auditEvents           AuditEvent[]
 
   @@index([status])
+}
+
+model PlatformOperator {
+  id        String                @id @default(uuid()) @db.Uuid
+  accountId String                @unique @db.Uuid
+  role      PlatformOperatorRole  @default(PLATFORM_ADMINISTRATOR)
+  status    PlatformOperatorStatus @default(ACTIVE)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  account UserAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([status, role])
 }
 
 model LoginIdentifier {
