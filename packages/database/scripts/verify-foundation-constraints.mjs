@@ -456,7 +456,7 @@ try {
        'GRADE_4', 'SUMMATIVE', $6, NOW())`,
     [assessmentId, ids.councilA, councilCurriculumId, curriculumVersionId, rubricVersionId, ids.accountA],
   );
-  await expectConstraintFailure("Assessment_councilCurriculumId_councilId_curriculumVersionId_fkey", () =>
+  await expectConstraintFailure("Assessment_councilCurriculumId_councilId_curriculumVersionId_fk", () =>
     client.query(
       `INSERT INTO "Assessment"
         ("id", "councilId", "councilCurriculumId", "curriculumVersionId", "rubricVersionId",
@@ -474,7 +474,7 @@ try {
        'Mathematics', 100, 2, 0)`,
     [assessmentLearningAreaId, assessmentId, ids.councilA, curriculumVersionId, councilGradeLearningAreaId],
   );
-  await expectConstraintFailure("AssessmentLearningArea_councilGradeLearningAreaId_councilId_curriculumVersionId_fkey", () =>
+  await expectConstraintFailure("AssessmentLearningArea_councilGradeLearningAreaId_councilId_cur", () =>
     client.query(
       `INSERT INTO "AssessmentLearningArea"
         ("id", "assessmentId", "councilId", "curriculumVersionId", "councilGradeLearningAreaId",
