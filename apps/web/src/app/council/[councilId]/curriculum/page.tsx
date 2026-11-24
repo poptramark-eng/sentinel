@@ -257,7 +257,11 @@ export default function CouncilCurriculumPage() {
                     <section key={grade} className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
                       <div className="flex items-center justify-between border-b border-[var(--line)] bg-[var(--surface-subtle)] px-5 py-4">
                         <h3 className="text-sm font-semibold text-[var(--ink-strong)]">{grade.replace("_", " ")}</h3>
-                        <span className="text-[11px] text-[var(--subtle)]">{areas.length} learning areas</span>
+                        <div className="flex flex-wrap items-center justify-end gap-2 text-[10px]">
+                          <span className="rounded-full border border-[var(--line)] bg-white px-2.5 py-1 font-medium text-[var(--muted)]">{areas.length} areas</span>
+                          <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 font-semibold text-blue-800">{areas.filter((area) => area.enabled).length} enabled</span>
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-800">{areas.filter((area) => area.assessmentEligible).length} eligible</span>
+                        </div>
                       </div>
                       <div className="divide-y divide-[#edf0f5]">
                         {areas.map((area) => {
