@@ -97,11 +97,11 @@ export default function CouncilAssessmentsPage() {
     }
     const [curriculumData, rubricData, assessmentData] = await Promise.all([
       curriculumResponse.json() as Promise<CurriculumResponse>,
-      rubricResponse.json() as Promise<{ versions?: RubricVersion[] }[]>,
+      rubricResponse.json() as Promise<{ code: string; name: string; versions: Omit<RubricVersion, "rubric">[] }[]>,
       assessmentResponse.json() as Promise<Assessment[]>,
     ]);
     setCurriculum(curriculumData);
-    const versions = rubricData.flatMap((rubric) => rubric.versions ?? []).filter((version) => version.status === "PUBLISHED");
+    const versions = rubricData.flatMap((rubric) => (rubric.versions ?? []).map((version) => ({ ...version, rubric: { code: rubric.code, name: rubric.name } }))).filter((version) => version.status === "PUBLISHED");
     setRubrics(versions);
     setAssessments(assessmentData);
     setForm((previous) => ({ ...previous, rubricVersionId: previous.rubricVersionId || versions[0]?.id || "" }));
@@ -161,7 +161,7 @@ export default function CouncilAssessmentsPage() {
       const timing = schedule[assessment.id];
       const response = await apiRequest(`/councils/${councilId}/assessments/${assessment.id}/${action}`, {
         method: "POST",
-        ...(action === "schedule" ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(timing) } : {}),
+        ...(action === "schedule" ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opensAt: new Date(timing.opensAt).toISOString(), closesAt: new Date(timing.closesAt).toISOString() }) } : {}),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(messageOf(payload, `Assessment could not be ${action}d.`));
