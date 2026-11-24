@@ -200,7 +200,7 @@ Remaining implementation gates are operational rather than ideation blockers:
 3. Define field allowlists for each report/export type before implementing those exports.
 4. Implement the purpose-limited DataAccessGrant/ReviewCase before Council or Platform users can inspect identifiable learner data.
 5. Validate institutional identity-proofing and recovery procedures, and obtain legal/controller approval for child-data retention and sharing.
-6. Extend distributed rate limiting to signup/recovery/invitations/exports, then implement account recovery and email verification before production onboarding.
+6. Extend distributed rate limiting to future invitation and export routes, then implement password recovery before production onboarding.
 
 ## 9. Exit criteria before protected feature implementation
 

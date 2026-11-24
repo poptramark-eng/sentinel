@@ -1,24 +1,302 @@
 import {
+  BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
 import { hashPassword, needsPasswordRehash, verifyPassword } from "./password";
+import { EmailService } from "./email.service";
+import { RegisterDto } from "./auth.dto";
 import {
   createCsrfToken,
+  createEmailVerificationToken,
   createRefreshToken,
+  hashEmailVerificationToken,
   hashRefreshToken,
   signAccessToken,
 } from "./token";
 
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+const GENERIC_VERIFICATION_RESPONSE = {
+  status: "VERIFICATION_REQUIRED",
+  message: "If this email address can be registered, a verification link will be sent.",
+} as const;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly dummyHash = hashPassword("sentinel-dummy-password-not-a-user");
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
+
+  async register(input: RegisterDto) {
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const passwordHash = await hashPassword(input.password);
+    const rawToken = createEmailVerificationToken();
+    const tokenHash = hashEmailVerificationToken(rawToken);
+    let created: { accountId: string; givenName: string } | null = null;
+
+    try {
+      created = await this.prisma.client.$transaction(
+        async (tx) => {
+          const existing = await tx.loginIdentifier.findUnique({
+            where: {
+              type_normalizedValue: {
+                type: "EMAIL",
+                normalizedValue: normalizedEmail,
+              },
+            },
+            select: { id: true },
+          });
+          if (existing) return null;
+
+          const person = await tx.person.create({
+            data: {
+              givenName: input.givenName.trim(),
+              familyName: input.familyName.trim(),
+            },
+            select: { id: true, givenName: true },
+          });
+          const account = await tx.userAccount.create({
+            data: {
+              personId: person.id,
+              status: "PENDING_VERIFICATION",
+              passwordHash,
+            },
+            select: { id: true },
+          });
+          const identifier = await tx.loginIdentifier.create({
+            data: {
+              accountId: account.id,
+              type: "EMAIL",
+              normalizedValue: normalizedEmail,
+            },
+            select: { id: true },
+          });
+          await tx.emailVerificationToken.create({
+            data: {
+              accountId: account.id,
+              loginIdentifierId: identifier.id,
+              tokenHash,
+              expiresAt: new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS),
+            },
+          });
+          await tx.auditEvent.create({
+            data: {
+              actorAccountId: account.id,
+              action: "AUTH_ACCOUNT_REGISTERED",
+              resourceType: "UserAccount",
+              resourceId: account.id,
+              decision: "ALLOW",
+            },
+          });
+          return { accountId: account.id, givenName: person.givenName };
+        },
+        { isolationLevel: "Serializable" },
+      );
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? error.code
+          : null;
+      if (code === "P2002" || code === "P2034") {
+        return GENERIC_VERIFICATION_RESPONSE;
+      }
+      throw error;
+    }
+
+    if (!created) return GENERIC_VERIFICATION_RESPONSE;
+
+    const delivery = await this.trySendVerificationEmail(
+      normalizedEmail,
+      created.givenName,
+      rawToken,
+    );
+    return {
+      ...GENERIC_VERIFICATION_RESPONSE,
+      ...(delivery.previewUrl
+        ? { verificationPreviewUrl: delivery.previewUrl }
+        : {}),
+    };
+  }
+
+  async resendVerification(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const identifier = await this.prisma.client.loginIdentifier.findUnique({
+      where: {
+        type_normalizedValue: {
+          type: "EMAIL",
+          normalizedValue: normalizedEmail,
+        },
+      },
+      include: { account: { include: { person: true } } },
+    });
+
+    if (
+      !identifier ||
+      identifier.verifiedAt ||
+      identifier.account.status !== "PENDING_VERIFICATION"
+    ) {
+      return GENERIC_VERIFICATION_RESPONSE;
+    }
+
+    const rawToken = createEmailVerificationToken();
+    const tokenHash = hashEmailVerificationToken(rawToken);
+    const now = new Date();
+    let renewed: { accountId: string; givenName: string } | null;
+    try {
+      renewed = await this.prisma.client.$transaction(async (tx) => {
+      const current = await tx.loginIdentifier.findUnique({
+        where: { id: identifier.id },
+        include: { account: { include: { person: true } } },
+      });
+      if (
+        !current ||
+        current.verifiedAt ||
+        current.account.status !== "PENDING_VERIFICATION"
+      ) {
+        return null;
+      }
+
+      await tx.emailVerificationToken.updateMany({
+        where: { loginIdentifierId: current.id, consumedAt: null },
+        data: { consumedAt: now },
+      });
+      await tx.emailVerificationToken.create({
+        data: {
+          accountId: current.accountId,
+          loginIdentifierId: current.id,
+          tokenHash,
+          expiresAt: new Date(now.getTime() + EMAIL_VERIFICATION_TTL_MS),
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorAccountId: current.accountId,
+          action: "AUTH_EMAIL_VERIFICATION_RESENT",
+          resourceType: "UserAccount",
+          resourceId: current.accountId,
+          decision: "ALLOW",
+        },
+      });
+      return {
+        accountId: current.accountId,
+        givenName: current.account.person.givenName,
+      };
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? error.code
+          : null;
+      if (code === "P2002" || code === "P2034") {
+        return GENERIC_VERIFICATION_RESPONSE;
+      }
+      throw error;
+    }
+
+    if (!renewed) return GENERIC_VERIFICATION_RESPONSE;
+    const delivery = await this.trySendVerificationEmail(
+      normalizedEmail,
+      renewed.givenName,
+      rawToken,
+    );
+    return {
+      ...GENERIC_VERIFICATION_RESPONSE,
+      ...(delivery.previewUrl
+        ? { verificationPreviewUrl: delivery.previewUrl }
+        : {}),
+    };
+  }
+
+  async verifyEmail(rawToken: string) {
+    const tokenHash = hashEmailVerificationToken(rawToken);
+    const token = await this.prisma.client.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      include: { account: true, loginIdentifier: true },
+    });
+    const now = new Date();
+
+    if (
+      !token ||
+      token.consumedAt ||
+      token.expiresAt <= now ||
+      token.loginIdentifier.type !== "EMAIL" ||
+      token.loginIdentifier.verifiedAt ||
+      token.account.status !== "PENDING_VERIFICATION"
+    ) {
+      throw new BadRequestException("Verification link is invalid or expired.");
+    }
+
+    await this.prisma.client.$transaction(async (tx) => {
+      const consumed = await tx.emailVerificationToken.updateMany({
+        where: { id: token.id, consumedAt: null, expiresAt: { gt: now } },
+        data: { consumedAt: now },
+      });
+      if (consumed.count !== 1) {
+        throw new BadRequestException("Verification link is invalid or expired.");
+      }
+
+      const verified = await tx.loginIdentifier.updateMany({
+        where: {
+          id: token.loginIdentifierId,
+          accountId: token.accountId,
+          verifiedAt: null,
+        },
+        data: { verifiedAt: now },
+      });
+      if (verified.count !== 1) {
+        throw new BadRequestException("Verification link is invalid or expired.");
+      }
+
+      const activated = await tx.userAccount.updateMany({
+        where: { id: token.accountId, status: "PENDING_VERIFICATION" },
+        data: { status: "ACTIVE" },
+      });
+      if (activated.count !== 1) {
+        throw new BadRequestException("Verification link is invalid or expired.");
+      }
+
+      await tx.auditEvent.create({
+        data: {
+          actorAccountId: token.accountId,
+          action: "AUTH_EMAIL_VERIFIED",
+          resourceType: "UserAccount",
+          resourceId: token.accountId,
+          decision: "ALLOW",
+        },
+      });
+    });
+
+    return { status: "EMAIL_VERIFIED" };
+  }
+
+  private async trySendVerificationEmail(
+    email: string,
+    givenName: string,
+    rawToken: string,
+  ): Promise<{ previewUrl?: string }> {
+    try {
+      return await this.emailService.sendVerificationEmail(
+        email,
+        givenName,
+        rawToken,
+      );
+    } catch {
+      // Keep registration and resend responses indistinguishable for existing and
+      // unknown addresses. The account remains pending and can request a new link.
+      this.logger.warn(
+        "Verification email delivery failed; the account remains pending.",
+      );
+      return {};
+    }
+  }
 
   async login(email: string, password: string) {
     const normalizedEmail = email.trim().toLowerCase();

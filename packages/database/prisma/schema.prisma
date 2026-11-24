@@ -89,10 +89,10 @@ model Person {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  account                 UserAccount?
-  councilMemberships      CouncilMembership[]
-  schoolMemberships       SchoolMembership[]
-  initiatedRegistrations  CouncilSchoolRegistration[] @relation("RegistrationInitialRegistrant")
+  account                UserAccount?
+  councilMemberships     CouncilMembership[]
+  schoolMemberships      SchoolMembership[]
+  initiatedRegistrations CouncilSchoolRegistration[] @relation("RegistrationInitialRegistrant")
 
   @@index([familyName, givenName])
 }
@@ -107,23 +107,24 @@ model UserAccount {
   updatedAt    DateTime      @updatedAt
   lastLoginAt  DateTime?
 
-  person                Person                     @relation(fields: [personId], references: [id], onDelete: Restrict)
-  platformOperator      PlatformOperator?
-  refreshTokens         RefreshToken[]
-  loginIdentifiers      LoginIdentifier[]
-  reviewedRegistrations CouncilSchoolRegistration[] @relation("RegistrationReviewer")
-  auditEvents           AuditEvent[]
+  person                  Person                      @relation(fields: [personId], references: [id], onDelete: Restrict)
+  platformOperator        PlatformOperator?
+  refreshTokens           RefreshToken[]
+  loginIdentifiers        LoginIdentifier[]
+  emailVerificationTokens EmailVerificationToken[]
+  reviewedRegistrations   CouncilSchoolRegistration[] @relation("RegistrationReviewer")
+  auditEvents             AuditEvent[]
 
   @@index([status])
 }
 
 model PlatformOperator {
-  id        String                @id @default(uuid()) @db.Uuid
-  accountId String                @unique @db.Uuid
-  role      PlatformOperatorRole  @default(PLATFORM_ADMINISTRATOR)
+  id        String                 @id @default(uuid()) @db.Uuid
+  accountId String                 @unique @db.Uuid
+  role      PlatformOperatorRole   @default(PLATFORM_ADMINISTRATOR)
   status    PlatformOperatorStatus @default(ACTIVE)
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
 
   account UserAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
 
@@ -131,17 +132,37 @@ model PlatformOperator {
 }
 
 model LoginIdentifier {
-  id               String              @id @default(uuid()) @db.Uuid
-  accountId        String              @db.Uuid
-  type             LoginIdentifierType
-  normalizedValue  String
-  verifiedAt       DateTime?
-  createdAt        DateTime            @default(now())
+  id              String              @id @default(uuid()) @db.Uuid
+  accountId       String              @db.Uuid
+  type            LoginIdentifierType
+  normalizedValue String
+  verifiedAt      DateTime?
+  createdAt       DateTime            @default(now())
 
-  account UserAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  account                 UserAccount              @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  emailVerificationTokens EmailVerificationToken[]
 
+  @@unique([id, accountId])
   @@unique([type, normalizedValue])
   @@index([accountId, verifiedAt])
+}
+
+// The migration also adds a partial unique index for one unconsumed token per identifier.
+model EmailVerificationToken {
+  id                String    @id @default(uuid()) @db.Uuid
+  accountId         String    @db.Uuid
+  loginIdentifierId String    @db.Uuid
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  account         UserAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  loginIdentifier LoginIdentifier @relation(fields: [loginIdentifierId, accountId], references: [id, accountId], onDelete: Restrict)
+
+  @@index([accountId, expiresAt])
+  @@index([loginIdentifierId, consumedAt])
+  @@index([expiresAt])
 }
 
 model Council {
@@ -161,15 +182,15 @@ model Council {
 }
 
 model CouncilMembership {
-  id        String           @id @default(uuid()) @db.Uuid
-  councilId String           @db.Uuid
-  personId  String           @db.Uuid
+  id        String                @id @default(uuid()) @db.Uuid
+  councilId String                @db.Uuid
+  personId  String                @db.Uuid
   role      CouncilMembershipRole
-  status    MembershipStatus @default(PENDING)
+  status    MembershipStatus      @default(PENDING)
   startsAt  DateTime?
   endsAt    DateTime?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
 
   council Council @relation(fields: [councilId], references: [id], onDelete: Restrict)
   person  Person  @relation(fields: [personId], references: [id], onDelete: Restrict)
@@ -193,13 +214,13 @@ model School {
 }
 
 model SchoolIdentifier {
-  id              String              @id @default(uuid()) @db.Uuid
-  schoolId        String              @db.Uuid
+  id              String               @id @default(uuid()) @db.Uuid
+  schoolId        String               @db.Uuid
   type            SchoolIdentifierType
   issuer          String
   normalizedValue String
   verifiedAt      DateTime?
-  createdAt       DateTime            @default(now())
+  createdAt       DateTime             @default(now())
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
 
@@ -215,7 +236,7 @@ model Region {
   status    GeographyStatus @default(ACTIVE)
   createdAt DateTime        @default(now())
 
-  council Council  @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  council  Council  @relation(fields: [councilId], references: [id], onDelete: Restrict)
   counties County[]
 
   @@unique([id, councilId])
@@ -232,7 +253,7 @@ model County {
   status    GeographyStatus @default(ACTIVE)
   createdAt DateTime        @default(now())
 
-  region     Region      @relation(fields: [regionId, councilId], references: [id, councilId], onDelete: Restrict)
+  region      Region      @relation(fields: [regionId, councilId], references: [id, councilId], onDelete: Restrict)
   subcounties Subcounty[]
 
   @@unique([id, councilId])
@@ -292,28 +313,28 @@ model Cluster {
 }
 
 model CouncilSchoolRegistration {
-  id                       String             @id @default(uuid()) @db.Uuid
-  councilId                String             @db.Uuid
-  schoolId                 String             @db.Uuid
-  clusterId                String             @db.Uuid
-  registrationCode         String?
-  submittedSchoolName      String
-  status                   RegistrationStatus @default(PENDING_REVIEW)
-  initialRegistrantPersonId String            @db.Uuid
-  reviewedByAccountId      String?            @db.Uuid
-  submittedAt              DateTime           @default(now())
-  reviewedAt               DateTime?
-  decisionReason           String?
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
-  version                  Int                @default(0)
+  id                        String             @id @default(uuid()) @db.Uuid
+  councilId                 String             @db.Uuid
+  schoolId                  String             @db.Uuid
+  clusterId                 String             @db.Uuid
+  registrationCode          String?
+  submittedSchoolName       String
+  status                    RegistrationStatus @default(PENDING_REVIEW)
+  initialRegistrantPersonId String             @db.Uuid
+  reviewedByAccountId       String?            @db.Uuid
+  submittedAt               DateTime           @default(now())
+  reviewedAt                DateTime?
+  decisionReason            String?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  version                   Int                @default(0)
 
-  council          Council      @relation(fields: [councilId], references: [id], onDelete: Restrict)
-  school           School       @relation(fields: [schoolId], references: [id], onDelete: Restrict)
-  cluster          Cluster      @relation(fields: [clusterId, councilId], references: [id, councilId], onDelete: Restrict)
-  initialRegistrant Person       @relation("RegistrationInitialRegistrant", fields: [initialRegistrantPersonId], references: [id], onDelete: Restrict)
-  reviewedBy       UserAccount?  @relation("RegistrationReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
-  memberships      SchoolMembership[]
+  council           Council            @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  school            School             @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  cluster           Cluster            @relation(fields: [clusterId, councilId], references: [id, councilId], onDelete: Restrict)
+  initialRegistrant Person             @relation("RegistrationInitialRegistrant", fields: [initialRegistrantPersonId], references: [id], onDelete: Restrict)
+  reviewedBy        UserAccount?       @relation("RegistrationReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
+  memberships       SchoolMembership[]
 
   @@unique([id, councilId])
   @@unique([councilId, registrationCode])
@@ -322,16 +343,16 @@ model CouncilSchoolRegistration {
 }
 
 model SchoolMembership {
-  id             String           @id @default(uuid()) @db.Uuid
-  registrationId String           @db.Uuid
-  councilId      String           @db.Uuid
-  personId       String           @db.Uuid
+  id             String               @id @default(uuid()) @db.Uuid
+  registrationId String               @db.Uuid
+  councilId      String               @db.Uuid
+  personId       String               @db.Uuid
   role           SchoolMembershipRole
-  status         MembershipStatus @default(PENDING)
+  status         MembershipStatus     @default(PENDING)
   startsAt       DateTime?
   endsAt         DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
   person       Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
@@ -362,16 +383,15 @@ model AuditEvent {
   @@index([actorAccountId, createdAt])
 }
 
-
 model RefreshToken {
-  id          String    @id @default(uuid()) @db.Uuid
-  accountId   String    @db.Uuid
-  familyId    String    @db.Uuid
-  tokenHash   String    @unique
-  expiresAt   DateTime
-  revokedAt   DateTime?
-  replacedById String?  @db.Uuid
-  createdAt   DateTime  @default(now())
+  id           String    @id @default(uuid()) @db.Uuid
+  accountId    String    @db.Uuid
+  familyId     String    @db.Uuid
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?   @db.Uuid
+  createdAt    DateTime  @default(now())
 
   account UserAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
 

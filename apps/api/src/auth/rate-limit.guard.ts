@@ -14,7 +14,7 @@ import { RateLimitService } from "./rate-limit.service";
 import { CookieRequest, hasTrustedOrigin, hasValidCsrf } from "./cookie";
 
 const AUTH_RATE_LIMIT_POLICY = "sentinel:auth-rate-limit-policy";
-type AuthRateLimitPolicy = "LOGIN" | "REFRESH";
+type AuthRateLimitPolicy = "LOGIN" | "REFRESH" | "REGISTER" | "VERIFY_EMAIL" | "RESEND_VERIFICATION";
 interface RequestWithLoginBody extends CookieRequest {
   ip: string;
   body?: { email?: unknown };
@@ -48,22 +48,25 @@ export class AuthRateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithLoginBody>();
     const reply = context.switchToHttp().getResponse<RateLimitReply>();
 
-    if (policy === "LOGIN" && !hasTrustedOrigin(request)) {
-      throw new UnauthorizedException("Request origin is not trusted.");
-    }
     if (policy === "REFRESH" && !hasValidCsrf(request)) {
       throw new UnauthorizedException("CSRF validation failed.");
     }
+    if (policy !== "REFRESH" && !hasTrustedOrigin(request)) {
+      throw new UnauthorizedException("Request origin is not trusted.");
+    }
 
-    const decision =
-      policy === "LOGIN"
-        ? await this.rateLimitService.checkLogin(
-            request.ip,
-            typeof request.body?.email === "string"
-              ? request.body.email
-              : undefined,
-          )
-        : await this.rateLimitService.checkRefresh(request.ip);
+    const email = typeof request.body?.email === "string"
+      ? request.body.email
+      : undefined;
+    const decision = policy === "LOGIN"
+      ? await this.rateLimitService.checkLogin(request.ip, email)
+      : policy === "REFRESH"
+        ? await this.rateLimitService.checkRefresh(request.ip)
+        : policy === "REGISTER"
+          ? await this.rateLimitService.checkRegister(request.ip, email)
+          : policy === "RESEND_VERIFICATION"
+            ? await this.rateLimitService.checkResendVerification(request.ip, email)
+            : await this.rateLimitService.checkVerifyEmail(request.ip);
 
     if (!decision.allowed) {
       const retryAfter = Math.max(

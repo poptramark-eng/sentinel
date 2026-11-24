@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { storeCsrfToken } from "../../lib/api";
 
@@ -137,7 +138,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-7 text-xs leading-5 text-[#94a3b8]">Accounts are provisioned by authorized administrators. Public self-registration is not available.</p>
+          <p className="mt-7 text-xs leading-5 text-[#94a3b8]">New school? <Link href="/register" className="font-semibold text-[#2457c5] hover:underline">Create an account to begin school registration.</Link></p>
         </div>
 
         <div className="flex items-center justify-between text-xs text-[#94a3b8]">

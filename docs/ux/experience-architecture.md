@@ -92,17 +92,23 @@ These are hypotheses to validate with representative users; no user interviews o
 
 ## 4. Critical user journeys
 
-### A. School registration and approval
+### A. Account creation, school registration and approval
 
-1. Registrant enters school and initial administrator details.
-2. System creates a pending school registration and pending initial School Administrator membership.
-3. User receives a clear pending state and cannot provision staff or access school-management actions.
-4. Platform Administrator reviews the registration and records approval or rejection with reason.
-5. On approval, the initial School Administrator receives activation instructions and access to school management.
-6. The school dashboard guides the administrator through profile completion and staff onboarding.
+1. Registrant creates a global account with name, email and password.
+2. System sends a one-time email verification link; opening the page does not consume the link until the user explicitly confirms.
+3. Email verification activates the account only. It does not create a CouncilMembership, SchoolMembership or role.
+4. The verified registrant submits school details and becomes the proposed initial School Administrator.
+5. System creates a pending CouncilSchoolRegistration and pending initial SchoolAdministrator membership.
+6. User receives a clear pending state and cannot provision staff or access school-management actions.
+7. Platform Administrator reviews the registration and records approval or rejection with reason.
+8. On approval, the initial School Administrator receives access to school management.
+9. The school dashboard guides the administrator through profile completion and staff onboarding.
 
 Acceptance:
-- Pending access cannot be bypassed through direct API calls.
+- Email verification cannot be triggered by a link scanner or page prefetch; an explicit confirmation is required.
+- Duplicate registration/resend responses do not reveal whether an email account exists.
+- Email verification alone does not grant tenant or school-management access.
+- Pending school access cannot be bypassed through direct API calls.
 - The UI explains why management actions are unavailable and what happens next.
 - Approval/rejection and activation are traceable.
 

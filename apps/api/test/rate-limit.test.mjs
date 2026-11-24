@@ -33,6 +33,9 @@ test("development permits local auth when Upstash credentials are absent", async
     const service = new RateLimitService();
     assert.deepEqual(await service.checkLogin("127.0.0.1", "person@example.test"), { allowed: true });
     assert.deepEqual(await service.checkRefresh("127.0.0.1"), { allowed: true });
+    assert.deepEqual(await service.checkRegister("127.0.0.1", "person@example.test"), { allowed: true });
+    assert.deepEqual(await service.checkVerifyEmail("127.0.0.1"), { allowed: true });
+    assert.deepEqual(await service.checkResendVerification("127.0.0.1", "person@example.test"), { allowed: true });
   });
 });
 
@@ -45,6 +48,9 @@ test("production fails closed when Upstash rate-limit credentials are absent", a
     const service = new RateLimitService();
     await assert.rejects(service.checkLogin("127.0.0.1", "person@example.test"), (error) => error.getStatus() === 503);
     await assert.rejects(service.checkRefresh("127.0.0.1"), (error) => error.getStatus() === 503);
+    await assert.rejects(service.checkRegister("127.0.0.1", "person@example.test"), (error) => error.getStatus() === 503);
+    await assert.rejects(service.checkVerifyEmail("127.0.0.1"), (error) => error.getStatus() === 503);
+    await assert.rejects(service.checkResendVerification("127.0.0.1", "person@example.test"), (error) => error.getStatus() === 503);
   });
 });
 
@@ -73,7 +79,7 @@ test("rate-limit guard returns 429 and Retry-After when a policy is exceeded", a
 });
 
 
-test("login and refresh endpoints declare explicit rate-limit policies", () => {
+test("auth endpoints declare explicit rate-limit policies", () => {
   assert.equal(
     Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.login),
     "LOGIN",
@@ -82,6 +88,9 @@ test("login and refresh endpoints declare explicit rate-limit policies", () => {
     Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.refresh),
     "REFRESH",
   );
+  assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.register), "REGISTER");
+  assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.verifyEmail), "VERIFY_EMAIL");
+  assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.resendVerification), "RESEND_VERIFICATION");
 });
 
 

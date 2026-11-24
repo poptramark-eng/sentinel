@@ -176,7 +176,7 @@ Every operation must resolve an ACTIVE SchoolMembership against an APPROVED Coun
 4. Add PostgreSQL integration tests, including composite-FK and partial-index cases.
 5. Generate and inspect SQL migration; CI applies it to an ephemeral PostgreSQL 18 service on every push/PR.
 6. Exercise the registration API and authorization lifecycle against PostgreSQL integration fixtures before exposing the workflow publicly.
-7. Extend distributed rate limiting to onboarding/recovery and complete account verification and operational recovery before production onboarding.
+7. Extend distributed rate limiting to future invitation/export routes and complete password recovery and operational recovery before production onboarding.
 8. Deploy only to a non-production environment with synthetic test data until legal/privacy and registry gates are satisfied.
 
 ## 8. Explicitly deferred

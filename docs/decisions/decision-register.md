@@ -254,7 +254,7 @@ These gates do not block synthetic-data development, domain tests, physical sche
 **Decision**
 
 - Use Upstash Redis with the official `@upstash/ratelimit` and `@upstash/redis` SDKs for distributed API rate limiting. This avoids process-local counters that reset across instances and supports the serverless/deployment topology.
-- Login limits: 30 requests per source IP per 15 minutes and 5 requests per normalized email per 15 minutes. Refresh limit: 60 requests per source IP per 5 minutes. Use sliding-window policies.
+- Login limits: 30 requests per source IP and 5 per normalized email per 15 minutes. Refresh limit: 60 per source IP per 5 minutes. Registration limits: 5 per source IP and 3 per normalized email per hour. Email verification: 20 per source IP per 15 minutes. Resend: 5 per source IP and 3 per normalized email per hour. Use sliding-window policies.
 - HMAC normalized email values before using them as Redis identifiers. Do not store raw email addresses in rate-limit keys.
 - Disable analytics initially to reduce command volume and avoid collecting additional identifier telemetry. Use the SDK's bounded ephemeral cache to reject repeated blocked requests without a Redis round trip.
 - Development may run without Redis credentials. Production must fail closed with 503 when credentials are absent, Redis fails, or the SDK reports a timeout. Requests exceeding policy return 429 with `Retry-After`.
@@ -263,10 +263,33 @@ These gates do not block synthetic-data development, domain tests, physical sche
 **Consequences**
 
 - Production requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` in the API runtime secret store.
-- `TRUST_PROXY` stays false unless the API is behind a known reverse proxy and the trusted-proxy configuration is verified.
-- Extend rate limits to signup, verification, password reset, invitations, OTP and expensive exports before those features launch.
+- `TRUST_PROXY` stays false unless the API is behind a known reverse proxy; then configure an explicit trusted proxy IP/CIDR allowlist. Wildcard trust is rejected. Production also requires a 32-byte `REFRESH_TOKEN_PEPPER`, which keys HMACed email identifiers.
+- Extend rate limits to password reset, invitations, OTP and expensive exports before those features launch.
 - Sliding windows cost more than fixed windows; analytics are off and blocked-identifier caching is enabled to control request volume. Revisit thresholds with real traffic and abuse telemetry.
 
 **Implementation references:** [Upstash Ratelimit TypeScript getting started](https://upstash.com/docs/redis/sdks/ratelimit-ts/gettingstarted), [algorithms](https://upstash.com/docs/redis/sdks/ratelimit-ts/algorithms), and [features](https://upstash.com/docs/redis/sdks/ratelimit-ts/features).
 
 **Confidence:** High for the distributed limiter choice; thresholds are conservative starting values and require production observation.
+
+
+## ADR-014 — Public account onboarding and email verification
+
+**Decision**
+
+- Public registration creates a global Person, a UserAccount in `PENDING_VERIFICATION`, and an unverified EMAIL LoginIdentifier. It grants no CouncilMembership, SchoolMembership, role, school ownership or operational access. School registration is a separate request and the initial SchoolAdministrator membership remains pending until PlatformAdministrator approval.
+- Verify email using a 32-byte random, base64url one-time token with a 24-hour expiry. Persist only an HMAC-SHA256 token hash keyed with `REFRESH_TOKEN_PEPPER`. A composite foreign key guarantees the verification token's LoginIdentifier belongs to the same UserAccount. A PostgreSQL partial unique index allows at most one unconsumed token per LoginIdentifier.
+- Successful verification atomically consumes the token, marks the email LoginIdentifier verified and activates the account. Reuse, expiry, wrong-account linkage and invalid tokens are denied. Resending invalidates all earlier unconsumed tokens for that identifier.
+- Registration and resend endpoints return the same generic response for existing and non-existing addresses to reduce account enumeration. Password is Argon2id-hashed before account persistence. Duplicate registration does not send another message; the explicit resend endpoint handles pending accounts.
+- Use Resend's email API (`POST /emails`) with a server-side sending-only API key and verified sender domain. The email includes both HTML and plain-text versions. In non-production only, `DEV_EMAIL_PREVIEW=true` may return a local verification URL without sending email. This preview path is unavailable in production.
+- The verification page requires an explicit user click before consuming the token, to avoid link-scanner prefetches activating accounts. Its referrer policy is `no-referrer`.
+
+**Consequences**
+
+- Production requires `RESEND_API_KEY`, a verified `EMAIL_FROM`, and an HTTPS `WEB_APP_URL`. No API key or sender domain is created/activated automatically.
+- Email delivery failure is logged without recipient/token details; registration and resend still return the same generic `202 Accepted` response to avoid revealing account eligibility. The pending account remains unverified and can request a fresh token after delivery recovers.
+- Registration, verification and resend are rate-limited by IP and/or HMACed email identifier under ADR-013.
+- Password recovery, MFA and account deletion remain separate workflows.
+
+**Implementation references:** [Resend Email API](https://resend.com/features/email-api) and [Resend REST example](https://resend.com/aws-lambda).
+
+**Confidence:** High for the security and lifecycle boundaries; sender-domain and deliverability setup remains an owner-operated deployment task.

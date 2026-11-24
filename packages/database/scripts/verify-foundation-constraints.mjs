@@ -10,7 +10,8 @@ const pool = new Pool({ connectionString, max: 1 });
 const client = await pool.connect();
 const id = () => randomUUID();
 const ids = {
-  councilA: id(), councilB: id(), person: id(), school: id(),
+  councilA: id(), councilB: id(), person: id(), personB: id(), school: id(),
+  accountA: id(), accountB: id(), identifierA: id(), identifierB: id(), verificationA: id(),
   regionA: id(), regionB: id(), countyA: id(), countyB: id(),
   subcountyA: id(), subcountyB: id(), zoneA: id(), zoneB: id(),
   clusterA: id(), clusterB: id(),
@@ -42,6 +43,10 @@ try {
   await client.query(
     `INSERT INTO "Person" ("id", "givenName", "familyName", "updatedAt") VALUES ($1, 'Test', 'Registrant', NOW())`,
     [ids.person],
+  );
+  await client.query(
+    `INSERT INTO "Person" ("id", "givenName", "familyName", "updatedAt") VALUES ($1, 'Second', 'Registrant', NOW())`,
+    [ids.personB],
   );
   await client.query(
     `INSERT INTO "School" ("id", "name", "updatedAt") VALUES ($1, 'Synthetic Constraint School', NOW())`,
@@ -122,8 +127,59 @@ try {
     ),
   );
 
+  await client.query(
+    `INSERT INTO "UserAccount" ("id", "personId", "status", "updatedAt") VALUES
+      ($1, $2, 'PENDING_VERIFICATION', NOW()),
+      ($3, $4, 'PENDING_VERIFICATION', NOW())`,
+    [ids.accountA, ids.person, ids.accountB, ids.personB],
+  );
+  await client.query(
+    `INSERT INTO "LoginIdentifier" ("id", "accountId", "type", "normalizedValue") VALUES
+      ($1, $2, 'EMAIL', 'constraint-a@example.test'),
+      ($3, $4, 'EMAIL', 'constraint-b@example.test')`,
+    [ids.identifierA, ids.accountA, ids.identifierB, ids.accountB],
+  );
+  await client.query(
+    `INSERT INTO "EmailVerificationToken"
+      ("id", "accountId", "loginIdentifierId", "tokenHash", "expiresAt")
+      VALUES ($1, $2, $3, 'synthetic-token-hash-a', NOW() + INTERVAL '1 day')`,
+    [ids.verificationA, ids.accountA, ids.identifierA],
+  );
+  await expectConstraintFailure("EmailVerificationToken_one_unconsumed_per_identifier", () =>
+    client.query(
+      `INSERT INTO "EmailVerificationToken"
+        ("id", "accountId", "loginIdentifierId", "tokenHash", "expiresAt")
+        VALUES ($1, $2, $3, 'synthetic-second-active-token', NOW() + INTERVAL '1 day')`,
+      [id(), ids.accountA, ids.identifierA],
+    ),
+  );
+  await expectConstraintFailure("EmailVerificationToken_loginIdentifierId_accountId_fkey", () =>
+    client.query(
+      `INSERT INTO "EmailVerificationToken"
+        ("id", "accountId", "loginIdentifierId", "tokenHash", "expiresAt")
+        VALUES ($1, $2, $3, 'synthetic-token-hash-cross-account', NOW() + INTERVAL '1 day')`,
+      [id(), ids.accountA, ids.identifierB],
+    ),
+  );
+  await expectConstraintFailure("EmailVerificationToken_tokenHash_key", () =>
+    client.query(
+      `INSERT INTO "EmailVerificationToken"
+        ("id", "accountId", "loginIdentifierId", "tokenHash", "expiresAt")
+        VALUES ($1, $2, $3, 'synthetic-token-hash-a', NOW() + INTERVAL '1 day')`,
+      [id(), ids.accountB, ids.identifierB],
+    ),
+  );
+  await expectConstraintFailure("EmailVerificationToken_one_unconsumed_per_identifier_key", () =>
+    client.query(
+      `INSERT INTO "EmailVerificationToken"
+        ("id", "accountId", "loginIdentifierId", "tokenHash", "expiresAt")
+        VALUES ($1, $2, $3, 'synthetic-second-unconsumed-token', NOW() + INTERVAL '1 day')`,
+      [id(), ids.accountA, ids.identifierA],
+    ),
+  );
+
   await client.query("ROLLBACK");
-  console.log("Foundation PostgreSQL constraints passed: cross-Council geography, registration and membership are rejected; historical episodes remain allowed.");
+  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, active registration uniqueness, historical episodes and email-verification token ownership.");
 } catch (error) {
   await client.query("ROLLBACK").catch(() => undefined);
   throw error;

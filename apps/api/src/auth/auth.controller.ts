@@ -7,9 +7,11 @@ import {
   UnauthorizedException,
   UseGuards,
   Body,
+  HttpCode,
+  HttpStatus,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
-import { LoginDto } from "./auth.dto";
+import { LoginDto, RegisterDto, ResendVerificationDto, VerifyEmailDto } from "./auth.dto";
 import {
   CookieReply,
   clearAuthCookies,
@@ -26,6 +28,27 @@ import { AuthRateLimit } from "./rate-limit.guard";
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @AuthRateLimit("REGISTER")
+  @Post("register")
+  @HttpCode(HttpStatus.ACCEPTED)
+  register(@Body() body: RegisterDto) {
+    return this.authService.register(body);
+  }
+
+  @AuthRateLimit("VERIFY_EMAIL")
+  @Post("verify-email")
+  @HttpCode(HttpStatus.OK)
+  verifyEmail(@Body() body: VerifyEmailDto) {
+    return this.authService.verifyEmail(body.token);
+  }
+
+  @AuthRateLimit("RESEND_VERIFICATION")
+  @Post("resend-verification")
+  @HttpCode(HttpStatus.ACCEPTED)
+  resendVerification(@Body() body: ResendVerificationDto) {
+    return this.authService.resendVerification(body.email);
+  }
 
   @Get("csrf")
   csrf(

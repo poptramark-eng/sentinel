@@ -3,12 +3,13 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module";
+import { resolveTrustedProxies } from "./auth/trusted-proxy";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      trustProxy: process.env.TRUST_PROXY === "true",
+      trustProxy: resolveTrustedProxies(process.env.TRUST_PROXY),
       logger: process.env.NODE_ENV !== "test",
     }),
   );

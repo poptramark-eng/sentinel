@@ -10,7 +10,7 @@
     "dev": "pnpm db:generate && pnpm --filter @cbe/database build && pnpm --parallel --filter @cbe/web --filter @cbe/api dev",
     "dev:web": "pnpm --filter @cbe/web dev",
     "dev:api": "pnpm db:generate && pnpm --filter @cbe/database build && pnpm --filter @cbe/api dev",
-    "build": "pnpm db:generate && pnpm -r build && pnpm --filter @cbe/api test",
+    "build": "pnpm db:generate && pnpm --filter @cbe/database build && pnpm --filter @cbe/api build && pnpm --filter @cbe/web build && pnpm --filter @cbe/api test",
     "lint": "eslint apps packages",
     "typecheck": "pnpm db:generate && pnpm -r typecheck",
     "db:generate": "pnpm --filter @cbe/database generate",

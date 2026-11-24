@@ -106,6 +106,20 @@ export function verifyAccessToken(
   }
 }
 
+export function createEmailVerificationToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function hashEmailVerificationToken(token: string): string {
+  const pepper = process.env.REFRESH_TOKEN_PEPPER;
+  if (!pepper || Buffer.byteLength(pepper) < 32) {
+    throw new Error("REFRESH_TOKEN_PEPPER must contain at least 32 bytes.");
+  }
+  return createHmac("sha256", pepper)
+    .update(`email-verification:${token}`)
+    .digest("hex");
+}
+
 export function createRefreshToken(): string {
   return randomBytes(32).toString("base64url");
 }

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { AuthService } from "../dist/auth/auth.service.js";
 import { createLegacyScryptHashForTest } from "./legacy-password-helper.mjs";
-import { hashRefreshToken } from "../dist/auth/token.js";
+import { hashEmailVerificationToken, hashRefreshToken } from "../dist/auth/token.js";
 
 process.env.ACCESS_TOKEN_SECRET =
   "test-access-token-secret-should-be-at-least-32-bytes-long";
@@ -168,4 +168,167 @@ test("logout-all revokes every refresh token and invalidates access tokens", asy
   assert.equal(revoked[0].where.accountId, account.id);
   assert.deepEqual(accountUpdates[0].data.authVersion, { increment: 1 });
   assert.equal(audits[0].data.action, "AUTH_LOGOUT_ALL");
+});
+
+
+test("registration creates a pending account without assigning a school role", async () => {
+  const created = { person: null, account: null, identifier: null, verification: null, email: null };
+  const tx = {
+    loginIdentifier: {
+      findUnique: async () => null,
+      create: async ({ data }) => { created.identifier = data; return { id: "88888888-8888-4888-8888-888888888888" }; },
+    },
+    person: {
+      create: async ({ data }) => { created.person = data; return { id: "99999999-9999-4999-8999-999999999999", givenName: data.givenName }; },
+    },
+    userAccount: {
+      create: async ({ data }) => { created.account = data; return { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }; },
+    },
+    emailVerificationToken: {
+      create: async ({ data }) => { created.verification = data; return data; },
+    },
+    auditEvent: { create: async ({ data }) => data },
+  };
+  const client = { $transaction: async (callback) => callback(tx) };
+  const emailService = {
+    sendVerificationEmail: async (email, givenName, token) => {
+      created.email = { email, givenName, token };
+      return { previewUrl: `http://localhost:3000/verify-email?token=${token}` };
+    },
+  };
+  const service = new AuthService({ client }, emailService);
+  const result = await service.register({
+    givenName: " Amina ",
+    familyName: " Example ",
+    email: " AMINA@EXAMPLE.ORG ",
+    password: "a-strong-test-password",
+  });
+
+  assert.equal(created.person.givenName, "Amina");
+  assert.equal(created.person.familyName, "Example");
+  assert.equal(created.account.status, "PENDING_VERIFICATION");
+  assert.equal(created.identifier.normalizedValue, "amina@example.org");
+  assert.equal(created.identifier.type, "EMAIL");
+  assert.equal(created.verification.tokenHash, hashEmailVerificationToken(created.email.token));
+  assert.equal(created.email.email, "amina@example.org");
+  assert.equal(result.status, "VERIFICATION_REQUIRED");
+  assert.ok(result.verificationPreviewUrl);
+});
+
+test("email delivery failure does not reveal registration eligibility", async () => {
+  const created = [];
+  const tx = {
+    loginIdentifier: {
+      findUnique: async () => null,
+      create: async () => ({ id: "88888888-8888-4888-8888-888888888888" }),
+    },
+    person: {
+      create: async ({ data }) => ({ id: "99999999-9999-4999-8999-999999999999", givenName: data.givenName }),
+    },
+    userAccount: {
+      create: async ({ data }) => { created.push(data); return { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }; },
+    },
+    emailVerificationToken: { create: async () => ({}) },
+    auditEvent: { create: async () => ({}) },
+  };
+  const service = new AuthService(
+    { client: { $transaction: async (callback) => callback(tx) } },
+    { sendVerificationEmail: async () => { throw new Error("provider unavailable"); } },
+  );
+
+  const result = await service.register({
+    givenName: "Amina",
+    familyName: "Example",
+    email: "new@example.org",
+    password: "a-strong-test-password",
+  });
+
+  assert.equal(created[0].status, "PENDING_VERIFICATION");
+  assert.deepEqual(result, {
+    status: "VERIFICATION_REQUIRED",
+    message: "If this email address can be registered, a verification link will be sent.",
+  });
+});
+
+test("duplicate registration does not reveal an existing account or send another email", async () => {
+  let sent = false;
+  const client = {
+    $transaction: async (callback) => callback({
+      loginIdentifier: { findUnique: async () => ({ id: "existing-identifier" }) },
+    }),
+  };
+  const emailService = { sendVerificationEmail: async () => { sent = true; return {}; } };
+  const result = await new AuthService({ client }, emailService).register({
+    givenName: "Amina",
+    familyName: "Example",
+    email: "existing@example.org",
+    password: "a-strong-test-password",
+  });
+  assert.equal(result.status, "VERIFICATION_REQUIRED");
+  assert.equal(sent, false);
+});
+
+test("email verification consumes the token and activates the pending account", async () => {
+  const rawToken = "a".repeat(43);
+  const updates = [];
+  const audits = [];
+  const record = {
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    accountId: account.id,
+    loginIdentifierId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    consumedAt: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    account: { ...account, status: "PENDING_VERIFICATION" },
+    loginIdentifier: { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", type: "EMAIL", verifiedAt: null },
+  };
+  const tx = {
+    emailVerificationToken: { updateMany: async (input) => { updates.push(input); return { count: 1 }; } },
+    loginIdentifier: { updateMany: async (input) => { updates.push(input); return { count: 1 }; } },
+    userAccount: { updateMany: async (input) => { updates.push(input); return { count: 1 }; } },
+    auditEvent: { create: async (input) => { audits.push(input); return input; } },
+  };
+  const client = {
+    emailVerificationToken: { findUnique: async () => record },
+    $transaction: async (callback) => callback(tx),
+  };
+
+  const result = await new AuthService({ client }, {}).verifyEmail(rawToken);
+  assert.deepEqual(result, { status: "EMAIL_VERIFIED" });
+  assert.equal(updates.length, 3);
+  assert.equal(updates[0].where.id, record.id);
+  assert.equal(updates[2].where.status, "PENDING_VERIFICATION");
+  assert.equal(audits[0].data.action, "AUTH_EMAIL_VERIFIED");
+});
+
+test("resending verification invalidates older tokens before issuing a new one", async () => {
+  const operations = [];
+  const identifier = {
+    id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    accountId: account.id,
+    normalizedValue: "amina@example.org",
+    type: "EMAIL",
+    verifiedAt: null,
+    account: { ...account, status: "PENDING_VERIFICATION", person: { givenName: "Amina" } },
+  };
+  const tx = {
+    loginIdentifier: { findUnique: async () => identifier },
+    emailVerificationToken: {
+      updateMany: async (input) => { operations.push(input); return { count: 1 }; },
+      create: async (input) => { operations.push(input); return input; },
+    },
+    auditEvent: { create: async (input) => { operations.push(input); return input; } },
+  };
+  const client = {
+    loginIdentifier: { findUnique: async () => identifier },
+    $transaction: async (callback) => callback(tx),
+  };
+  const sent = [];
+  const emailService = { sendVerificationEmail: async (...args) => { sent.push(args); return {}; } };
+  const result = await new AuthService({ client }, emailService).resendVerification("AMINA@EXAMPLE.ORG");
+
+  assert.equal(result.status, "VERIFICATION_REQUIRED");
+  assert.equal(operations[0].where.loginIdentifierId, identifier.id);
+  assert.equal(operations[0].data.consumedAt instanceof Date, true);
+  assert.equal(sent[0][0], "amina@example.org");
+  assert.equal(operations[1].data.tokenHash, hashEmailVerificationToken(sent[0][2]));
 });

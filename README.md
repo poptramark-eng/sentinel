@@ -4,7 +4,7 @@ A multi-council platform for configuring and administering assessments, managing
 
 ## Project status
 
-The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: account onboarding/verification, recovery, full authorization, remaining domain modules and production operations remain incomplete. The foundation migration is CI-tested; login/refresh rate limits are implemented but require production Upstash credentials. Use synthetic learner and assessment data only.
+The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id account registration/email verification/login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: password recovery, complete authorization, assessment/candidate/marks/results modules, remaining onboarding workflows and production operations remain incomplete. Account registration/email verification and the foundation migrations are implemented and CI-tested; production email and Upstash credentials still need owner configuration. Use synthetic learner and assessment data only.
 
 ## Architecture
 
@@ -25,10 +25,11 @@ PostgreSQL is the system of record. Redis is not a permanent ledger or source of
 - Teacher identity is global; school membership and assignments are school-specific.
 - Learners do not have login accounts.
 - Internal and external assessment result-governance paths are distinct.
-- Core identity, tenant, geography and school-registration foundation models are implemented in Prisma. The first migration is not yet generated or applied.
+- Core identity, tenant, geography and school-registration foundation models are implemented in Prisma. The foundation and email-verification migrations are generated and applied in ephemeral PostgreSQL CI; no persistent database has been migrated.
 - Core identity and authorization decisions are recorded in docs/decisions/decision-register.md; legal/privacy and external identifier validation gates remain open.
 - The initial foundation migration is generated and CI applies it to an ephemeral PostgreSQL 18 database, then checks cross-Council foreign keys and active-registration uniqueness.
-- Login and refresh use distributed Upstash rate limits; production requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` and fails closed if they are missing or unavailable.
+- Registration, verification, login, resend and refresh use distributed Upstash rate limits; production requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` and fails closed if they are missing or unavailable.
+- Email verification uses the Resend API; production requires a sending-only `RESEND_API_KEY`, verified `EMAIL_FROM` domain and `WEB_APP_URL`. Local preview links require `DEV_EMAIL_PREVIEW=true` outside production.
 
 Read:
 - `docs/architecture/` — ADRs and architecture boundaries
@@ -69,14 +70,16 @@ pnpm dev:api
 - Web: http://localhost:3000
 - API health: http://localhost:4000/api/health
 - Sign-in: http://localhost:3000/login
+- Account registration: http://localhost:3000/register
+- Email verification: http://localhost:3000/verify-email
 - Platform school-registration review: http://localhost:3000/platform/school-registrations
 - Educator UX prototype: http://localhost:3000/prototype/marks-entry
 
 The marks-entry prototype uses synthetic data and local page state only. It does not call the API or persist marks.
 
-The API now provides first-party `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, and `GET /api/auth/me` endpoints, plus authenticated school-registration submission/status and PlatformAdministrator review endpoints. The web app includes a sign-in page, basic authenticated workspace and a PlatformAdministrator registration review workspace. Login is currently limited to pre-provisioned accounts with verified email identifiers. There is no public account signup or password reset yet.
+The API provides first-party `POST /api/auth/register`, `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `POST /api/auth/logout-all`, and `GET /api/auth/me` endpoints, plus authenticated school-registration submission/status and PlatformAdministrator review endpoints. The web app includes account registration, explicit email verification, sign-in, an authenticated workspace and a PlatformAdministrator registration review workspace. Public account registration creates no role or tenant membership; the school-registration request remains a separate approval workflow. Password reset is not yet implemented.
 
-After the reviewed foundation migration has been generated and applied to a local database, bootstrap the first PlatformAdministrator by building the workspace, setting `BOOTSTRAP_ADMIN_GIVEN_NAME`, `BOOTSTRAP_ADMIN_FAMILY_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD` in the local environment, then run:
+After configuring a local PostgreSQL database, apply the reviewed migrations with `pnpm db:migrate:deploy`. Then bootstrap the first PlatformAdministrator by building the workspace, setting `BOOTSTRAP_ADMIN_GIVEN_NAME`, `BOOTSTRAP_ADMIN_FAMILY_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD` in the local environment, then run:
 
 ```bash
 pnpm build

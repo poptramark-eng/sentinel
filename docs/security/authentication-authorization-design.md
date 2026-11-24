@@ -1,6 +1,6 @@
 # Authentication and Authorization Architecture
 
-**Status:** Working design. First-party login/refresh/logout/me foundation is implemented; account onboarding, verification, recovery, rate limits for non-auth endpoints, and complete authorization remain in progress.
+**Status:** Working design. First-party account registration/email verification/login/refresh/logout/me foundation is implemented; password recovery, MFA, full authorization and non-auth rate limits remain in progress.
 **Implementation:** NestJS + Fastify API, PostgreSQL, Prisma, Next.js client.
 **Identity provider:** First-party application authentication. No Auth0, Clerk, Firebase Auth, Cognito, Supabase Auth or other third-party identity provider.
 
@@ -28,7 +28,8 @@ Learner identifiers locate learner records only. They are not passwords, one-tim
 - Bootstrap credentials must be one-time, rotated and never committed to source control.
 
 ### School registration
-- The registrant becomes the initial School Administrator.
+- A person may create a pending global account through public email registration. Email verification activates only the account; it does not assign a role or tenant membership.
+- The verified registrant becomes the proposed initial School Administrator through a separate school registration request.
 - School registration and the initial administrator membership remain pending until the required Platform Administrator approval.
 - Pending accounts/memberships cannot perform school-management actions or provision teachers.
 - Approval activates the permitted school-management capabilities.
@@ -81,7 +82,7 @@ Use established cryptographic libraries. Do not invent cryptographic primitives.
 - Refresh: validate refresh-token hash and family state; rotate transactionally; detect replay; issue new access token.
 - Logout: revoke the current device refresh-token family and clear its cookies.
 - Logout all: increment authentication version, revoke all refresh families and clear current cookies.
-- Email verification: send a short-lived one-time link through Resend; persist only token hash; make operation idempotent.
+- Email verification: send a 32-byte random one-time link through Resend; persist only an HMAC token hash; use 24-hour expiry and one unconsumed token per email identifier.
 - Password reset: return the same public response regardless of whether an account exists; send a one-time reset link only when eligible; revoke refresh families and increment authentication version after reset.
 - Account suspension: deny new login and protected access, revoke refresh families and increment authentication version.
 - Optional phone verification: add only where a defined workflow needs it; use SMS provider abstraction and one-time rate-limited codes.
@@ -130,10 +131,10 @@ The policy decision uses:
 
 ## 7. Abuse controls and audit
 
-- Login and refresh are rate-limited through Upstash Redis and `@upstash/ratelimit`: 30 login attempts/IP/15 minutes, 5 login attempts/normalized email/15 minutes, and 60 refresh attempts/IP/5 minutes. Sliding windows are used to reduce fixed-window boundary bursts; analytics are disabled to avoid unnecessary request volume.
-- Email identifiers are HMACed before they become Redis keys. IP identity uses Fastify's resolved `request.ip`; `TRUST_PROXY` remains false unless the API is behind a known trusted proxy.
+- Registration, verification, resend, login and refresh are rate-limited through Upstash Redis and `@upstash/ratelimit`: login 30/IP and 5/email per 15 minutes; refresh 60/IP per 5 minutes; registration 5/IP and 3/email per hour; verification 20/IP per 15 minutes; resend 5/IP and 3/email per hour. Sliding windows reduce fixed-window boundary bursts; analytics are disabled.
+- Email identifiers are HMACed before they become Redis keys. IP identity uses Fastify's resolved `request.ip`; `TRUST_PROXY` remains false unless the API is behind a known trusted proxy; configure an explicit proxy IP/CIDR allowlist, never wildcard trust.
 - In development, missing Upstash credentials allow local work. In production, missing/invalid credentials, Redis errors or rate-limit timeouts fail closed with 503; exceeded limits return 429 with `Retry-After`. Production deployment is blocked until a dedicated Upstash database and secrets are configured.
-- Extend the same controls to signup, verification, password reset, invitations, OTP and expensive exports before those endpoints are exposed.
+- Extend the same controls to password reset, invitations, OTP and expensive exports before those endpoints are exposed.
 - Add progressive delays and risk signals without permanently locking out legitimate school users.
 - Audit successful and failed privileged operations, account lifecycle events, membership/role changes, authority grants, approval decisions, marks corrections, submissions, releases, exports and support access.
 - Redact credentials, tokens, reset links, OTPs and unnecessary personal/learner data from logs.
@@ -155,9 +156,9 @@ The policy decision uses:
 
 ## 9. Current implementation boundary
 
-Implemented in the API foundation: email/password login for pre-provisioned active accounts; Argon2id password hashing with legacy scrypt rehash-on-login; 10-minute HS256 access JWT in an HttpOnly cookie; opaque refresh-token hash persistence and transactional rotation; refresh-family replay response; account auth-version checks; CSRF double-submit plus exact origin allowlist for refresh/logout; logout; current-user endpoint; developer-controlled PlatformAdministrator bootstrap; and authenticated school-registration submission, withdrawal, status and PlatformAdministrator review/identifier-verification endpoints.
+Implemented in the API foundation: public account registration without role assignment; one-time email verification and resend; Resend email adapter with development-only preview; Argon2id password hashing with legacy scrypt rehash-on-login; 10-minute HS256 access JWT in an HttpOnly cookie; opaque refresh-token hash persistence and transactional rotation; refresh-family replay response; account auth-version checks; CSRF double-submit plus exact origin allowlist; device logout and logout-all; distributed Upstash rate limits for registration/verification/resend/login/refresh; current-user endpoint; developer-controlled PlatformAdministrator bootstrap; and authenticated school-registration submission, withdrawal, status and PlatformAdministrator review/identifier-verification endpoints.
 
-Not yet implemented: public account signup, email verification delivery, password reset, MFA/passkeys, rate limits for signup/recovery/invitations/exports, login alerting, full Council/School/Organizer authorization policies, and full database-backed API integration tests. Login and refresh rate limiting are implemented but require production Upstash credentials. Do not expose this API to production users until the remaining controls are completed and tested. The current implementation has not been penetration-tested.
+Not yet implemented: password reset, MFA/passkeys, rate limits for future invitations/exports, login alerting, full Council/School/Organizer authorization enforcement, school-registration user interface, and full database-backed API integration tests. Production requires verified Resend sender configuration and Upstash credentials. Do not expose this API to production users until the remaining controls are completed and tested. The current implementation has not been penetration-tested.
 
 ## 10. Decisions still required before production
 
@@ -165,9 +166,9 @@ Not yet implemented: public account signup, email verification delivery, passwor
 - One account maps to one Person; a Person may have multiple scoped memberships.
 - Remaining role/action policy details are governed by `docs/security/authorization-policy-contract.md` and the adopted ADRs.
 - School administrator replacement and recovery follow ADR-008; production identity-proofing procedures still require institutional validation.
-- Password reset and email-verification expiry/retention values must be configured and reviewed before launch.
+- Password-reset expiry/retention and email-verification token cleanup/retention must be configured and reviewed before launch.
 - Cookie hostnames and deployment topology for Vercel/Render must be fixed before production.
 - Support access is denied by default; a time-limited, purpose-bound break-glass workflow is required before support can inspect identifiable learner data.
 - Authentication audit retention and privacy schedule require legal/controller approval.
 
-The Prisma schema includes Person, UserAccount, LoginIdentifier, PlatformOperator, RefreshToken, Council, scoped memberships, CouncilSchoolRegistration, geography and AuditEvent. The initial migration is not yet generated or applied. Production credential setup is not authorized by this design note. Use synthetic test identities only.
+The Prisma schema includes Person, UserAccount, LoginIdentifier, EmailVerificationToken, PlatformOperator, RefreshToken, Council, scoped memberships, CouncilSchoolRegistration, geography and AuditEvent. The foundation and email-verification migrations are generated and CI-applied to ephemeral PostgreSQL; no persistent database has been migrated. Production credential setup is not authorized by this design note. Use synthetic test identities only.
