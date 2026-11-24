@@ -26,7 +26,7 @@ export function WorkspaceShell({
   children,
 }: WorkspaceShellProps) {
   return (
-    <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
+    <div className="workspace-root min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
       <a href="#workspace-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-[var(--brand-strong)] focus:shadow-lg">Skip to main content</a>
       <aside className="print:hidden fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] flex-col border-r border-[var(--line)] bg-white lg:flex">
         <Link href="/workspace" className="flex h-[var(--topbar-height)] items-center gap-3 border-b border-[var(--line)] px-5" aria-label="Softflix cbe workspace home">
@@ -56,7 +56,7 @@ export function WorkspaceShell({
         </div>
       </aside>
 
-      <div className="min-h-screen lg:pl-[var(--sidebar-width)]">
+      <div className="workspace-content min-h-screen lg:pl-[var(--sidebar-width)]">
         <header className="print:hidden sticky top-0 z-20 flex min-h-[var(--topbar-height)] items-center justify-between gap-4 border-b border-[var(--line)] bg-white/95 px-4 backdrop-blur sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/workspace" className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--brand)] text-[11px] font-bold text-white lg:hidden">cbe</Link>
@@ -64,7 +64,7 @@ export function WorkspaceShell({
           </div>
           <div className="flex shrink-0 items-center gap-2">{actions}</div>
         </header>
-        <main id="workspace-main" tabIndex={-1} className="mx-auto w-full max-w-[var(--content-max)] px-4 py-7 outline-none sm:px-7 sm:py-9">
+        <main id="workspace-main" tabIndex={-1} className="workspace-main mx-auto w-full max-w-[var(--content-max)] px-4 py-7 outline-none sm:px-7 sm:py-9">
           {description ? <div className="mb-6 max-w-3xl"><p className="text-sm leading-6 text-[var(--muted)]">{description}</p></div> : null}
           <nav aria-label="Mobile workspace navigation" className="print:hidden mb-6 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {navigation.map((item) => <Link key={item.href} href={item.href} aria-current={item.active ? "page" : undefined} className={item.active ? "shrink-0 rounded-lg bg-[var(--brand-soft)] px-3 py-2 text-xs font-semibold text-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)]" : "shrink-0 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-xs font-medium text-[var(--muted)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)]"}>{item.label}</Link>)}
