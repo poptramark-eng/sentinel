@@ -79,3 +79,10 @@ A 2 MiB API request-body limit accommodates JSON expansion of the maximum CSV pa
 ## Current limitations
 
 This slice supports creation, read-only inspection and validated atomic CSV import. Edit, merge, deactivate, reparent and historical geography-version operations are not exposed. Do not delete or repurpose a geography node after it has been referenced by a school registration; design a governed versioning/reassignment process before those operations are introduced. Production use still requires institutional validation of the official Council/geography source and controlled data import.
+
+
+## Guided manual setup
+
+The Platform Council workspace supports two entry modes for geography: guided manual setup and bulk CSV import. Manual setup creates one node per operation through `POST /api/platform/councils/:councilId/geography/nodes`; it does not use a separate persistence path. The operator selects the level and its parent path, enters a name and optional code, and receives the server's field/domain validation response. A Region has no parent; County, Subcounty, Zone and Cluster require the immediately preceding active parent in the same Council. The UI exposes the complete hierarchy, per-level counts and search across all levels while preserving ancestor context for matching descendants.
+
+Council creation remains a separate operation from geography creation. Creating a Council does not implicitly create Regions, Counties, Subcounties, Zones, Clusters or Schools. Manual node creation is disabled in the UI for inactive Councils, and the API independently enforces Council status, active parent and tenant ownership. CSV import remains available as the bulk path and retains the preview + atomic commit contract above.
