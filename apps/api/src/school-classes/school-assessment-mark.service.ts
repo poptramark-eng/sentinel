@@ -131,7 +131,7 @@ export class SchoolAssessmentMarkService {
         orderBy: [{ learnerNameSnapshot: "asc" }],
         select: {
           id: true, learnerNumberSnapshot: true, learnerNameSnapshot: true,
-          marks: { orderBy: [{ assessmentLearningArea: { sortOrder: "asc" } }], select: { id: true, assessmentLearningAreaId: true, marks: true, status: true, submittedAt: true } },
+          marks: { orderBy: [{ assessmentLearningArea: { sortOrder: "asc" } }], select: { id: true, assessmentLearningAreaId: true, marks: true, status: true, submittedAt: true, returnedReason: true } },
         },
       }),
     ]);
@@ -143,7 +143,7 @@ export class SchoolAssessmentMarkService {
         id: candidate.id,
         learnerNumber: candidate.learnerNumberSnapshot,
         learnerName: candidate.learnerNameSnapshot,
-        marks: candidate.marks.map((mark) => ({ id: mark.id, assessmentLearningAreaId: mark.assessmentLearningAreaId, marks: mark.marks === null ? null : Number(mark.marks), status: mark.status, submittedAt: mark.submittedAt })),
+        marks: candidate.marks.map((mark) => ({ id: mark.id, assessmentLearningAreaId: mark.assessmentLearningAreaId, marks: mark.marks === null ? null : Number(mark.marks), status: mark.status, submittedAt: mark.submittedAt, returnedReason: mark.returnedReason })),
       })),
     };
   }
