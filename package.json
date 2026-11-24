@@ -11,13 +11,15 @@
     "dev:web": "pnpm --filter @cbe/web dev",
     "dev:api": "pnpm --filter @cbe/api dev",
     "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
+    "lint": "eslint apps packages",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @cbe/database generate",
     "db:validate": "pnpm --filter @cbe/database validate",
     "db:migrate": "pnpm --filter @cbe/database migrate"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "16.4.6"
   }
 }
