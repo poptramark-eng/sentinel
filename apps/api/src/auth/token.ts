@@ -41,7 +41,7 @@ export function signAccessToken(
       personId,
       av: authVersion,
       iat: now,
-      exp: now + 15 * 60,
+      exp: now + 10 * 60,
     } satisfies AccessClaims),
   );
   const input = `${header}.${payload}`;
@@ -101,7 +101,11 @@ export function createRefreshToken(): string {
 }
 
 export function hashRefreshToken(token: string): string {
-  return createHmac("sha256", secretValue())
+  const pepper = process.env.REFRESH_TOKEN_PEPPER;
+  if (!pepper || Buffer.byteLength(pepper) < 32) {
+    throw new Error("REFRESH_TOKEN_PEPPER must contain at least 32 bytes.");
+  }
+  return createHmac("sha256", pepper)
     .update(`refresh:${token}`)
     .digest("hex");
 }
