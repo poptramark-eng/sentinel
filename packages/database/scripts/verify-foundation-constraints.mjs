@@ -581,6 +581,12 @@ try {
       [ids.markA],
     ),
   );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "Assessment" SET "status" = 'OPEN', "updatedAt" = NOW() WHERE "id" = $1`,
+      [assessmentId],
+    ),
+  );
   await client.query(
     `UPDATE "AssessmentMark"
        SET "status" = 'RETURNED', "returnedReason" = 'Please verify this mark against the source record.',
