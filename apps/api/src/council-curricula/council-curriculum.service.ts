@@ -236,6 +236,6 @@ export class CouncilCurriculumService {
         },
       });
       return updated;
-    });
+    }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 30_000 });
   }
 }
