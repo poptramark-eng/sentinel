@@ -299,3 +299,76 @@ test("only a rubric author may add bands to their own draft version", async () =
   );
   assert.equal(createCalled, false);
 });
+
+
+test("scheduling freezes active matching learner enrollments and initializes every mark cell", async () => {
+  const candidateRows = [];
+  const markRows = [];
+  let audit;
+  const enrollmentId = "12121212-1212-4212-8212-121212121212";
+  const learnerId = "13131313-1313-4313-8313-131313131313";
+  const classId = "14141414-1414-4414-8414-141414141414";
+  const tx = {
+    assessment: {
+      findFirst: async () => ({
+        id: assessmentId, status: "DRAFT", grade: "GRADE_4", academicYear: 2026, curriculumVersionId,
+      }),
+      update: async ({ data }) => ({ id: assessmentId, name: "Term 2 assessment", code: "T2-2026", status: data.status, opensAt: data.opensAt, closesAt: data.closesAt }),
+    },
+    schoolLearnerEnrollment: {
+      findMany: async ({ where }) => {
+        assert.equal(where.councilId, councilId);
+        assert.equal(where.status, "ACTIVE");
+        assert.equal(where.schoolClass.is.grade, "GRADE_4");
+        return [{
+          id: enrollmentId, learnerId, registrationId: "15151515-1515-4515-8515-151515151515",
+          councilId, schoolClassId: classId,
+          learner: { id: learnerId, learnerNumber: "LRN-TEST-001", givenName: "Amina", otherNames: "Wanjiku", familyName: "Otieno", displayName: null },
+          schoolClass: { grade: "GRADE_4", streamCode: "EAST" },
+        }];
+      },
+    },
+    assessmentCandidate: {
+      createMany: async ({ data }) => { candidateRows.push(...data); return { count: data.length }; },
+      findMany: async () => [{ id: "16161616-1616-4616-8616-161616161616" }],
+    },
+    assessmentLearningArea: { findMany: async () => [{ id: areaId }] },
+    assessmentMark: { createMany: async ({ data }) => { markRows.push(...data); return { count: data.length }; } },
+    auditEvent: { create: async ({ data }) => { audit = data; return data; } },
+  };
+  const opensAt = new Date(Date.now() + 60 * 60 * 1000);
+  const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const result = await serviceFor(tx).scheduleAssessment(
+    { accountId }, councilId, assessmentId,
+    { opensAt: opensAt.toISOString(), closesAt: closesAt.toISOString() },
+  );
+  assert.equal(result.status, "SCHEDULED");
+  assert.equal(candidateRows.length, 1);
+  assert.equal(candidateRows[0].learnerNumberSnapshot, "LRN-TEST-001");
+  assert.equal(candidateRows[0].learnerNameSnapshot, "Amina Wanjiku Otieno");
+  assert.equal(candidateRows[0].classStreamSnapshot, "EAST");
+  assert.equal(markRows.length, 1);
+  assert.equal(markRows[0].assessmentLearningAreaId, areaId);
+  assert.equal(audit.metadata.candidateCount, 1);
+  assert.equal(audit.metadata.participatingSchoolCount, 1);
+});
+
+test("assessment scheduling rejects duplicate active learner identities across participating schools", async () => {
+  const learnerId = "13131313-1313-4313-8313-131313131313";
+  const tx = {
+    assessment: { findFirst: async () => ({ id: assessmentId, status: "DRAFT", grade: "GRADE_4", academicYear: 2026, curriculumVersionId }) },
+    schoolLearnerEnrollment: {
+      findMany: async () => [
+        { id: "12121212-1212-4212-8212-121212121212", learnerId, registrationId: "15151515-1515-4515-8515-151515151515", councilId, schoolClassId: "14141414-1414-4414-8414-141414141414", learner: { learnerNumber: "LRN-001", givenName: "A", otherNames: null, familyName: "Learner", displayName: null }, schoolClass: { grade: "GRADE_4", streamCode: "A" } },
+        { id: "17171717-1717-4717-8717-171717171717", learnerId, registrationId: "18181818-1818-4818-8818-181818181818", councilId, schoolClassId: "19191919-1919-4919-8919-191919191919", learner: { learnerNumber: "LRN-001", givenName: "A", otherNames: null, familyName: "Learner", displayName: null }, schoolClass: { grade: "GRADE_4", streamCode: "B" } },
+      ],
+    },
+  };
+  await assert.rejects(
+    serviceFor(tx).scheduleAssessment({ accountId }, councilId, assessmentId, {
+      opensAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      closesAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    }),
+    (error) => error instanceof ConflictException && /more than one school/.test(error.message),
+  );
+});
