@@ -147,6 +147,13 @@ export class CouncilAssessmentService {
     rubricId: string,
     input: CreateRubricVersionDto,
   ) {
+    if (input.scaleType === "NUMERIC_BANDS") {
+      if (input.minScore === undefined || input.maxScore === undefined || input.maxScore <= input.minScore) {
+        throw new BadRequestException("Numeric rubric versions require a valid minimum and maximum score.");
+      }
+    } else if (input.minScore !== undefined || input.maxScore !== undefined) {
+      throw new BadRequestException("Performance-level and descriptive rubric versions must not define numeric score bounds.");
+    }
     return this.prisma.client.$transaction(async (tx) => {
       const rubric = await tx.gradingRubric.findFirst({
         where: { id: rubricId, councilId },
@@ -189,13 +196,34 @@ export class CouncilAssessmentService {
     return this.prisma.client.$transaction(async (tx) => {
       const version = await tx.gradingRubricVersion.findFirst({
         where: { id: versionId, councilId, status: "DRAFT" },
-        select: { id: true },
+        select: { id: true, scaleType: true, minScore: true, maxScore: true, bands: { select: { code: true, sortOrder: true } } },
       });
       if (!version) throw new NotFoundException("A draft rubric version was not found in this Council.");
+      const code = input.code.trim().toUpperCase();
+      if (version.bands.some((band) => band.code === code)) throw new ConflictException("A rubric band with this code already exists.");
+      if (version.bands.some((band) => band.sortOrder === input.sortOrder)) throw new ConflictException("A rubric band already uses this ordering value.");
+      if (version.scaleType === "NUMERIC_BANDS") {
+        if (version.minScore === null || version.maxScore === null ||
+          input.lowerBound === undefined || input.upperBound === undefined ||
+          input.lowerBound < Number(version.minScore) || input.upperBound > Number(version.maxScore) ||
+          input.upperBound <= input.lowerBound) {
+          throw new BadRequestException("Numeric bands require valid lower-inclusive and upper-exclusive bounds within the rubric score range.");
+        }
+        const existing = await tx.rubricBand.findMany({
+          where: { rubricVersionId: versionId },
+          select: { lowerBound: true, upperBound: true },
+        });
+        if (existing.some((band) => band.lowerBound !== null && band.upperBound !== null &&
+          input.lowerBound! < Number(band.upperBound) && Number(band.lowerBound) < input.upperBound!)) {
+          throw new ConflictException("Numeric rubric bands cannot overlap.");
+        }
+      } else if (input.lowerBound !== undefined || input.upperBound !== undefined) {
+        throw new BadRequestException("Performance-level and descriptive bands must not define numeric boundaries.");
+      }
       const band = await tx.rubricBand.create({
         data: {
           rubricVersionId: versionId,
-          code: input.code.trim().toUpperCase(),
+          code,
           label: input.label.trim(),
           description: input.description?.trim() || null,
           lowerBound: input.lowerBound === undefined ? null : String(input.lowerBound),
@@ -315,6 +343,12 @@ export class CouncilAssessmentService {
     const areaIds = input.learningAreas.map((area) => area.councilGradeLearningAreaId);
     if (new Set(areaIds).size !== areaIds.length) {
       throw new BadRequestException("Select each learning area only once.");
+    }
+    for (const area of input.learningAreas) {
+      const precision = String(area.maxMarks).split(".")[1]?.length ?? 0;
+      if (precision > area.decimalPlaces) {
+        throw new BadRequestException("Each maximum mark must respect the selected decimal precision.");
+      }
     }
     if (input.opensAt && input.closesAt && new Date(input.closesAt) <= new Date(input.opensAt)) {
       throw new BadRequestException("The assessment closing time must be later than its opening time.");
