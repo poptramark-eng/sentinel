@@ -31,7 +31,8 @@ CREATE TABLE "CurriculumVersion" (
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "CurriculumVersion_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "CurriculumVersion_sourceSha256_check" CHECK ("sourceSha256" ~ '^[0-9a-f]{64}$'),
-  CONSTRAINT "CurriculumVersion_effective_dates_check" CHECK ("effectiveTo" IS NULL OR "effectiveFrom" IS NULL OR "effectiveTo" >= "effectiveFrom")
+  CONSTRAINT "CurriculumVersion_effective_dates_check" CHECK ("effectiveTo" IS NULL OR "effectiveFrom" IS NULL OR "effectiveTo" >= "effectiveFrom"),
+  CONSTRAINT "CurriculumVersion_publication_review_check" CHECK ("status" <> 'PUBLISHED' OR ("reviewedByAccountId" IS NOT NULL AND "reviewedByAccountId" <> "createdByAccountId" AND "publishedAt" IS NOT NULL))
 );
 CREATE TABLE "LearningArea" (
   "id" UUID NOT NULL,
@@ -67,7 +68,8 @@ CREATE TABLE "CouncilCurriculum" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "CouncilCurriculum_pkey" PRIMARY KEY ("id"),
-  CONSTRAINT "CouncilCurriculum_effective_dates_check" CHECK ("effectiveTo" IS NULL OR "effectiveTo" >= "effectiveFrom")
+  CONSTRAINT "CouncilCurriculum_effective_dates_check" CHECK ("effectiveTo" IS NULL OR "effectiveTo" >= "effectiveFrom"),
+  CONSTRAINT "CouncilCurriculum_status_dates_check" CHECK (("status" = 'ACTIVE' AND "effectiveTo" IS NULL) OR ("status" = 'SUPERSEDED' AND "effectiveTo" IS NOT NULL))
 );
 CREATE TABLE "CouncilGradeLearningArea" (
   "id" UUID NOT NULL,
@@ -124,26 +126,70 @@ ON "CouncilCurriculum" ("councilId")
 WHERE "status" = 'ACTIVE' AND "effectiveTo" IS NULL;
 
 -- Published catalogue versions and their grade mappings are immutable.
-CREATE FUNCTION sentinel_reject_published_curriculum_mutation() RETURNS trigger AS $$
+CREATE FUNCTION sentinel_reject_published_curriculum_mutation() RETURNS trigger AS $
+DECLARE
+  target_version_id UUID;
 BEGIN
   IF TG_TABLE_NAME = 'CurriculumVersion' THEN
-    IF OLD."status" IN ('PUBLISHED', 'RETIRED') THEN
-      RAISE EXCEPTION 'Published curriculum versions are immutable' USING ERRCODE = '55000';
+    IF TG_OP = 'INSERT' THEN
+      IF NEW."status" <> 'DRAFT' THEN
+        RAISE EXCEPTION 'Curriculum versions must be created as drafts' USING ERRCODE = '55000';
+      END IF;
+    ELSIF OLD."status" = 'RETIRED' THEN
+      RAISE EXCEPTION 'Retired curriculum versions are immutable' USING ERRCODE = '55000';
+    ELSIF OLD."status" = 'PUBLISHED' THEN
+      IF NEW."status" <> 'RETIRED'
+        OR (to_jsonb(NEW) - 'status' - 'updatedAt') IS DISTINCT FROM (to_jsonb(OLD) - 'status' - 'updatedAt') THEN
+        RAISE EXCEPTION 'Published curriculum versions are immutable except for retirement' USING ERRCODE = '55000';
+      END IF;
+      IF EXISTS (
+        SELECT 1 FROM "CouncilCurriculum" cc
+        WHERE cc."curriculumVersionId" = OLD."id"
+          AND cc."status" = 'ACTIVE' AND cc."effectiveTo" IS NULL
+      ) THEN
+        RAISE EXCEPTION 'A curriculum version selected as current by a Council cannot be retired' USING ERRCODE = '55000';
+      END IF;
     END IF;
-  ELSIF EXISTS (
-    SELECT 1 FROM "CurriculumVersion" v
-    WHERE v."id" = OLD."curriculumVersionId" AND v."status" IN ('PUBLISHED', 'RETIRED')
-  ) THEN
-    RAISE EXCEPTION 'Grade mappings for published curriculum versions are immutable' USING ERRCODE = '55000';
+  ELSE
+    IF TG_OP = 'INSERT' THEN
+      target_version_id := NEW."curriculumVersionId";
+    ELSE
+      target_version_id := OLD."curriculumVersionId";
+    END IF;
+    IF EXISTS (
+      SELECT 1 FROM "CurriculumVersion" v
+      WHERE v."id" = target_version_id AND v."status" IN ('PUBLISHED', 'RETIRED')
+    ) THEN
+      RAISE EXCEPTION 'Grade mappings for published curriculum versions are immutable' USING ERRCODE = '55000';
+    END IF;
   END IF;
-  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 CREATE TRIGGER "CurriculumVersion_immutable_published"
-BEFORE UPDATE OR DELETE ON "CurriculumVersion"
+BEFORE INSERT OR UPDATE OR DELETE ON "CurriculumVersion"
 FOR EACH ROW EXECUTE FUNCTION sentinel_reject_published_curriculum_mutation();
 
 CREATE TRIGGER "GradeLearningArea_immutable_published"
-BEFORE UPDATE OR DELETE ON "GradeLearningArea"
+BEFORE INSERT OR UPDATE OR DELETE ON "GradeLearningArea"
 FOR EACH ROW EXECUTE FUNCTION sentinel_reject_published_curriculum_mutation();
+
+CREATE FUNCTION sentinel_require_published_curriculum_selection() RETURNS trigger AS $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM "CurriculumVersion" v
+    WHERE v."id" = NEW."curriculumVersionId" AND v."status" = 'PUBLISHED'
+  ) THEN
+    RAISE EXCEPTION 'A Council may select only a published curriculum version' USING ERRCODE = '55000';
+  END IF;
+  RETURN NEW;
+END;
+$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "CouncilCurriculum_requires_published_version"
+BEFORE INSERT OR UPDATE ON "CouncilCurriculum"
+FOR EACH ROW EXECUTE FUNCTION sentinel_require_published_curriculum_selection();

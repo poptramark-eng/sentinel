@@ -19,6 +19,20 @@ const ids = {
   membershipA: id(), membershipB: id(), membershipC: id(), classA: id(), classB: id(), classDuplicate: id(), assignmentA: id(), assignmentB: id(),
 };
 
+async function expectSqlStateFailure(sqlState, operation) {
+  await client.query("SAVEPOINT expected_sqlstate_failure");
+  try {
+    await operation();
+    assert.fail(`Expected SQLSTATE ${sqlState}.`);
+  } catch (error) {
+    if (error?.code === "ERR_ASSERTION") throw error;
+    assert.equal(error?.code, sqlState, `Unexpected database failure: ${error?.message}`);
+  } finally {
+    await client.query("ROLLBACK TO SAVEPOINT expected_sqlstate_failure");
+    await client.query("RELEASE SAVEPOINT expected_sqlstate_failure");
+  }
+}
+
 async function expectConstraintFailure(constraint, operation) {
   await client.query("SAVEPOINT expected_constraint_failure");
   try {
@@ -222,8 +236,89 @@ try {
     ),
   );
 
+  const curriculumId = id();
+  const curriculumVersionId = id();
+  const learningAreaId = id();
+  const gradeLearningAreaId = id();
+  const councilCurriculumId = id();
+  const councilGradeLearningAreaId = id();
+  await client.query(
+    `INSERT INTO "Curriculum" ("id", "code", "name", "track", "updatedAt")
+     VALUES ($1, 'KE_KICD_REGULAR_CBE_TEST', 'Kenya Regular CBE', 'REGULAR', NOW())`,
+    [curriculumId],
+  );
+  await client.query(
+    `INSERT INTO "CurriculumVersion"
+      ("id", "curriculumId", "versionLabel", "sourceTitle", "sourceUrl", "sourceRetrievedAt", "sourceSha256", "createdByAccountId", "updatedAt")
+     VALUES ($1, $2, 'review-2026', 'Synthetic source', 'https://example.test/source', NOW(), $3, $4, NOW())`,
+    [curriculumVersionId, curriculumId, "a".repeat(64), ids.accountA],
+  );
+  await client.query(
+    `INSERT INTO "LearningArea" ("id", "code", "canonicalName", "updatedAt")
+     VALUES ($1, 'TEST_MATHEMATICS', 'Mathematics', NOW())`,
+    [learningAreaId],
+  );
+  await client.query(
+    `INSERT INTO "GradeLearningArea"
+      ("id", "curriculumVersionId", "learningAreaId", "grade", "sourceLabel", "sourceUrl", "updatedAt")
+     VALUES ($1, $2, $3, 'GRADE_4', 'Mathematics', 'https://example.test/grade-4', NOW())`,
+    [gradeLearningAreaId, curriculumVersionId, learningAreaId],
+  );
+  await client.query(
+    `UPDATE "CurriculumVersion"
+     SET "status" = 'PUBLISHED', "reviewedByAccountId" = $2, "publishedAt" = NOW(), "updatedAt" = NOW()
+     WHERE "id" = $1`,
+    [curriculumVersionId, ids.accountB],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `INSERT INTO "GradeLearningArea"
+        ("id", "curriculumVersionId", "learningAreaId", "grade", "sourceLabel", "sourceUrl", "updatedAt")
+       VALUES ($1, $2, $3, 'GRADE_5', 'Mathematics', 'https://example.test/grade-5', NOW())`,
+      [id(), curriculumVersionId, learningAreaId],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "CurriculumVersion" SET "sourceTitle" = 'Tampered' WHERE "id" = $1`,
+      [curriculumVersionId],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `INSERT INTO "CouncilCurriculum" ("id", "councilId", "curriculumVersionId", "updatedAt")
+       VALUES ($1, $2, $3, NOW())`,
+      [id(), ids.councilB, curriculumVersionId],
+    ).then(() => undefined),
+  );
+  await client.query(
+    `INSERT INTO "CouncilCurriculum" ("id", "councilId", "curriculumVersionId", "updatedAt")
+     VALUES ($1, $2, $3, NOW())`,
+    [councilCurriculumId, ids.councilA, curriculumVersionId],
+  );
+  await client.query(
+    `INSERT INTO "CouncilGradeLearningArea"
+      ("id", "councilCurriculumId", "councilId", "curriculumVersionId", "gradeLearningAreaId", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, NOW())`,
+    [councilGradeLearningAreaId, councilCurriculumId, ids.councilA, curriculumVersionId, gradeLearningAreaId],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
+      `UPDATE "CurriculumVersion" SET "status" = 'RETIRED', "updatedAt" = NOW() WHERE "id" = $1`,
+      [curriculumVersionId],
+    ),
+  );
+  await client.query(
+    `UPDATE "CouncilCurriculum" SET "status" = 'SUPERSEDED', "effectiveTo" = NOW(), "updatedAt" = NOW() WHERE "id" = $1`,
+    [councilCurriculumId],
+  );
+  await client.query(
+    `UPDATE "CurriculumVersion" SET "status" = 'RETIRED', "updatedAt" = NOW() WHERE "id" = $1`,
+    [curriculumVersionId],
+  );
+
   await client.query("ROLLBACK");
-  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, active registration uniqueness, historical episodes, email-verification token ownership, school class uniqueness and one active Class Teacher per class.");
+  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, registration lifecycle, email-token ownership, class assignments, curriculum publication immutability, Council selection and version-scoped learning areas.");
 } catch (error) {
   await client.query("ROLLBACK").catch(() => undefined);
   throw error;
