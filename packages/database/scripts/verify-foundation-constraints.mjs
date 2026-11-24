@@ -535,6 +535,17 @@ try {
   );
   await expectSqlStateFailure("55000", () =>
     client.query(
+      `INSERT INTO "AssessmentMark"
+        ("id", "assessmentId", "candidateId", "assessmentLearningAreaId", "updatedAt")
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [id(), assessmentId, ids.candidateA, assessmentLearningAreaId],
+    ),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(`DELETE FROM "AssessmentMark" WHERE "id" = $1`, [ids.markA]),
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(
       `UPDATE "AssessmentCandidate" SET "learnerNameSnapshot" = 'Tampered' WHERE "id" = $1`,
       [ids.candidateA],
     ),
