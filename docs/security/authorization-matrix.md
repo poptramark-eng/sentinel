@@ -59,7 +59,7 @@ Legend:
 
 - An active `COUNCIL_ADMINISTRATOR` membership may create and manage rubric drafts and Council assessment configuration only within the Council in the route scope.
 - Rubric authors may submit their own draft for independent review. The author cannot publish their own version.
-- An active `COUNCIL_GOVERNANCE_APPROVER` membership is required to publish a rubric version. Publication records the reviewer and timestamp; published and retired rubric versions and bands are immutable.
+- An active `COUNCIL_GOVERNANCE_APPROVER` membership is required to read the independent review queue, return a submitted rubric version to its author with a reason, or publish it. Publication records the reviewer and timestamp; published and retired rubric versions and bands are immutable. The author cannot approve or return their own version.
 - Assessment creation requires an active published Council curriculum, an independently published rubric version and grade-level learning areas that are enabled, reviewed, optionality-resolved and explicitly assessment-eligible.
 - Assessment configuration snapshots are locked by database triggers after leaving `DRAFT`. Council Administrator membership alone does not grant permission to publish results.
 - Assessment configuration, scheduling, opening and closing actions are audited. Client-side route visibility is not an authorization control.
