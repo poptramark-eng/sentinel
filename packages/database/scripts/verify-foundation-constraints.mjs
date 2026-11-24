@@ -560,6 +560,13 @@ try {
   await expectSqlStateFailure("55000", () =>
     client.query(`UPDATE "AssessmentMark" SET "marks" = 70 WHERE "id" = $1`, [ids.markA]),
   );
+  await client.query(
+    `UPDATE "AssessmentCandidate" SET "status" = 'WITHDRAWN' WHERE "id" = $1`,
+    [ids.candidateA],
+  );
+  await expectSqlStateFailure("55000", () =>
+    client.query(`UPDATE "AssessmentMark" SET "marks" = 70 WHERE "id" = $1`, [ids.markA]),
+  );
   await expectSqlStateFailure("55000", () =>
     client.query(
       `UPDATE "Assessment" SET "name" = 'Tampered Assessment' WHERE "id" = $1`,
