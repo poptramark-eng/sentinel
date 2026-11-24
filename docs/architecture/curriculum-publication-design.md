@@ -1,6 +1,6 @@
 # Curriculum publication and Council configuration — technical design
 
-**Status:** Schema, publication safeguards, source-backed draft import and the initial Platform review workspace are implemented. Council selection, Council grade-area configuration and assessment snapshots remain pending. No curriculum is published or selected by default.  
+**Status:** Schema, publication safeguards, source-backed draft import, Platform review workspace, Council curriculum selection and Council grade-area configuration are implemented. Assessment snapshots and rubric governance remain pending. No curriculum is published or selected by default.  
 **Related decisions:** ADR-018 (curriculum source/versioning), ADR-020 (staff assignment scope), ADR-022 (child-data release gate).  
 **Source review:** `docs/research/kicd-curriculum-source-review.md`.  
 **Initial review data:** `data/curriculum/kicd-regular-cbe-grades-1-9-review.csv`.
@@ -16,7 +16,8 @@ The current KICD extraction is a review artifact only. It has 120 grade-to-learn
 - Implemented: versioned curriculum catalogue, grade-specific mappings, source URL/retrieval/hash provenance, author/reviewer separation, database-enforced review lifecycle and published-version immutability.
 - Implemented: Platform Administrator API and workspace for catalogue inspection, source-review CSV preview/import, per-mapping Core/Optional review notes, return-to-draft and independent publication.
 - Every imported mapping starts as `REVIEW_REQUIRED`. Unknown optionality remains `UNKNOWN`; the import does not infer assessment eligibility from source-directory labels.
-- Still pending: Council curriculum selection and grade-area configuration, rubric governance, assessment curriculum snapshots, and the final legal/operational approval of authoritative source mappings.
+- Implemented: Council Administrator-scoped published catalogue access, effective-dated selection history, Council-specific grade-area configuration and audited enablement/assessment-eligibility decisions. New selections enable mappings for configuration but leave assessment eligibility disabled.
+- Still pending: rubric governance, assessment curriculum snapshots, and the final legal/operational approval of authoritative source mappings.
 - The initial KICD review CSV remains review material, not a published or authoritative curriculum catalogue.
 
 ## 2. Goals and non-goals
@@ -104,9 +105,10 @@ stateDiagram-v2
 | POST | `/api/platform/curricula/:versionId/submit-review` | Platform Administrator | Move DRAFT to IN_REVIEW |
 | POST | `/api/platform/curricula/:versionId/return` | Independent reviewer | Return with review notes |
 | POST | `/api/platform/curricula/:versionId/publish` | Independent reviewer | Publish immutable version |
-| GET | `/api/council/curriculum` | Council Administrator | Read current Council curriculum and grade-area choices |
-| PUT | `/api/council/curriculum` | Council Administrator | Select an effective-dated published version |
-| PUT | `/api/council/curriculum/grade-areas/:grade` | Council Administrator | Enable/disable grade learning areas and assessment eligibility |
+| GET | `/api/councils/:councilId/curriculum/catalogue` | Council Administrator | List published versions available to the Council |
+| GET | `/api/councils/:councilId/curriculum` | Council Administrator | Read current Council curriculum and grade-area choices |
+| PUT | `/api/councils/:councilId/curriculum` | Council Administrator | Select a published version; supersede the previous selection and seed Council mappings |
+| PATCH | `/api/councils/:councilId/curriculum/grade-areas/:id` | Council Administrator | Configure a Council mapping, display label and assessment eligibility |
 
 The initial implementation may split preview/import into smaller operations, but it must preserve preview-before-write and distinct author/reviewer publication controls.
 
