@@ -241,10 +241,9 @@ export class RateLimitService {
   private async checkDatabase(
     checks: DatabaseRateLimitCheck[],
   ): Promise<RateLimitDecision> {
-    this.ensurePepper();
-
     if (!this.prisma) {
       if (process.env.NODE_ENV === "production") {
+        this.ensurePepper();
         throw new ServiceUnavailableException(
           "Authentication protection is temporarily unavailable.",
         );
@@ -252,6 +251,7 @@ export class RateLimitService {
       return { allowed: true };
     }
 
+    this.ensurePepper();
     const keyedChecks = checks.map((check) => ({
       ...check,
       keyHash: this.hashIdentifier(check.scope, check.identifier),
