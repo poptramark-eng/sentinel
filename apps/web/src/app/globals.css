@@ -121,6 +121,7 @@ button, input, select, textarea { font: inherit; }
   .workspace-main { max-width: none !important; padding: 0 !important; margin: 0 !important; }
   .report-screen { max-width: none !important; padding: 0 !important; margin: 0 !important; }
   .report-card { break-inside: avoid; border-color: #cbd5e1 !important; box-shadow: none !important; }
+  .report-card-table { break-inside: auto; }
   .report-table { width: 100% !important; min-width: 0 !important; border-collapse: collapse !important; font-size: 9pt !important; }
   .report-table th, .report-table td { padding: 6px 5px !important; border-bottom: 1px solid #dbe3ee !important; }
   .report-table thead { display: table-header-group; }
