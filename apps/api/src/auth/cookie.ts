@@ -29,7 +29,11 @@ export function readCookie(
     if (separator < 0) continue;
     const key = part.slice(0, separator).trim();
     if (key === name) {
-      return decodeURIComponent(part.slice(separator + 1).trim());
+      try {
+        return decodeURIComponent(part.slice(separator + 1).trim());
+      } catch {
+        return null;
+      }
     }
   }
 
@@ -63,11 +67,7 @@ export function clearAuthCookies(reply: CookieReply): void {
   ]);
 }
 
-export function hasValidCsrf(request: CookieRequest): boolean {
-  const cookie = readCookie(request, CSRF_COOKIE);
-  const header = request.headers["x-csrf-token"];
-  if (!cookie || typeof header !== "string") return false;
-
+export function hasTrustedOrigin(request: CookieRequest): boolean {
   const allowedOrigins = (process.env.WEB_ORIGIN ?? "")
     .split(",")
     .map((value) => value.trim())
@@ -75,6 +75,7 @@ export function hasValidCsrf(request: CookieRequest): boolean {
   const origin = request.headers.origin;
   const referer = request.headers.referer;
   let requestOrigin: string | null = null;
+
   try {
     requestOrigin =
       typeof origin === "string"
@@ -86,7 +87,19 @@ export function hasValidCsrf(request: CookieRequest): boolean {
     return false;
   }
 
-  if (!requestOrigin || !allowedOrigins.includes(requestOrigin)) return false;
+  return Boolean(requestOrigin && allowedOrigins.includes(requestOrigin));
+}
+
+export function hasValidCsrf(request: CookieRequest): boolean {
+  const cookie = readCookie(request, CSRF_COOKIE);
+  const header = request.headers["x-csrf-token"];
+  if (
+    !cookie ||
+    typeof header !== "string" ||
+    !hasTrustedOrigin(request)
+  ) {
+    return false;
+  }
 
   const left = Buffer.from(cookie);
   const right = Buffer.from(header);
