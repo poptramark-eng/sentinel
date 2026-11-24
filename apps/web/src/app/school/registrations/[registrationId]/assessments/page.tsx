@@ -46,7 +46,7 @@ export default function SchoolAssessmentsPage() {
 
   async function signOut() { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }
 
-  return <WorkspaceShell section="School workspace" title="Assessment submissions" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Classes", href: `/school/registrations/${registrationId}/classes` }, { label: "Assessments", href: "#assessments", active: true }]} actions={<button type="button" onClick={() => void signOut()} className="cbe-button cbe-button-secondary">Sign out</button>}>
+  return <WorkspaceShell section="School workspace" title="Assessment submissions" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Classes", href: `/school/registrations/${registrationId}/classes` }, { label: "Assessments", href: `/school/registrations/${registrationId}/assessments`, active: true }]} actions={<button type="button" onClick={() => void signOut()} className="cbe-button cbe-button-secondary">Sign out</button>}>
     
     <div className="mx-auto max-w-6xl px-5 py-9 sm:px-8 sm:py-12">
       <Link href={`/school/registrations/${registrationId}/classes`} className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--brand)]">← Back to classes</Link>
