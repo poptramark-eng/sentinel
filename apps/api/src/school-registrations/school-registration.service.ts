@@ -440,6 +440,101 @@ export class SchoolRegistrationService {
     return registration;
   }
 
+  async verifySchoolIdentifier(
+    actor: RegistrationActor,
+    registrationId: string,
+    identifierId: string,
+    reason: string,
+  ) {
+    return this.prisma.client.$transaction(async (tx) => {
+      const reviewer = await tx.userAccount.findUnique({
+        where: { id: actor.accountId },
+        select: {
+          personId: true,
+          platformOperator: { select: { status: true, role: true } },
+        },
+      });
+      if (
+        !reviewer ||
+        reviewer.personId !== actor.personId ||
+        reviewer.platformOperator?.status !== "ACTIVE" ||
+        reviewer.platformOperator.role !== "PLATFORM_ADMINISTRATOR"
+      ) {
+        throw new ForbiddenException("PlatformAdministrator access is required.");
+      }
+
+      const registration =
+        await tx.councilSchoolRegistration.findUnique({
+          where: { id: registrationId },
+          select: {
+            id: true,
+            councilId: true,
+            schoolId: true,
+            initialRegistrantPersonId: true,
+            status: true,
+            version: true,
+          },
+        });
+      if (!registration) throw new NotFoundException();
+      if (registration.initialRegistrantPersonId === actor.personId) {
+        throw new ForbiddenException("A registrant cannot verify their own school identifier.");
+      }
+      if (registration.status !== "PENDING_REVIEW") {
+        throw new UnprocessableEntityException(
+          "Only a pending registration can have an identifier verified.",
+        );
+      }
+
+      const identifier = await tx.schoolIdentifier.findFirst({
+        where: {
+          id: identifierId,
+          schoolId: registration.schoolId,
+          verifiedAt: null,
+        },
+        select: { id: true, issuer: true, normalizedValue: true },
+      });
+      if (!identifier) {
+        throw new NotFoundException("Unverified school identifier claim not found.");
+      }
+
+      await tx.schoolIdentifier.update({
+        where: { id: identifier.id },
+        data: { verifiedAt: new Date() },
+      });
+      const updated = await tx.councilSchoolRegistration.updateMany({
+        where: {
+          id: registration.id,
+          status: "PENDING_REVIEW",
+          version: registration.version,
+        },
+        data: { version: { increment: 1 } },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException("Registration changed during identifier review.");
+      }
+
+      await tx.auditEvent.create({
+        data: {
+          actorAccountId: actor.accountId,
+          councilId: registration.councilId,
+          action: "SCHOOL_IDENTIFIER_VERIFIED",
+          resourceType: "SchoolIdentifier",
+          resourceId: identifier.id,
+          decision: "ALLOW",
+          reason: reason.trim(),
+          metadata: { registrationId: registration.id, issuer: identifier.issuer },
+        },
+      });
+
+      return {
+        registrationId: registration.id,
+        identifierId: identifier.id,
+        status: "VERIFIED" as const,
+        version: registration.version + 1,
+      };
+    });
+  }
+
   async decide(
     actor: RegistrationActor,
     registrationId: string,
@@ -480,6 +575,16 @@ export class SchoolRegistrationService {
       if (!registration) throw new NotFoundException();
       if (registration.initialRegistrantPersonId === actor.personId) {
         throw new ForbiddenException("A registrant cannot review their own registration.");
+      }
+      if (decision === "APPROVED") {
+        const unverifiedIdentifiers = await tx.schoolIdentifier.count({
+          where: { schoolId: registration.schoolId, verifiedAt: null },
+        });
+        if (unverifiedIdentifiers > 0) {
+          throw new UnprocessableEntityException(
+            "Verify or reject all claimed school identifiers before approving this registration.",
+          );
+        }
       }
       if (
         registration.status !== "PENDING_REVIEW" ||
