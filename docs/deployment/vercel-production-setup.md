@@ -19,7 +19,7 @@ For public production access, attach the intended custom domain in Settings → 
 
 Create:
 - A managed PostgreSQL database (Neon or another PostgreSQL provider).
-- An Upstash Redis database for distributed authentication rate limits.
+- Optional: an Upstash Redis database for distributed authentication rate limits. When Upstash REST credentials are absent, Sentinel uses the PostgreSQL-backed rate-limit event store in Neon.
 - A Node.js API service for apps/api (for example, Render or the existing managed VM).
 - A Resend account with a verified sending domain.
 
