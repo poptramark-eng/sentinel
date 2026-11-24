@@ -48,6 +48,7 @@ The action identifiers below are proposed stable policy keys. They are not a com
 | platform.admin.provision | Developer-controlled process | **Allowed** | No public or tenant-facing endpoint. Platform administrators are provisioned only through the restricted developer process. |
 | platform.council.create | PlatformAdministrator | **Allowed** | Platform-level tenant setup only. Creates a Council root; does not create Council memberships or grant tenant roles. |
 | platform.council.geography.manage | PlatformAdministrator | **Allowed** | Create geography nodes only within an active Council; each child requires an active parent in that same Council. Mutations are audited. |
+| platform.council.geography.import | PlatformAdministrator | **Allowed** | Preview is read-only; commit revalidates and atomically creates missing nodes in one active Council. Batch is bounded, serializable and audited. |
 | school.registration.submit | Initial registrant | **Allowed** | Creates a pending CouncilSchoolRegistration; registrant is recorded as initial School Administrator, but receives no school-management capability before approval. |
 | school.registration.review | PlatformAdministrator | **Allowed** | Approve or reject initial registration. Record decision and reason. |
 | school.manage.pending | SchoolAdministrator | **Denied** | Pending/rejected registration cannot manage school data or provision users. |

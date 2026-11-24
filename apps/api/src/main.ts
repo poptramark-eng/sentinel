@@ -10,6 +10,7 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({
       trustProxy: resolveTrustedProxies(process.env.TRUST_PROXY),
+      bodyLimit: 2 * 1024 * 1024,
       logger: process.env.NODE_ENV !== "test",
     }),
   );

@@ -72,12 +72,15 @@ pnpm dev:api
 - Sign-in: http://localhost:3000/login
 - Account registration: http://localhost:3000/register
 - Email verification: http://localhost:3000/verify-email
-- School registration: http://localhost:3000/school-registration
-- Platform Council/geography setup: http://localhost:3000/platform/councils
+- School registration status: http://localhost:3000/school-registration
+- New school registration: http://localhost:3000/school-registration/new
+- Platform Council/geography setup and CSV import: http://localhost:3000/platform/councils
 - Platform school-registration review: http://localhost:3000/platform/school-registrations
 - Educator UX prototype: http://localhost:3000/prototype/marks-entry
 
 The marks-entry prototype uses synthetic data and local page state only. It does not call the API or persist marks.
+
+Platform Council setup supports manual hierarchy entry and a validated, preview-first CSV import (2,000 rows / 1 MB, atomic commit). No real Kenyan geography dataset has been loaded; validate the authoritative source before production import.
 
 The API provides first-party `POST /api/auth/register`, `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `POST /api/auth/logout-all`, and `GET /api/auth/me` endpoints, plus authenticated school-registration submission/status and PlatformAdministrator review endpoints. The web app includes account registration, explicit email verification, sign-in, a registrant-facing school registration form, an authenticated workspace, Platform Administrator Council/geography setup and a registration review workspace. Public account registration creates no role or tenant membership; the school-registration request remains a separate approval workflow. Password reset is not yet implemented.
 

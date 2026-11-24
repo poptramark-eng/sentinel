@@ -11,6 +11,6 @@ import { PlatformOperatorGuard } from "./platform-operator.guard";
 @Module({
   controllers: [AuthController],
   providers: [AuthService, AccessTokenGuard, CsrfGuard, AuthRateLimitGuard, RateLimitService, EmailService, PlatformOperatorGuard],
-  exports: [AuthService, AccessTokenGuard, CsrfGuard, RateLimitService, PlatformOperatorGuard],
+  exports: [AuthService, AccessTokenGuard, CsrfGuard, RateLimitService, PlatformOperatorGuard, EmailService],
 })
 export class AuthModule {}

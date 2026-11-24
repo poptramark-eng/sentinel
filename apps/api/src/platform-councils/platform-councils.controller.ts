@@ -13,6 +13,7 @@ import { CsrfGuard } from "../auth/csrf.guard";
 import { PlatformOperatorGuard } from "../auth/platform-operator.guard";
 import { CreateCouncilDto } from "./dto/create-council.dto";
 import { CreateGeographyNodeDto } from "./dto/create-geography-node.dto";
+import { GeographyImportDto } from "./dto/geography-import.dto";
 import { PlatformCouncilService } from "./platform-council.service";
 
 @Controller("platform/councils")
@@ -39,6 +40,27 @@ export class PlatformCouncilsController {
   @Get(":councilId/geography")
   getGeography(@Param("councilId", new ParseUUIDPipe()) councilId: string) {
     return this.councils.getGeography(councilId);
+  }
+
+  @Post(":councilId/geography/import/preview")
+  previewGeographyImport(
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Body() body: GeographyImportDto,
+  ) {
+    return this.councils.previewGeographyImport(councilId, body);
+  }
+
+  @Post(":councilId/geography/import")
+  importGeography(
+    @Req() request: AuthenticatedRequest,
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Body() body: GeographyImportDto,
+  ) {
+    return this.councils.importGeography(
+      { accountId: request.auth!.accountId },
+      councilId,
+      body,
+    );
   }
 
   @Post(":councilId/geography/nodes")

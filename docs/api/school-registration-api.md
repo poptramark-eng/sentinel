@@ -184,7 +184,8 @@ Registration approval is blocked while any identifier claim attached to the Scho
 3. Set School ACTIVE.
 4. Activate the initial SchoolAdministrator membership and set startsAt.
 5. Append immutable audit event.
-6. Enqueue a notification event for later delivery (outbox implementation is a later slice).
+
+After commit, the service attempts a best-effort Resend notification to the initial registrant's verified email. Delivery failure does not roll back the decision; the registration history remains the source of truth.
 
 ### Success — 200
 
@@ -210,7 +211,8 @@ Reason is required and must be meaningful, not a generic placeholder.
 3. Keep the canonical School and claimed identifiers for history; do not delete or merge.
 4. Keep the pending membership non-operational and mark it REVOKED.
 5. Append audit event.
-6. Enqueue a notification event for later delivery.
+
+After commit, the service attempts a best-effort Resend notification to the initial registrant's verified email. Delivery failure does not roll back the decision; the registration history remains the source of truth.
 
 Reapplication creates a new registration episode. It must not overwrite the rejected decision.
 
@@ -259,3 +261,8 @@ Each event records actor account, Person where appropriate, Council scope, regis
 10. Approval activates only the initial membership for the approved registration.
 11. Suspending one CouncilSchoolRegistration does not affect another Council's registration for the same canonical School.
 12. All high-impact transitions create immutable audit events.
+
+
+## Decision notifications
+
+After an approval or rejection commits, the API attempts to send a Resend email to the initial registrant's verified email identifier. The message contains the decision, school and Council names, review reason and a link to the registration history. Delivery failures are logged without recipient/token details and do not alter the decision. The authenticated registration-history page remains the source of truth. This is best-effort post-commit delivery; it is not a transactional outbox and must not be treated as a guaranteed legal notice until a durable retry mechanism is implemented.

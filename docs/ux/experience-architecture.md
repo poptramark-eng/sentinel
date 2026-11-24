@@ -264,4 +264,5 @@ Acceptance:
 - The UI never allows a child node to be created without a valid parent.
 - The API independently validates parent Council and active status.
 - Successful changes are auditable.
-- The interface does not imply that create-only setup includes edit/delete capabilities.
+- CSV preview performs no writes; import is all-or-nothing and has a visible size/row limit.
+- The interface does not imply that create/import setup includes edit/delete capabilities.

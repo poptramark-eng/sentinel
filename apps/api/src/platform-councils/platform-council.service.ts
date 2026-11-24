@@ -10,10 +10,23 @@ import {
   CreateGeographyNodeDto,
   GeographyNodeType,
 } from "./dto/create-geography-node.dto";
+import { GeographyImportDto } from "./dto/geography-import.dto";
 
 interface PlatformActor {
   accountId: string;
 }
+
+
+function cleanGeographyName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function geographyKey(value: string): string {
+  return cleanGeographyName(value).toLocaleLowerCase("en");
+}
+
+type ImportNode = { id: string; status: string };
+type ImportCounts = { regions: number; counties: number; subcounties: number; zones: number; clusters: number };
 
 function prismaCode(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null || !("code" in error)) {
@@ -90,6 +103,215 @@ export class PlatformCouncilService {
       },
     });
     return { council, regions };
+  }
+
+  async previewGeographyImport(councilId: string, input: GeographyImportDto) {
+    const { council, regions } = await this.getGeography(councilId);
+    if (council.status !== "ACTIVE") {
+      throw new ConflictException("Geography cannot be imported into an inactive Council.");
+    }
+
+    const regionMap = new Map<string, ImportNode>();
+    const countyMap = new Map<string, ImportNode>();
+    const subcountyMap = new Map<string, ImportNode>();
+    const zoneMap = new Map<string, ImportNode>();
+    const clusterMap = new Map<string, ImportNode>();
+    for (const region of regions) {
+      regionMap.set(geographyKey(region.name), { id: region.id, status: region.status });
+      for (const county of region.counties) {
+        countyMap.set(`${region.id}|${geographyKey(county.name)}`, { id: county.id, status: county.status });
+        for (const subcounty of county.subcounties) {
+          subcountyMap.set(`${county.id}|${geographyKey(subcounty.name)}`, { id: subcounty.id, status: subcounty.status });
+          for (const zone of subcounty.zones) {
+            zoneMap.set(`${subcounty.id}|${geographyKey(zone.name)}`, { id: zone.id, status: zone.status });
+            for (const cluster of zone.clusters) {
+              clusterMap.set(`${zone.id}|${geographyKey(cluster.name)}`, { id: cluster.id, status: cluster.status });
+            }
+          }
+        }
+      }
+    }
+
+    const counts: ImportCounts = { regions: 0, counties: 0, subcounties: 0, zones: 0, clusters: 0 };
+    const uniqueClusterPaths = new Set<string>();
+    const errors: Array<{ row: number; field: string; message: string }> = [];
+    const ensurePlanned = (
+      map: Map<string, ImportNode>,
+      key: string,
+      name: string,
+      type: keyof ImportCounts,
+      rowNumber: number,
+      field: string,
+    ): ImportNode | null => {
+      const existing = map.get(key);
+      if (existing) {
+        if (existing.status !== "ACTIVE") {
+          errors.push({ row: rowNumber, field, message: `The ${field} '${name}' already exists but is inactive. Reactivate it through an approved governance workflow before importing.` });
+          return null;
+        }
+        return existing;
+      }
+      const planned = { id: `new:${type}:${key}`, status: "ACTIVE" };
+      map.set(key, planned);
+      counts[type] += 1;
+      return planned;
+    };
+
+    input.rows.forEach((row, index) => {
+      const rowNumber = index + 2;
+      const values = {
+        region: cleanGeographyName(row.region),
+        county: cleanGeographyName(row.county),
+        subcounty: cleanGeographyName(row.subcounty),
+        zone: cleanGeographyName(row.zone),
+        cluster: cleanGeographyName(row.cluster),
+      };
+      const empty = Object.entries(values).filter(([, value]) => value.length < 2);
+      if (empty.length > 0) {
+        for (const [field] of empty) errors.push({ row: rowNumber, field, message: `${field} is required.` });
+        return;
+      }
+
+      const region = ensurePlanned(regionMap, geographyKey(values.region), values.region, "regions", rowNumber, "region");
+      if (!region) return;
+      const county = ensurePlanned(countyMap, `${region.id}|${geographyKey(values.county)}`, values.county, "counties", rowNumber, "county");
+      if (!county) return;
+      const subcounty = ensurePlanned(subcountyMap, `${county.id}|${geographyKey(values.subcounty)}`, values.subcounty, "subcounties", rowNumber, "subcounty");
+      if (!subcounty) return;
+      const zone = ensurePlanned(zoneMap, `${subcounty.id}|${geographyKey(values.zone)}`, values.zone, "zones", rowNumber, "zone");
+      if (!zone) return;
+      const cluster = ensurePlanned(clusterMap, `${zone.id}|${geographyKey(values.cluster)}`, values.cluster, "clusters", rowNumber, "cluster");
+      if (!cluster) return;
+      uniqueClusterPaths.add([
+        geographyKey(values.region),
+        geographyKey(values.county),
+        geographyKey(values.subcounty),
+        geographyKey(values.zone),
+        geographyKey(values.cluster),
+      ].join("|"));
+    });
+
+    return {
+      valid: errors.length === 0,
+      rowsReceived: input.rows.length,
+      uniqueClusters: uniqueClusterPaths.size,
+      toCreate: counts,
+      errors: errors.slice(0, 100),
+      errorsTruncated: errors.length > 100,
+    };
+  }
+
+  async importGeography(actor: PlatformActor, councilId: string, input: GeographyImportDto) {
+    const preview = await this.previewGeographyImport(councilId, input);
+    if (!preview.valid) {
+      throw new BadRequestException({
+        code: "GEOGRAPHY_IMPORT_INVALID",
+        message: "Correct the geography import errors before committing.",
+        errors: preview.errors,
+        errorsTruncated: preview.errorsTruncated,
+      });
+    }
+
+    const counts: ImportCounts = { regions: 0, counties: 0, subcounties: 0, zones: 0, clusters: 0 };
+    try {
+      await this.prisma.client.$transaction(async (tx) => {
+        const council = await tx.council.findUnique({
+          where: { id: councilId },
+          select: { id: true, status: true },
+        });
+        if (!council) throw new NotFoundException("Council not found.");
+        if (council.status !== "ACTIVE") throw new ConflictException("Geography cannot be imported into an inactive Council.");
+
+        const regionCache = new Map<string, { id: string; status: string }>();
+        const countyCache = new Map<string, { id: string; status: string }>();
+        const subcountyCache = new Map<string, { id: string; status: string }>();
+        const zoneCache = new Map<string, { id: string; status: string }>();
+        const clusterCache = new Map<string, { id: string; status: string }>();
+
+        const getOrCreateRegion = async (name: string) => {
+          const key = geographyKey(name);
+          const cached = regionCache.get(key);
+          if (cached) return cached;
+          const existing = await tx.region.findFirst({ where: { councilId, name: { equals: cleanGeographyName(name), mode: "insensitive" } }, select: { id: true, status: true } });
+          if (existing && existing.status !== "ACTIVE") throw new ConflictException(`Region '${name}' is inactive.`);
+          const node = existing ?? await tx.region.create({ data: { councilId, name: cleanGeographyName(name) }, select: { id: true, status: true } });
+          if (!existing) counts.regions += 1;
+          regionCache.set(key, node);
+          return node;
+        };
+        const getOrCreateCounty = async (regionId: string, name: string) => {
+          const key = `${regionId}|${geographyKey(name)}`;
+          const cached = countyCache.get(key);
+          if (cached) return cached;
+          const existing = await tx.county.findFirst({ where: { councilId, regionId, name: { equals: cleanGeographyName(name), mode: "insensitive" } }, select: { id: true, status: true } });
+          if (existing && existing.status !== "ACTIVE") throw new ConflictException(`County '${name}' is inactive.`);
+          const node = existing ?? await tx.county.create({ data: { councilId, regionId, name: cleanGeographyName(name) }, select: { id: true, status: true } });
+          if (!existing) counts.counties += 1;
+          countyCache.set(key, node);
+          return node;
+        };
+        const getOrCreateSubcounty = async (countyId: string, name: string) => {
+          const key = `${countyId}|${geographyKey(name)}`;
+          const cached = subcountyCache.get(key);
+          if (cached) return cached;
+          const existing = await tx.subcounty.findFirst({ where: { councilId, countyId, name: { equals: cleanGeographyName(name), mode: "insensitive" } }, select: { id: true, status: true } });
+          if (existing && existing.status !== "ACTIVE") throw new ConflictException(`Subcounty '${name}' is inactive.`);
+          const node = existing ?? await tx.subcounty.create({ data: { councilId, countyId, name: cleanGeographyName(name) }, select: { id: true, status: true } });
+          if (!existing) counts.subcounties += 1;
+          subcountyCache.set(key, node);
+          return node;
+        };
+        const getOrCreateZone = async (subcountyId: string, name: string) => {
+          const key = `${subcountyId}|${geographyKey(name)}`;
+          const cached = zoneCache.get(key);
+          if (cached) return cached;
+          const existing = await tx.zone.findFirst({ where: { councilId, subcountyId, name: { equals: cleanGeographyName(name), mode: "insensitive" } }, select: { id: true, status: true } });
+          if (existing && existing.status !== "ACTIVE") throw new ConflictException(`Zone '${name}' is inactive.`);
+          const node = existing ?? await tx.zone.create({ data: { councilId, subcountyId, name: cleanGeographyName(name) }, select: { id: true, status: true } });
+          if (!existing) counts.zones += 1;
+          zoneCache.set(key, node);
+          return node;
+        };
+        const getOrCreateCluster = async (zoneId: string, name: string) => {
+          const key = `${zoneId}|${geographyKey(name)}`;
+          const cached = clusterCache.get(key);
+          if (cached) return cached;
+          const existing = await tx.cluster.findFirst({ where: { councilId, zoneId, name: { equals: cleanGeographyName(name), mode: "insensitive" } }, select: { id: true, status: true } });
+          if (existing && existing.status !== "ACTIVE") throw new ConflictException(`Cluster '${name}' is inactive.`);
+          const node = existing ?? await tx.cluster.create({ data: { councilId, zoneId, name: cleanGeographyName(name) }, select: { id: true, status: true } });
+          if (!existing) counts.clusters += 1;
+          clusterCache.set(key, node);
+          return node;
+        };
+
+        for (const row of input.rows) {
+          const region = await getOrCreateRegion(row.region);
+          const county = await getOrCreateCounty(region.id, row.county);
+          const subcounty = await getOrCreateSubcounty(county.id, row.subcounty);
+          const zone = await getOrCreateZone(subcounty.id, row.zone);
+          await getOrCreateCluster(zone.id, row.cluster);
+        }
+
+        await tx.auditEvent.create({
+          data: {
+            actorAccountId: actor.accountId,
+            councilId,
+            action: "PLATFORM_GEOGRAPHY_IMPORTED",
+            resourceType: "CouncilGeography",
+            resourceId: councilId,
+            decision: "ALLOW",
+            metadata: { rowsReceived: input.rows.length, created: counts },
+          },
+        });
+      }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 60_000 });
+    } catch (error) {
+      if (prismaCode(error) === "P2002" || prismaCode(error) === "P2034") {
+        throw new ConflictException("The geography changed during import. Preview the file again and retry.");
+      }
+      throw error;
+    }
+
+    return { status: "IMPORTED", rowsReceived: input.rows.length, created: counts };
   }
 
   async createGeographyNode(

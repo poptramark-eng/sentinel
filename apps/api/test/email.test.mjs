@@ -82,3 +82,37 @@ test("Resend receives a server-generated verification message and escaped name",
     assert.ok(request.body.html.includes("https://sentinel.example.org/verify-email?token="));
   });
 });
+
+test("Resend receives an escaped school-registration decision notification", async () => {
+  await withEnvironment({
+    NODE_ENV: "production",
+    RESEND_API_KEY: "re_test_key",
+    EMAIL_FROM: "Sentinel <verify@example.org>",
+    WEB_APP_URL: "https://sentinel.example.org",
+  }, async () => {
+    const originalFetch = globalThis.fetch;
+    let request;
+    globalThis.fetch = async (url, init) => {
+      request = { url, body: JSON.parse(init.body) };
+      return new Response("{}", { status: 200 });
+    };
+    try {
+      await new EmailService().sendSchoolRegistrationDecisionEmail(
+        "amina@example.org",
+        "Amina",
+        "<Example School>",
+        "Western Council",
+        "REJECTED",
+        "Please provide the school's official registration evidence.",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    assert.equal(request.body.subject, "An update on your Sentinel school registration");
+    assert.deepEqual(request.body.to, ["amina@example.org"]);
+    assert.match(request.body.html, /&lt;Example School&gt;/);
+    assert.match(request.body.html, /official registration evidence/);
+    assert.ok(request.body.html.includes("https://sentinel.example.org/school-registration"));
+  });
+});

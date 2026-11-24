@@ -2,10 +2,12 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
+import { EmailService } from "../auth/email.service";
 import {
   SubmitSchoolRegistrationDto,
 } from "./dto/submit-registration.dto";
@@ -41,7 +43,12 @@ function normalizeIdentifier(value: string): string {
 
 @Injectable()
 export class SchoolRegistrationService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(SchoolRegistrationService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   async listActiveCouncils() {
     return this.prisma.client.council.findMany({
@@ -641,7 +648,7 @@ export class SchoolRegistrationService {
     decision: "APPROVED" | "REJECTED",
     input: RegistrationDecisionDto,
   ) {
-    return this.prisma.client.$transaction(async (tx) => {
+    const result = await this.prisma.client.$transaction(async (tx) => {
       const reviewer = await tx.userAccount.findUnique({
         where: { id: actor.accountId },
         select: {
@@ -767,5 +774,58 @@ export class SchoolRegistrationService {
         },
       });
     });
+
+    await this.notifyRegistrationDecision(registrationId, decision);
+    return result;
+  }
+
+  private async notifyRegistrationDecision(
+    registrationId: string,
+    decision: "APPROVED" | "REJECTED",
+  ): Promise<void> {
+    try {
+      const registration =
+        await this.prisma.client.councilSchoolRegistration.findUnique({
+          where: { id: registrationId },
+          select: {
+            submittedSchoolName: true,
+            decisionReason: true,
+            council: { select: { name: true } },
+            initialRegistrant: {
+              select: {
+                givenName: true,
+                account: {
+                  select: {
+                    loginIdentifiers: {
+                      where: { type: "EMAIL", verifiedAt: { not: null } },
+                      orderBy: { createdAt: "asc" },
+                      take: 1,
+                      select: { normalizedValue: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+      const recipient =
+        registration?.initialRegistrant.account?.loginIdentifiers[0];
+      if (!registration || !recipient?.normalizedValue) return;
+
+      await this.emailService.sendSchoolRegistrationDecisionEmail(
+        recipient.normalizedValue,
+        registration.initialRegistrant.givenName,
+        registration.submittedSchoolName,
+        registration.council.name,
+        decision,
+        registration.decisionReason ?? "No additional review note was provided.",
+      );
+    } catch {
+      // The decision is already committed. The registration history remains the
+      // source of truth; notification delivery must never roll back governance.
+      this.logger.warn(
+        "School registration decision notification failed; status remains available in the registrant workspace.",
+      );
+    }
   }
 }
