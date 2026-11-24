@@ -129,11 +129,15 @@ export default function CouncilAssessmentsPage() {
 
   async function createAssessment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const learningAreas = availableAreas.filter((area) => selectedAreas[area.id]?.selected).map((area) => ({
-      councilGradeLearningAreaId: area.id,
-      maxMarks: Number(selectedAreas[area.id].maxMarks),
-      decimalPlaces: selectedAreas[area.id].decimalPlaces,
-    }));
+    const learningAreas = availableAreas.flatMap((area) => {
+      const selected = selectedAreas[area.id];
+      if (!selected?.selected) return [];
+      return [{
+        councilGradeLearningAreaId: area.id,
+        maxMarks: Number(selected.maxMarks),
+        decimalPlaces: selected.decimalPlaces,
+      }];
+    });
     if (!learningAreas.length) {
       setError("Select at least one assessment-eligible learning area for this grade.");
       return;
