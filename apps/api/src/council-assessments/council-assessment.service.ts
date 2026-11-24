@@ -314,6 +314,37 @@ export class CouncilAssessmentService {
     });
   }
 
+  async returnRubricForChanges(actor: CouncilActor, councilId: string, versionId: string, reason: string) {
+    return this.prisma.client.$transaction(async (tx) => {
+      const version = await tx.gradingRubricVersion.findFirst({
+        where: { id: versionId, councilId, status: "IN_REVIEW" },
+        select: { id: true, createdByAccountId: true, versionLabel: true },
+      });
+      if (!version) throw new NotFoundException("Rubric version awaiting review was not found in this Council.");
+      if (version.createdByAccountId === actor.accountId) {
+        throw new ConflictException("A rubric author cannot return their own version for changes.");
+      }
+      const updated = await tx.gradingRubricVersion.update({
+        where: { id: versionId },
+        data: { status: "DRAFT" },
+        select: { id: true, status: true, versionLabel: true },
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorAccountId: actor.accountId,
+          councilId,
+          action: "GRADING_RUBRIC_RETURNED_FOR_CHANGES",
+          resourceType: "GradingRubricVersion",
+          resourceId: versionId,
+          decision: "ALLOW",
+          reason,
+          metadata: { versionLabel: updated.versionLabel },
+        },
+      });
+      return updated;
+    });
+  }
+
   async publishRubric(actor: CouncilActor, councilId: string, versionId: string) {
     return this.prisma.client.$transaction(async (tx) => {
       const version = await tx.gradingRubricVersion.findFirst({
