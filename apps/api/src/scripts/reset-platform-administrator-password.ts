@@ -47,13 +47,14 @@ async function resetPlatformAdministratorPassword(): Promise<void> {
         },
       });
 
-      if (identifiers.length !== 1) {
+      const identifier = identifiers[0];
+      if (identifiers.length !== 1 || !identifier) {
         throw new Error(
           "Expected exactly one account with this verified email. No changes made.",
         );
       }
 
-      const account = identifiers[0].account;
+      const account = identifier.account;
       const operator = account.platformOperator;
 
       if (
