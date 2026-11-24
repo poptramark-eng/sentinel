@@ -3,7 +3,6 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
-  IsEnum,
   IsInt,
   IsIn,
   IsNumber,
@@ -51,7 +50,7 @@ export class CreateAssessmentDto {
   @IsIn(["GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6", "GRADE_7", "GRADE_8", "GRADE_9"])
   grade!: "GRADE_1" | "GRADE_2" | "GRADE_3" | "GRADE_4" | "GRADE_5" | "GRADE_6" | "GRADE_7" | "GRADE_8" | "GRADE_9";
 
-  @IsEnum(["FORMATIVE", "SUMMATIVE", "PRACTICE", "OTHER"])
+  @IsIn(["FORMATIVE", "SUMMATIVE", "PRACTICE", "OTHER"])
   type!: "FORMATIVE" | "SUMMATIVE" | "PRACTICE" | "OTHER";
 
   @IsUUID()
