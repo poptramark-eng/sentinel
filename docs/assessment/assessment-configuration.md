@@ -59,6 +59,7 @@ Council Administrator membership is required for routine configuration and asses
 
 - `/council/:councilId/curriculum`: select and configure the Council curriculum.
 - `/council/:councilId/rubrics`: author rubric versions and submit them for independent review.
+- `/council/:councilId/rubric-review`: independent Governance Approver review queue and publication action.
 - `/council/:councilId/assessments`: create grade-specific assessment snapshots, schedule them, open them and close them.
 
 ## Deliberate boundaries
