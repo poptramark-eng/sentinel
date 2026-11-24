@@ -66,11 +66,13 @@ pnpm dev:api
 
 - Web: http://localhost:3000
 - API health: http://localhost:4000/api/health
+- Sign-in: http://localhost:3000/login
+- Platform school-registration review: http://localhost:3000/platform/school-registrations
 - Educator UX prototype: http://localhost:3000/prototype/marks-entry
 
 The marks-entry prototype uses synthetic data and local page state only. It does not call the API or persist marks.
 
-The API now provides first-party `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, and `GET /api/auth/me` endpoints. Login is currently limited to pre-provisioned accounts with verified email identifiers. There is no public account signup or password reset yet.
+The API now provides first-party `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, and `GET /api/auth/me` endpoints, plus authenticated school-registration submission/status and PlatformAdministrator review endpoints. The web app includes a sign-in page, basic authenticated workspace and a PlatformAdministrator registration review workspace. Login is currently limited to pre-provisioned accounts with verified email identifiers. There is no public account signup or password reset yet.
 
 After the reviewed foundation migration has been generated and applied to a local database, bootstrap the first PlatformAdministrator by building the workspace, setting `BOOTSTRAP_ADMIN_GIVEN_NAME`, `BOOTSTRAP_ADMIN_FAMILY_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD` in the local environment, then run:
 
