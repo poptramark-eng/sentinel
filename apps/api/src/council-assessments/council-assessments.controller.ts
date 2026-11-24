@@ -167,6 +167,15 @@ export class CouncilAssessmentsController {
     );
   }
 
+  @Get("assessments/:assessmentId/results")
+  @UseGuards(CouncilRubricReaderGuard)
+  getPublishedAssessmentResults(
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+  ) {
+    return this.results.published(councilId, assessmentId);
+  }
+
   @Get("assessments/:assessmentId/results/preview")
   @UseGuards(CouncilRubricReaderGuard)
   previewAssessmentResults(
