@@ -31,12 +31,12 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 
 ## Mark entry and submission
 
-- The active Class Teacher assigned to a candidate's class can access the complete open assessment mark sheet. An active Subject Teacher can access only the learning area assigned to them for that class.
+- An active Subject Teacher can access only the learning area assigned to them for that class. Class Teacher coordination does not bypass subject-level marks assignments; a teacher who holds both capabilities still receives marks access only for explicitly assigned learning areas.
 - Marks are validated against the assessment's snapshotted maximum and decimal precision.
 - Marks may be saved only while the assessment is OPEN.
-- A class submission requires every candidate/learning-area cell to contain a mark.
+- A Subject Teacher learning-area submission requires a mark for every active candidate in that class.
 - Submission records the submitting account and timestamp, creates append-only revision records and locks submitted marks.
-- Submitted marks cannot be overwritten through the normal entry endpoint. A formal correction/reopening workflow is a separate future milestone.
+- Submitted marks cannot be overwritten through the normal entry endpoint. A Council Governance Approver can return a complete class or one learning area for reasoned correction; each Subject Teacher can then correct and resubmit only their assigned learning area.
 
 ## API routes
 
@@ -47,9 +47,9 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 | POST | `/school/registrations/:registrationId/classes/:classId/learners` | School Administrator; create/reuse learner identity and enrol |
 | PATCH | `/school/registrations/:registrationId/learners/:enrollmentId/end` | School Administrator; end an enrolment with a reasoned lifecycle state |
 | GET | `/school/teaching/classes` | Teacher; list active assigned classes and their open assessments |
-| GET | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Class Teacher; read the full mark sheet, or assigned Subject Teacher with `?learningAreaId=`; read one learning area |
-| PUT | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Class Teacher or assigned Subject Teacher for the mark's learning area; save one mark |
-| POST | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks/submit` | Class Teacher; submit all class marks, or Subject Teacher with `?learningAreaId=`; submit one learning area |
+| GET | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Subject Teacher with `?learningAreaId=`; read only the assigned learning area |
+| PUT | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Subject Teacher for the mark's learning area; save one mark |
+| POST | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks/submit` | Assigned Subject Teacher with `?learningAreaId=`; submit only the assigned learning area |
 
 ## Not yet implemented
 
@@ -57,4 +57,4 @@ The implemented workflow does not yet provide bulk Excel import, a guided learne
 
 ## Subject Teacher mark access
 
-A Subject Teacher assignment is attached to a school class and a specific Council-approved curriculum learning-area mapping. It is not implied by the global TEACHER membership. For an open assessment, the teacher's assignment must match the assessment learning-area snapshot's `councilGradeLearningAreaId`. Subject Teachers can read only that learning-area column, save only its mark cells, and submit only that learning area's marks across the active class candidates. Class Teachers retain full-class mark-sheet access and may submit the complete class sheet. All marks remain subject to the same score maximum, decimal precision, revision history and immutable submission rules.
+A Subject Teacher assignment is attached to a school class and a specific Council-approved curriculum learning-area mapping. It is not implied by the global TEACHER membership. For an open assessment, the teacher's assignment must match the assessment learning-area snapshot's `councilGradeLearningAreaId`. Subject Teachers can read only that learning-area column, save only its mark cells, and submit only that learning area's marks across the active class candidates. Class Teachers retain class-coordination and assigned-roster access; marks permissions remain subject-assignment scoped. All marks remain subject to the same score maximum, decimal precision, revision history and immutable submission rules.

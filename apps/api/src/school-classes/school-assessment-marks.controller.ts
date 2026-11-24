@@ -45,7 +45,7 @@ export class SchoolAssessmentMarksController {
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
     @Query("learningAreaId") learningAreaId?: string,
   ) {
-    return this.marks.submitClassMarks(
+    return this.marks.submitLearningAreaMarks(
       { accountId: request.auth!.accountId, personId: request.auth!.personId },
       registrationId, classId, assessmentId, learningAreaId,
     );

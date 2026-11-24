@@ -32,7 +32,7 @@ The selected membership must be an active `TEACHER` membership in the same regis
 
 ## Capability boundary
 
-Class Teacher assignment is class-scoped and grants access to the assigned class roster and complete open assessment mark sheet. It does not grant school administration, access to other classes or result-governance permissions. Subject Teacher assignment is a separate learning-area-scoped capability described below. No learner enrollment or learner personal data is created by these assignment endpoints.
+Class Teacher assignment is class-scoped and grants class-coordination and assigned-roster access. It does not grant marks entry, school administration, access to other classes or result-governance permissions. Subject Teacher assignment is a separate learning-area-scoped capability described below. No learner enrollment or learner personal data is created by these assignment endpoints.
 
 ## Subject Teacher assignments
 
@@ -46,4 +46,4 @@ Subject Teacher assignments are class-scoped and tied to a specific enabled `Cou
 
 The POST body is `{ "membershipId": "...", "councilGradeLearningAreaId": "..." }`. The API verifies the active School Administrator membership, approved school and Council, class grade, active teacher membership, effective Council curriculum selection, published curriculum version, and enabled grade-to-learning-area mapping in a serializable transaction. Database composite foreign keys and a partial unique index enforce mapping ownership and one active assignment per class/learning area. Every assignment and end operation is audited.
 
-A Class Teacher retains access to all learning areas for the assigned class. A Subject Teacher can read, save and submit marks only for the assigned learning area. The mark-sheet GET and submit routes accept `learningAreaId` (the assessment's learning-area snapshot ID) to scope the operation. An unqualified mark-sheet request remains Class-Teacher-only.
+A Class Teacher does not bypass learning-area assignments. A Subject Teacher can read, save and submit marks only for the explicitly assigned learning area. The mark-sheet GET and submit routes accept `learningAreaId` (the assessment's learning-area snapshot ID) to scope the operation. A Subject Teacher must supply `learningAreaId`; an unqualified mark-sheet request is denied.

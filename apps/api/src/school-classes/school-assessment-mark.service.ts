@@ -77,6 +77,9 @@ export class SchoolAssessmentMarkService {
   }
 
   private async assertTeacherAccess(client: Pick<PrismaService["client"], "schoolMembership">, actor: TeacherActor, schoolClass: { id: string; registrationId: string; councilId: string }, councilGradeLearningAreaId?: string) {
+    if (!councilGradeLearningAreaId) {
+      throw new ForbiddenException("Teacher mark access requires an explicit Subject Teacher assignment for one learning area. Class coordination alone does not grant marks access.");
+    }
     const now = new Date();
     const membership = await client.schoolMembership.findFirst({
       where: {
@@ -90,22 +93,18 @@ export class SchoolAssessmentMarkService {
         staffAssignments: {
           some: {
             schoolClassId: schoolClass.id,
+            type: "SUBJECT_TEACHER",
+            councilGradeLearningAreaId,
             status: "ACTIVE",
             endsAt: null,
             startsAt: { lte: now },
-            OR: [
-              { type: "CLASS_TEACHER" },
-              ...(councilGradeLearningAreaId ? [{ type: "SUBJECT_TEACHER" as const, councilGradeLearningAreaId }] : []),
-            ],
           },
         },
       },
       select: { id: true },
     });
     if (!membership) {
-      throw new ForbiddenException(councilGradeLearningAreaId
-        ? "Only the assigned Class Teacher or Subject Teacher for this learning area may manage these marks."
-        : "Only the active Class Teacher assigned to this class may access the complete mark sheet.");
+      throw new ForbiddenException("Only the active Subject Teacher assigned to this learning area may manage its marks. Class Teacher coordination does not bypass subject assignments.");
     }
   }
 
@@ -127,11 +126,12 @@ export class SchoolAssessmentMarkService {
   async getMarkSheet(actor: TeacherActor, registrationId: string, classId: string, assessmentId: string, learningAreaId?: string) {
     const schoolClass = await this.resolveSchoolClass(this.prisma.client, registrationId, classId);
     const assessment = await this.resolveOpenAssessment(this.prisma.client, schoolClass.councilId, schoolClass, assessmentId);
-    const requestedArea = learningAreaId ? await this.prisma.client.assessmentLearningArea.findFirst({
+    if (!learningAreaId) throw new ForbiddenException("A Subject Teacher must open marks for an explicitly assigned learning area.");
+    const requestedArea = await this.prisma.client.assessmentLearningArea.findFirst({
       where: { id: learningAreaId, assessmentId }, select: { id: true, councilGradeLearningAreaId: true },
-    }) : null;
-    if (learningAreaId && !requestedArea) throw new NotFoundException("The learning area is not part of this assessment.");
-    await this.assertTeacherAccess(this.prisma.client, actor, schoolClass, requestedArea?.councilGradeLearningAreaId);
+    });
+    if (!requestedArea) throw new NotFoundException("The learning area is not part of this assessment.");
+    await this.assertTeacherAccess(this.prisma.client, actor, schoolClass, requestedArea.councilGradeLearningAreaId);
     const areaWhere = { assessmentId, ...(learningAreaId ? { id: learningAreaId } : {}) };
     const [areas, candidates] = await Promise.all([
       this.prisma.client.assessmentLearningArea.findMany({
@@ -228,13 +228,14 @@ export class SchoolAssessmentMarkService {
     }
   }
 
-  async submitClassMarks(actor: TeacherActor, registrationId: string, classId: string, assessmentId: string, learningAreaId?: string) {
+  async submitLearningAreaMarks(actor: TeacherActor, registrationId: string, classId: string, assessmentId: string, learningAreaId?: string) {
     return this.prisma.client.$transaction(async (tx) => {
       const schoolClass = await this.resolveSchoolClass(tx, registrationId, classId);
       await this.resolveOpenAssessment(tx, schoolClass.councilId, schoolClass, assessmentId);
-      const requestedArea = learningAreaId ? await tx.assessmentLearningArea.findFirst({ where: { id: learningAreaId, assessmentId }, select: { id: true, councilGradeLearningAreaId: true, canonicalName: true } }) : null;
-      if (learningAreaId && !requestedArea) throw new NotFoundException("The learning area is not part of this assessment.");
-      await this.assertTeacherAccess(tx, actor, schoolClass, requestedArea?.councilGradeLearningAreaId);
+      if (!learningAreaId) throw new ForbiddenException("A Subject Teacher must submit marks for an explicitly assigned learning area.");
+      const requestedArea = await tx.assessmentLearningArea.findFirst({ where: { id: learningAreaId, assessmentId }, select: { id: true, councilGradeLearningAreaId: true, canonicalName: true } });
+      if (!requestedArea) throw new NotFoundException("The learning area is not part of this assessment.");
+      await this.assertTeacherAccess(tx, actor, schoolClass, requestedArea.councilGradeLearningAreaId);
       const candidates = await tx.assessmentCandidate.findMany({
         where: { assessmentId, registrationId, schoolClassId: classId, status: "ACTIVE" },
         select: { id: true, marks: { ...(learningAreaId ? { where: { assessmentLearningAreaId: learningAreaId } } : {}), select: { id: true, marks: true, status: true } } },
