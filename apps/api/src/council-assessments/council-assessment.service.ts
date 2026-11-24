@@ -72,6 +72,17 @@ export class CouncilAssessmentService {
     });
   }
 
+  async listRubricReviewQueue(councilId: string) {
+    return this.prisma.client.gradingRubricVersion.findMany({
+      where: { councilId, status: "IN_REVIEW" },
+      orderBy: [{ createdAt: "asc" }],
+      include: {
+        rubric: { select: { id: true, code: true, name: true } },
+        bands: { orderBy: [{ sortOrder: "asc" }] },
+      },
+    });
+  }
+
   async createRubric(actor: CouncilActor, councilId: string, input: CreateRubricDto) {
     validateRubricBands(input.scaleType, input.minScore, input.maxScore, input.bands);
     try {
