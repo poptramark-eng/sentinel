@@ -80,6 +80,7 @@ interface GradeLearningArea {
 interface CurriculumVersionDetail extends CurriculumVersionSummary {
   curriculum: { id: string; code: string; name: string; track: string };
   gradeLearningAreas: GradeLearningArea[];
+  auditEvents: Array<{ action: string; reason?: string | null; createdAt: string; resourceId?: string }>;
 }
 
 const statusLabels: Record<VersionStatus, string> = {
@@ -719,6 +720,21 @@ export default function PlatformCurriculaPage() {
                         <div><dt className="text-[#94a3b8]">Created</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.createdAt)}</dd></div>
                         <div><dt className="text-[#94a3b8]">Published</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.publishedAt)}</dd></div>
                       </dl>
+                    </div>
+
+                    <div className="rounded-xl border border-[#e8edf4] p-4">
+                      <h3 className="text-xs font-semibold text-[#172b4d]">Review activity</h3>
+                      {detail.auditEvents.length === 0 ? <p className="mt-2 text-[11px] text-[#94a3b8]">No review activity recorded yet.</p> : (
+                        <ol className="mt-3 space-y-3">
+                          {detail.auditEvents.map((event, index) => (
+                            <li key={`${event.action}-${event.createdAt}-${index}`} className="border-l-2 border-[#dbe3ee] pl-3">
+                              <p className="text-[10px] font-semibold text-[#52647d]">{event.action.replaceAll("_", " ").toLowerCase()}</p>
+                              <p className="mt-1 text-[10px] text-[#94a3b8]">{dateLabel(event.createdAt)}</p>
+                              {event.reason ? <p className="mt-1 text-[11px] leading-5 text-[#64748b]">{event.reason}</p> : null}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
                     </div>
 
                     {detail.status === "DRAFT" ? (

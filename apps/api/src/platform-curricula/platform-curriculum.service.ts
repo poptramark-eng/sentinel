@@ -192,7 +192,29 @@ export class PlatformCurriculumService {
       },
     });
     if (!version) throw new NotFoundException("Curriculum version not found.");
-    return version;
+    const mappingIds = version.gradeLearningAreas.map((mapping) => mapping.id);
+    const [versionEvents, mappingEvents] = await Promise.all([
+      this.prisma.client.auditEvent.findMany({
+        where: { resourceType: "CurriculumVersion", resourceId: versionId },
+        select: { action: true, reason: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      }),
+      mappingIds.length > 0
+        ? this.prisma.client.auditEvent.findMany({
+            where: { resourceType: "GradeLearningArea", resourceId: { in: mappingIds } },
+            select: { action: true, reason: true, createdAt: true, resourceId: true },
+            orderBy: { createdAt: "desc" },
+            take: 100,
+          })
+        : Promise.resolve([]),
+    ]);
+    return {
+      ...version,
+      auditEvents: [...versionEvents, ...mappingEvents]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, 100),
+    };
   }
 
   async reviewGradeLearningArea(
