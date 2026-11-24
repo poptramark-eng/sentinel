@@ -1,4 +1,4 @@
-import test from "node:test";
+import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   hashPassword,
@@ -46,8 +46,10 @@ test("access JWT validates signature, issuer, audience and expiry", () => {
     null,
   );
 
-  const tampered = token.replace("sentinel-web", "other-audience");
-  assert.equal(verifyAccessToken(tampered, 1_800_000_100), null);
+  const tokenParts = token.split(".");
+  const signature = tokenParts[2] ?? "";
+  tokenParts[2] = `${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`;
+  assert.equal(verifyAccessToken(tokenParts.join("."), 1_800_000_100), null);
 });
 
 test("refresh tokens are high entropy and stored as keyed hashes", () => {
