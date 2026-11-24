@@ -137,3 +137,44 @@ test("curriculum author cannot publish their own version", async () => {
     (error) => error.getStatus() === 409 && /cannot publish their own/.test(error.message),
   );
 });
+
+test("draft mapping corrections are version-scoped and audited", async () => {
+  const audit = [];
+  let updatedInput;
+  const tx = {
+    curriculumVersion: {
+      updateMany: async () => ({ count: 1 }),
+    },
+    gradeLearningArea: {
+      findFirst: async () => ({
+        id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        sourceLabel: "Old label",
+        sourceUrl: "https://example.test/old",
+        sortOrder: 1,
+        grade: "GRADE_4",
+      }),
+      update: async ({ data }) => {
+        updatedInput = data;
+        return { id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", ...data };
+      },
+    },
+    auditEvent: {
+      create: async ({ data }) => { audit.push(data); return data; },
+    },
+  };
+  const service = new PlatformCurriculumService({
+    client: { $transaction: async (callback) => callback(tx) },
+  });
+
+  const result = await service.updateGradeLearningArea(actor, versionId, "dddddddd-dddd-4ddd-8ddd-dddddddddddd", {
+    sourceLabel: "Corrected source label",
+    sourceUrl: "https://example.test/corrected",
+    sortOrder: 4,
+    reason: "Corrected against the cited grade-level source document.",
+  });
+
+  assert.equal(result.sourceLabel, "Corrected source label");
+  assert.equal(updatedInput.sortOrder, 4);
+  assert.equal(audit[0].action, "PLATFORM_CURRICULUM_GRADE_AREA_EDITED");
+  assert.equal(audit[0].reason, "Corrected against the cited grade-level source document.");
+});

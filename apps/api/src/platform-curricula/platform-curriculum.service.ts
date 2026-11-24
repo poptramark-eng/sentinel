@@ -24,7 +24,7 @@ export class PlatformCurriculumService {
     input.rows.forEach((row, index) => {
       const key = `${row.grade}|${row.learningAreaCode}`;
       if (seen.has(key)) {
-        errors.push({ row: index + 1, message: `Duplicate learning area code '${row.learningAreaCode}' for ${row.grade.replace("_", " ")}.` });
+        errors.push({ row: index + 2, message: `Duplicate learning area code '${row.learningAreaCode}' for ${row.grade.replace("_", " ")}.` });
       }
       seen.add(key);
       learningAreaCodes.add(row.learningAreaCode);
