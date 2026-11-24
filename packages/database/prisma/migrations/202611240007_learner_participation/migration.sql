@@ -143,8 +143,17 @@ BEGIN
     target_assessment_id := OLD."assessmentId";
   END IF;
   SELECT "status" INTO target_status FROM "Assessment" WHERE "id" = target_assessment_id;
+
+  IF TG_OP = 'UPDATE'
+    AND OLD."status" = 'ACTIVE'
+    AND NEW."status" = 'WITHDRAWN'
+    AND target_status IN ('SCHEDULED', 'OPEN', 'CLOSED')
+    AND (to_jsonb(NEW) - 'status') IS NOT DISTINCT FROM (to_jsonb(OLD) - 'status') THEN
+    RETURN NEW;
+  END IF;
+
   IF target_status IS DISTINCT FROM 'DRAFT' THEN
-    RAISE EXCEPTION 'Assessment candidate roster is immutable after scheduling' USING ERRCODE = '55000';
+    RAISE EXCEPTION 'Assessment candidate snapshots are immutable after scheduling; only an active candidate may be withdrawn' USING ERRCODE = '55000';
   END IF;
   IF TG_OP = 'UPDATE' AND NEW."assessmentId" <> OLD."assessmentId" THEN
     SELECT "status" INTO target_status FROM "Assessment" WHERE "id" = NEW."assessmentId";
@@ -178,17 +187,22 @@ FOR EACH ROW EXECUTE FUNCTION sentinel_require_assessment_roster();
 CREATE FUNCTION sentinel_validate_assessment_mark() RETURNS trigger AS $function$
 DECLARE
   target_status "AssessmentStatus";
-  target_max_marks DECIMAL(10,4);
+  target_candidate_status "AssessmentCandidateStatus";
+  target_max_marks DECIMAL(8,2);
   target_decimal_places INTEGER;
 BEGIN
-  SELECT a."status", la."maxMarks", la."decimalPlaces"
-    INTO target_status, target_max_marks, target_decimal_places
+  SELECT a."status", c."status", la."maxMarks", la."decimalPlaces"
+    INTO target_status, target_candidate_status, target_max_marks, target_decimal_places
   FROM "Assessment" a
+  JOIN "AssessmentCandidate" c ON c."assessmentId" = a."id" AND c."id" = NEW."candidateId"
   JOIN "AssessmentLearningArea" la ON la."assessmentId" = a."id"
   WHERE a."id" = NEW."assessmentId" AND la."id" = NEW."assessmentLearningAreaId";
 
   IF target_status IS NULL THEN
     RAISE EXCEPTION 'Assessment mark references an invalid assessment learning area' USING ERRCODE = '23503';
+  END IF;
+  IF target_candidate_status <> 'ACTIVE' THEN
+    RAISE EXCEPTION 'Marks cannot be entered for a withdrawn assessment candidate' USING ERRCODE = '55000';
   END IF;
 
   IF TG_OP = 'INSERT' THEN
