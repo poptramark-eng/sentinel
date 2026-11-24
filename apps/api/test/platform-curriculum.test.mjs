@@ -178,3 +178,35 @@ test("draft mapping corrections are version-scoped and audited", async () => {
   assert.equal(audit[0].action, "PLATFORM_CURRICULUM_GRADE_AREA_EDITED");
   assert.equal(audit[0].reason, "Corrected against the cited grade-level source document.");
 });
+
+
+test("curriculum author cannot review their own grade mappings", async () => {
+  let mappingLookupCalled = false;
+  const tx = {
+    curriculumVersion: {
+      findUnique: async () => ({
+        id: versionId,
+        status: "IN_REVIEW",
+        createdByAccountId: actor.accountId,
+      }),
+    },
+    gradeLearningArea: {
+      findFirst: async () => {
+        mappingLookupCalled = true;
+        return { id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" };
+      },
+    },
+  };
+  const service = new PlatformCurriculumService({
+    client: { $transaction: async (callback) => callback(tx) },
+  });
+
+  await assert.rejects(
+    service.reviewGradeLearningArea(actor, versionId, "dddddddd-dddd-4ddd-8ddd-dddddddddddd", {
+      optionality: "CORE",
+      reason: "Confirmed against the official grade-level curriculum document.",
+    }),
+    (error) => error.getStatus() === 409 && /cannot review their own mappings/.test(error.message),
+  );
+  assert.equal(mappingLookupCalled, false);
+});
