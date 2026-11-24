@@ -709,10 +709,10 @@ export class CouncilAssessmentService {
     try {
       return await this.prisma.client.$transaction(async (tx) => {
         const assessment = await tx.assessment.findFirst({
-          where: { id: assessmentId, councilId, status: { in: ["CLOSED", "OPEN"] } },
+          where: { id: assessmentId, councilId, status: { in: ["CLOSED", "OPEN", "RELEASED"] } },
           select: { id: true, grade: true, academicYear: true, status: true },
         });
-        if (!assessment) throw new NotFoundException("A closed assessment or active correction window was not found in this Council.");
+        if (!assessment) throw new NotFoundException("A closed, released or active correction assessment was not found in this Council.");
         if (assessment.status === "OPEN" && await tx.assessmentMark.count({ where: { assessmentId, status: "RETURNED" } }) === 0) {
           throw new ConflictException("Additional governance returns are allowed only during an already-open correction window.");
         }
@@ -740,6 +740,33 @@ export class CouncilAssessmentService {
           throw new ConflictException("A class can be returned only when every mark has been submitted.");
         }
 
+        let supersededVersion: number | null = null;
+        if (assessment.status === "RELEASED") {
+          const activePublication = await tx.assessmentResultPublication.findFirst({
+            where: { assessmentId, councilId, status: "PUBLISHED" },
+            select: { id: true, version: true },
+          });
+          if (!activePublication) {
+            throw new ConflictException("The released assessment has no active publication to supersede. Governance must reconcile its publication history before corrections.");
+          }
+          await tx.assessmentResultPublication.update({
+            where: { id: activePublication.id },
+            data: { status: "SUPERSEDED" },
+          });
+          supersededVersion = activePublication.version;
+          await tx.auditEvent.create({
+            data: {
+              actorAccountId: actor.accountId,
+              councilId,
+              action: "ASSESSMENT_RESULTS_SUPERSEDED_FOR_CORRECTION",
+              resourceType: "AssessmentResultPublication",
+              resourceId: activePublication.id,
+              decision: "ALLOW",
+              reason: normalizedReason,
+              metadata: { assessmentId, version: activePublication.version },
+            },
+          });
+        }
         await tx.assessmentMark.updateMany({
           where: { id: { in: marks.map((mark) => mark.id) }, status: "SUBMITTED" },
           data: { status: "RETURNED", returnedReason: normalizedReason, submittedAt: null },
@@ -769,13 +796,13 @@ export class CouncilAssessmentService {
           throw new ConflictException("The school's assessment submission is not in a returnable state.");
         }
 
-        const reopened = assessment.status === "CLOSED"
-          ? await tx.assessment.update({
+        const reopened = assessment.status === "OPEN"
+          ? { id: assessmentId, status: "OPEN" as const }
+          : await tx.assessment.update({
               where: { id: assessmentId },
               data: { status: "OPEN" },
               select: { id: true, status: true },
-            })
-          : { id: assessmentId, status: "OPEN" as const };
+            });
         await tx.auditEvent.create({
           data: {
             actorAccountId: actor.accountId,
@@ -785,10 +812,10 @@ export class CouncilAssessmentService {
             resourceId: assessmentId,
             decision: "ALLOW",
             reason: normalizedReason,
-            metadata: { classId, registrationId: schoolClass.registrationId, candidateCount: candidates.length, markCount: marks.length },
+            metadata: { classId, registrationId: schoolClass.registrationId, candidateCount: candidates.length, markCount: marks.length, supersededVersion },
           },
         });
-        return { ...reopened, classId, candidateCount: candidates.length, markCount: marks.length, reason: normalizedReason };
+        return { ...reopened, classId, candidateCount: candidates.length, markCount: marks.length, supersededVersion, reason: normalizedReason };
       }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 30_000 });
     } catch (error) {
       if (prismaCode(error) === "P2034") {
@@ -813,10 +840,10 @@ export class CouncilAssessmentService {
     try {
       return await this.prisma.client.$transaction(async (tx) => {
         const assessment = await tx.assessment.findFirst({
-          where: { id: assessmentId, councilId, status: { in: ["CLOSED", "OPEN"] } },
+          where: { id: assessmentId, councilId, status: { in: ["CLOSED", "OPEN", "RELEASED"] } },
           select: { id: true, grade: true, academicYear: true, status: true },
         });
-        if (!assessment) throw new NotFoundException("A closed assessment or active correction window was not found in this Council.");
+        if (!assessment) throw new NotFoundException("A closed, released or active correction assessment was not found in this Council.");
         if (assessment.status === "OPEN" && await tx.assessmentMark.count({ where: { assessmentId, status: "RETURNED" } }) === 0) {
           throw new ConflictException("Additional governance returns are allowed only during an already-open correction window.");
         }
@@ -847,6 +874,33 @@ export class CouncilAssessmentService {
           throw new ConflictException("A learning area can be returned only when every candidate mark has been submitted.");
         }
 
+        let supersededVersion: number | null = null;
+        if (assessment.status === "RELEASED") {
+          const activePublication = await tx.assessmentResultPublication.findFirst({
+            where: { assessmentId, councilId, status: "PUBLISHED" },
+            select: { id: true, version: true },
+          });
+          if (!activePublication) {
+            throw new ConflictException("The released assessment has no active publication to supersede. Governance must reconcile its publication history before corrections.");
+          }
+          await tx.assessmentResultPublication.update({
+            where: { id: activePublication.id },
+            data: { status: "SUPERSEDED" },
+          });
+          supersededVersion = activePublication.version;
+          await tx.auditEvent.create({
+            data: {
+              actorAccountId: actor.accountId,
+              councilId,
+              action: "ASSESSMENT_RESULTS_SUPERSEDED_FOR_CORRECTION",
+              resourceType: "AssessmentResultPublication",
+              resourceId: activePublication.id,
+              decision: "ALLOW",
+              reason: normalizedReason,
+              metadata: { assessmentId, version: activePublication.version },
+            },
+          });
+        }
         await tx.assessmentMark.updateMany({
           where: { id: { in: marks.map((mark) => mark.id) }, status: "SUBMITTED" },
           data: { status: "RETURNED", returnedReason: normalizedReason, submittedAt: null },
@@ -876,13 +930,13 @@ export class CouncilAssessmentService {
           throw new ConflictException("The school's assessment submission is not in a returnable state.");
         }
 
-        const reopened = assessment.status === "CLOSED"
-          ? await tx.assessment.update({
+        const reopened = assessment.status === "OPEN"
+          ? { id: assessmentId, status: "OPEN" as const }
+          : await tx.assessment.update({
               where: { id: assessmentId },
               data: { status: "OPEN" },
               select: { id: true, status: true },
-            })
-          : { id: assessmentId, status: "OPEN" as const };
+            });
         await tx.auditEvent.create({
           data: {
             actorAccountId: actor.accountId,
@@ -892,10 +946,10 @@ export class CouncilAssessmentService {
             resourceId: assessmentId,
             decision: "ALLOW",
             reason: normalizedReason,
-            metadata: { classId, registrationId: schoolClass.registrationId, learningAreaId: area.id, councilGradeLearningAreaId: area.councilGradeLearningAreaId, learningAreaName: area.canonicalName, candidateCount: candidates.length, markCount: marks.length },
+            metadata: { classId, registrationId: schoolClass.registrationId, learningAreaId: area.id, councilGradeLearningAreaId: area.councilGradeLearningAreaId, learningAreaName: area.canonicalName, candidateCount: candidates.length, markCount: marks.length, supersededVersion },
           },
         });
-        return { ...reopened, classId, learningAreaId: area.id, candidateCount: candidates.length, markCount: marks.length, reason: normalizedReason };
+        return { ...reopened, classId, learningAreaId: area.id, candidateCount: candidates.length, markCount: marks.length, supersededVersion, reason: normalizedReason };
       }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 30_000 });
     } catch (error) {
       if (prismaCode(error) === "P2034") {

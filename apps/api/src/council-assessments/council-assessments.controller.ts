@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Req,
@@ -194,6 +195,25 @@ export class CouncilAssessmentsController {
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
   ) {
     return this.results.published(councilId, assessmentId);
+  }
+
+  @Get("assessments/:assessmentId/results/history")
+  @UseGuards(CouncilRubricReaderGuard)
+  getAssessmentResultPublicationHistory(
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+  ) {
+    return this.results.history(councilId, assessmentId);
+  }
+
+  @Get("assessments/:assessmentId/results/versions/:version")
+  @UseGuards(CouncilRubricReaderGuard)
+  getAssessmentResultPublicationVersion(
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+    @Param("version", new ParseIntPipe()) version: number,
+  ) {
+    return this.results.version(councilId, assessmentId, version);
   }
 
   @Get("assessments/:assessmentId/results/preview")

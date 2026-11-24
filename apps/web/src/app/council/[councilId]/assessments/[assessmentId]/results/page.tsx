@@ -29,7 +29,7 @@ type Preview = {
   truncated: boolean;
 };
 type Published = {
-  publication: { id: string; version: number; publishedAt: string; candidateCount: number; schoolCount: number };
+  publication: { id: string; version: number; status: "PUBLISHED" | "SUPERSEDED"; publishedAt: string; candidateCount: number; schoolCount: number };
   results: {
     id: string; rank: number; learnerNumberSnapshot: string; learnerNameSnapshot: string;
     schoolNameSnapshot: string; schoolClassNameSnapshot: string; totalMarks: string; maximumMarks: string; percentage: string;
@@ -57,6 +57,8 @@ export default function AssessmentResultsPage() {
   const router = useRouter();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [published, setPublished] = useState<Published | null>(null);
+  const [publicationHistory, setPublicationHistory] = useState<{ id: string; version: number; status: "PUBLISHED" | "SUPERSEDED"; publishedAt: string; candidateCount: number; schoolCount: number; resultCount: number }[]>([]);
+  const [assessmentStatus, setAssessmentStatus] = useState<string>("CLOSED");
   const [canPublish, setCanPublish] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -65,26 +67,31 @@ export default function AssessmentResultsPage() {
   const [candidateSearch, setCandidateSearch] = useState("");
 
   const load = useCallback(async () => {
-    const [publicationResponse, assessmentResponse] = await Promise.all([
+    const [publicationResponse, assessmentResponse, historyResponse] = await Promise.all([
       apiRequest(`/councils/${councilId}/assessments/${assessmentId}/results`),
       apiRequest(`/councils/${councilId}/assessments`),
+      apiRequest(`/councils/${councilId}/assessments/${assessmentId}/results/history`),
     ]);
-    if ([publicationResponse, assessmentResponse].some((response) => response.status === 401)) {
+    if ([publicationResponse, assessmentResponse, historyResponse].some((response) => response.status === 401)) {
       router.replace("/login");
       return;
     }
-    if ([publicationResponse, assessmentResponse].some((response) => response.status === 403)) {
+    if ([publicationResponse, assessmentResponse, historyResponse].some((response) => response.status === 403)) {
       router.replace("/workspace");
       return;
     }
-    if (!publicationResponse.ok || !assessmentResponse.ok) throw new Error("Results workspace could not be loaded.");
-    const [publication, assessmentData] = await Promise.all([
+    if (!publicationResponse.ok || !assessmentResponse.ok || !historyResponse.ok) throw new Error("Results workspace could not be loaded.");
+    const [publication, assessmentData, historyData] = await Promise.all([
       publicationResponse.json() as Promise<Published | null>,
-      assessmentResponse.json() as Promise<{ canModerate: boolean }>,
+      assessmentResponse.json() as Promise<{ canModerate: boolean; assessments: { id: string; status: string }[] }>,
+      historyResponse.json() as Promise<{ publications: { id: string; version: number; status: "PUBLISHED" | "SUPERSEDED"; publishedAt: string; candidateCount: number; schoolCount: number; resultCount: number }[] }>,
     ]);
+    const currentAssessment = assessmentData.assessments.find((item) => item.id === assessmentId);
+    setAssessmentStatus(currentAssessment?.status ?? "CLOSED");
     setPublished(publication);
+    setPublicationHistory(historyData.publications);
     setCanPublish(assessmentData.canModerate);
-    if (!publication) {
+    if (!publication && currentAssessment?.status === "CLOSED") {
       const response = await apiRequest(`/councils/${councilId}/assessments/${assessmentId}/results/preview`);
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(messageOf(payload, "A result preview is not available. Confirm that the assessment is closed and all active candidates have submitted marks."));
@@ -159,6 +166,20 @@ export default function AssessmentResultsPage() {
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = "sentinel-assessment-results.csv"; anchor.click(); URL.revokeObjectURL(url);
   }
 
+  async function viewPublicationVersion(version: number) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await apiRequest(`/councils/${councilId}/assessments/${assessmentId}/results/versions/${version}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(messageOf(payload, "The historical publication could not be loaded."));
+      setPublished(payload as Published);
+      setPreview(null);
+      setNotice(`Viewing immutable publication version ${version}. Its historical results have not been changed.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The historical publication could not be loaded.");
+    } finally { setBusy(false); }
+  }
+
   async function publish() {
     if (!window.confirm("Publish these assessment results? Published result snapshots are immutable.")) return;
     setBusy(true); setError(""); setNotice("");
@@ -182,7 +203,7 @@ export default function AssessmentResultsPage() {
         </div>
       </header>
       <div className="report-screen mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
-        <div className="report-print-header"><p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color: "#2457c5" }}>SENTINEL · COUNCIL ASSESSMENT REPORT</p><h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 8 }}>{published ? "Official assessment results" : "Assessment results preview"}</h1><p style={{ fontSize: 11, marginTop: 4 }}>{published ? `Publication v${published.publication.version} · Published ${dateTime(published.publication.publishedAt)}` : "PREVIEW · NOT PUBLISHED"}</p></div><div className="no-print flex flex-wrap items-center justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Assessment outcomes</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d] sm:text-3xl">Results review</h1></div>{published ? <button type="button" onClick={() => window.print()} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1e49a6]">Print official report ↗</button> : null}</div>
+        <div className="report-print-header"><p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color: "#2457c5" }}>SENTINEL · COUNCIL ASSESSMENT REPORT</p><h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 8 }}>{published ? (published.publication.status === "PUBLISHED" ? "Official assessment results" : "Historical assessment results · Superseded") : "Assessment results preview"}</h1><p style={{ fontSize: 11, marginTop: 4 }}>{published ? `Publication v${published.publication.version} · Published ${dateTime(published.publication.publishedAt)}` : "PREVIEW · NOT PUBLISHED"}</p></div><div className="no-print flex flex-wrap items-center justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Assessment outcomes</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d] sm:text-3xl">Results review</h1></div>{published ? <button type="button" onClick={() => window.print()} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1e49a6]">{published.publication.status === "PUBLISHED" ? "Print official report" : "Print historical snapshot"} ↗</button> : null}</div>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[#64748b]">Review candidate totals, grade-wide ranks and school performance before publication. Calculations use the assessment&apos;s frozen candidate, learning-area and rubric snapshots.</p>
         {error ? <div role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
         {notice ? <div role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div> : null}
@@ -221,8 +242,13 @@ export default function AssessmentResultsPage() {
         {!loading && published ? <section className="report-card mt-6 rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6"><h2 className="text-base font-semibold text-[#172b4d]">Published class performance</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{publishedClasses.slice(0, 12).map((item) => <div key={item.school + item.name} className="rounded-xl bg-[#f7f9fc] p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-[#172b4d]">{item.name}</p><p className="mt-1 text-[10px] text-[#7b8ba2]">{item.school} · {item.count} learners</p></div><span className="text-sm font-semibold text-[#2457c5]">{pct(item.average)}</span></div></div>)}</div></section> : null}
         {!loading && published ? <section className="report-card mt-6 rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6"><h2 className="text-base font-semibold text-[#172b4d]">Published school × learning-area comparison</h2><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[600px] text-left text-xs"><thead className="border-b border-[#e5eaf1] text-[10px] uppercase tracking-wide text-[#64748b]"><tr><th className="pb-3 pr-4">School</th><th className="pb-3 pr-4">Learning area</th><th className="pb-3 pr-4">Candidates</th><th className="pb-3">Average</th></tr></thead><tbody>{publishedSchoolAreas.map((item) => <tr key={item.school + item.area} className="border-b border-[#f0f2f6] last:border-0"><td className="py-3 pr-4 font-medium text-[#172b4d]">{item.school}</td><td className="py-3 pr-4 text-[#52647d]">{item.area}</td><td className="py-3 pr-4 text-[#52647d]">{item.count}</td><td className="py-3 font-semibold text-[#172b4d]">{pct(item.average)}</td></tr>)}</tbody></table></div></section> : null}
         {!loading && published ? <section className="report-card mt-7 rounded-2xl border border-emerald-200 bg-white p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-800">Published · Immutable</span><h2 className="mt-3 text-lg font-semibold text-[#172b4d]">Publication v{published.publication.version}</h2><p className="mt-1 text-xs text-[#64748b]">Published {dateTime(published.publication.publishedAt)} · {published.publication.candidateCount} candidates · {published.publication.schoolCount} schools</p></div></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><span className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${published.publication.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{published.publication.status === "PUBLISHED" ? "Published · Current" : "Superseded · Historical snapshot"}</span><h2 className="mt-3 text-lg font-semibold text-[#172b4d]">Publication v{published.publication.version}</h2><p className="mt-1 text-xs text-[#64748b]">Published {dateTime(published.publication.publishedAt)} · {published.publication.candidateCount} candidates · {published.publication.schoolCount} schools</p></div></div>
         </section> : null}
+        {!loading && publicationHistory.length > 0 ? <section className="no-print mt-6 rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-semibold text-[#172b4d]">Publication history</h2><p className="mt-1 text-xs text-[#64748b]">Every published result set is retained as an immutable, versioned snapshot.</p></div><span className="rounded-full bg-[#f2f5fa] px-3 py-1.5 text-[11px] font-semibold text-[#52647d]">{publicationHistory.length} version{publicationHistory.length === 1 ? "" : "s"}</span></div>
+          <div className="mt-4 divide-y divide-[#edf0f5]">{publicationHistory.map((item) => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-[#172b4d]">Publication v{item.version}</p><span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${item.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>{item.status === "PUBLISHED" ? "Current" : "Superseded"}</span></div><p className="mt-1 text-xs text-[#64748b]">{dateTime(item.publishedAt)} · {item.resultCount} learners · {item.schoolCount} schools</p></div><button type="button" disabled={busy || published?.publication.version === item.version} onClick={() => void viewPublicationVersion(item.version)} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#2457c5] hover:bg-[#f7faff] disabled:opacity-50">{published?.publication.version === item.version ? "Viewing" : "View snapshot"}</button></div>)}</div>
+        </section> : null}
+        {!loading && !published && !preview && assessmentStatus === "OPEN" ? <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6"><h2 className="text-sm font-semibold text-amber-950">Results correction in progress</h2><p className="mt-2 text-xs leading-5 text-amber-900">The previous publication has been superseded because governance returned marks for correction. The historical version remains available above. A new official result set can be published after all corrections are resubmitted and the assessment is closed again.</p></section> : null}
         {!loading ? <section className="report-card mt-6 rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6">
           <div className="no-print flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-base font-semibold text-[#172b4d]">{published ? "Published candidate results" : "Candidate ranking"}</h2><p className="mt-1 text-xs text-[#64748b]">{published ? "The values below are read from the immutable publication snapshot." : `Showing the first ${preview?.candidateRowsReturned ?? 0} ranked candidates.`}</p></div><div className="flex flex-wrap gap-2"><input value={candidateSearch} onChange={(event) => setCandidateSearch(event.target.value)} placeholder="Search learner or school" className="w-52 rounded-xl border border-[#dbe3ee] px-3 py-2 text-xs outline-none focus:border-[#6d94e8]" /><button type="button" onClick={exportCandidates} disabled={!visibleCandidates.length} className="rounded-xl border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#2457c5] hover:bg-[#f7faff] disabled:opacity-50">Export CSV ↓</button></div>{preview?.truncated ? <span className="text-[11px] text-[#64748b]">Preview limited to 50 rows</span> : null}</div>
           <div className="mt-4 overflow-x-auto"><table className="report-table w-full min-w-[760px] text-left text-xs"><thead className="border-b border-[#e5eaf1] text-[10px] uppercase tracking-wide text-[#64748b]"><tr><th className="pb-3 pr-3">Rank</th><th className="pb-3 pr-3">Learner</th><th className="pb-3 pr-3">School</th><th className="pb-3 pr-3">Total</th><th className="pb-3 pr-3">Percentage</th><th className="pb-3">Classification</th></tr></thead><tbody>{visibleCandidates.map((row) => <tr key={row.id} className="border-b border-[#f0f2f6] last:border-0"><td className="py-3 pr-3 font-semibold tabular-nums text-[#2457c5]">{row.rank}</td><td className="py-3 pr-3"><p className="font-semibold text-[#172b4d]">{row.name}</p><p className="mt-1 text-[10px] text-[#94a3b8]">{row.number}</p></td><td className="py-3 pr-3 text-[#52647d]">{row.school}</td><td className="py-3 pr-3 tabular-nums text-[#172b4d]">{row.total.toFixed(2)} / {row.maximum.toFixed(2)}</td><td className="py-3 pr-3 font-semibold tabular-nums text-[#172b4d]">{pct(row.percentage)}</td><td className="py-3 text-[#52647d]">{row.band}</td></tr>)}</tbody></table></div>

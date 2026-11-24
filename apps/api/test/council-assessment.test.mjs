@@ -426,6 +426,60 @@ test("governance moderation returns every submitted mark for one class and reope
   assert.equal(result.markCount, 2);
 });
 
+test("governance correction supersedes the active published snapshot before reopening a released assessment", async () => {
+  const classId = "21212121-2121-4121-8121-212121212121";
+  const registrationId = "23232323-2323-4323-8323-232323232323";
+  const candidateId = "24242424-2424-4424-8424-242424242424";
+  const markIds = ["25252525-2525-4525-8525-252525252525"];
+  const reason = "The signed source record confirms this class entry requires correction.";
+  const records = { audits: [] };
+  const tx = {
+    assessment: {
+      findFirst: async ({ where }) => {
+        assert.deepEqual(where.status.in, ["CLOSED", "OPEN", "RELEASED"]);
+        return { id: assessmentId, grade: "GRADE_4", academicYear: 2026, status: "RELEASED" };
+      },
+      update: async ({ data }) => { records.assessment = data; return { id: assessmentId, ...data }; },
+    },
+    assessmentResultPublication: {
+      findFirst: async ({ where }) => {
+        records.publicationQuery = where;
+        return { id: "31313131-3131-4131-8131-313131313131", version: 1 };
+      },
+      update: async ({ where, data }) => { records.publicationUpdate = { where, data }; return data; },
+    },
+    schoolClass: { findFirst: async () => ({ id: classId, registrationId }) },
+    assessmentCandidate: { findMany: async () => [{ id: candidateId }] },
+    assessmentLearningArea: { count: async () => 1 },
+    assessmentMark: {
+      findMany: async () => markIds.map((id) => ({ id, marks: 72, status: "SUBMITTED" })),
+      updateMany: async ({ data }) => { records.markUpdate = data; return { count: 1 }; },
+    },
+    assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    assessmentSchoolSubmission: {
+      findUnique: async () => ({ id: "30303030-3030-4030-8030-303030303030", status: "SUBMITTED" }),
+      update: async ({ data }) => { records.returnedSubmission = data; return data; },
+    },
+    auditEvent: { create: async ({ data }) => { records.audits.push(data); return data; } },
+  };
+  const client = { $transaction: async (callback, options) => {
+    assert.equal(options.isolationLevel, "Serializable");
+    return callback(tx);
+  } };
+  const result = await new CouncilAssessmentService({ client }).returnClassMarksForCorrection(
+    { accountId }, councilId, assessmentId, classId, reason,
+  );
+  assert.equal(records.publicationQuery.status, "PUBLISHED");
+  assert.equal(records.publicationUpdate.data.status, "SUPERSEDED");
+  assert.equal(records.assessment.status, "OPEN");
+  assert.equal(records.markUpdate.status, "RETURNED");
+  assert.equal(records.audits[0].action, "ASSESSMENT_RESULTS_SUPERSEDED_FOR_CORRECTION");
+  assert.equal(records.audits[0].reason, reason);
+  assert.equal(records.audits[1].metadata.supersededVersion, 1);
+  assert.equal(result.supersededVersion, 1);
+  assert.equal(result.status, "OPEN");
+});
+
 test("moderation cannot return a class while any mark is missing or unsubmitted", async () => {
   const classId = "21212121-2121-4121-8121-212121212121";
   const tx = {

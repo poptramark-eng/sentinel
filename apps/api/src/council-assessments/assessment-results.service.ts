@@ -309,6 +309,53 @@ export class AssessmentResultsService {
       publication: {
         id: publication.id,
         version: publication.version,
+        status: publication.status,
+        publishedAt: publication.publishedAt,
+        candidateCount: publication.candidateCount,
+        schoolCount: publication.schoolCount,
+      },
+      results: publication.results,
+    };
+  }
+
+  async history(councilId: string, assessmentId: string) {
+    const assessment = await this.prisma.client.assessment.findFirst({
+      where: { id: assessmentId, councilId },
+      select: { id: true },
+    });
+    if (!assessment) throw new NotFoundException("Assessment not found in this Council.");
+    const publications = await this.prisma.client.assessmentResultPublication.findMany({
+      where: { assessmentId, councilId },
+      orderBy: { version: "desc" },
+      select: {
+        id: true,
+        version: true,
+        status: true,
+        publishedAt: true,
+        candidateCount: true,
+        schoolCount: true,
+        _count: { select: { results: true } },
+      },
+    });
+    return { publications: publications.map(({ _count, ...publication }) => ({ ...publication, resultCount: _count.results })) };
+  }
+
+  async version(councilId: string, assessmentId: string, version: number) {
+    const publication = await this.prisma.client.assessmentResultPublication.findFirst({
+      where: { assessmentId, councilId, version },
+      include: {
+        results: {
+          orderBy: [{ rank: "asc" }],
+          include: { learningAreas: { orderBy: [{ sortOrder: "asc" }] } },
+        },
+      },
+    });
+    if (!publication) throw new NotFoundException("The requested result publication version was not found.");
+    return {
+      publication: {
+        id: publication.id,
+        version: publication.version,
+        status: publication.status,
         publishedAt: publication.publishedAt,
         candidateCount: publication.candidateCount,
         schoolCount: publication.schoolCount,
