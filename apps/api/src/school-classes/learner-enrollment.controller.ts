@@ -1,7 +1,8 @@
-import { Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, Body, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, Body, UseGuards, Patch } from "@nestjs/common";
 import { AccessTokenGuard, AuthenticatedRequest } from "../auth/access-token.guard";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { EnrollLearnerDto } from "./dto/enroll-learner.dto";
+import { EndLearnerEnrollmentDto } from "./dto/end-learner-enrollment.dto";
 import { LearnerEnrollmentService } from "./learner-enrollment.service";
 
 @Controller("school/registrations/:registrationId")
@@ -32,6 +33,21 @@ export class LearnerEnrollmentController {
       { accountId: request.auth!.accountId, personId: request.auth!.personId },
       registrationId,
       classId,
+    );
+  }
+
+  @Patch("learners/:enrollmentId/end")
+  endEnrollment(
+    @Req() request: AuthenticatedRequest,
+    @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
+    @Param("enrollmentId", new ParseUUIDPipe()) enrollmentId: string,
+    @Body() body: EndLearnerEnrollmentDto,
+  ) {
+    return this.learners.endEnrollment(
+      { accountId: request.auth!.accountId, personId: request.auth!.personId },
+      registrationId,
+      enrollmentId,
+      body.status,
     );
   }
 
