@@ -24,7 +24,15 @@ BEGIN
     (OLD."status" = 'DRAFT' AND NEW."status" IN ('SCHEDULED', 'CANCELLED'))
     OR (OLD."status" = 'SCHEDULED' AND NEW."status" IN ('OPEN', 'CANCELLED'))
     OR (OLD."status" = 'OPEN' AND NEW."status" = 'CLOSED')
-    OR (OLD."status" = 'CLOSED' AND NEW."status" IN ('OPEN', 'RELEASED'))
+    OR (OLD."status" = 'CLOSED' AND (
+      NEW."status" = 'RELEASED'
+      OR (NEW."status" = 'OPEN' AND EXISTS (
+        SELECT 1 FROM "AssessmentMark" m
+        WHERE m."assessmentId" = NEW."id"
+          AND m."status" = 'RETURNED'
+          AND length(trim(coalesce(m."returnedReason", ''))) >= 10
+      ))
+    ))
   ) THEN
     RAISE EXCEPTION 'Invalid assessment status transition: % -> %', OLD."status", NEW."status"
       USING ERRCODE = '55000';
