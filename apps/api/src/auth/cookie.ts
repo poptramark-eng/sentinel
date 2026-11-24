@@ -62,12 +62,17 @@ export function hasValidCsrf(request: FastifyRequest): boolean {
     .filter(Boolean);
   const origin = request.headers.origin;
   const referer = request.headers.referer;
-  const requestOrigin =
-    typeof origin === "string"
-      ? origin
-      : typeof referer === "string"
-        ? new URL(referer).origin
-        : null;
+  let requestOrigin: string | null = null;
+  try {
+    requestOrigin =
+      typeof origin === "string"
+        ? new URL(origin).origin
+        : typeof referer === "string"
+          ? new URL(referer).origin
+          : null;
+  } catch {
+    return false;
+  }
 
   if (!requestOrigin || !allowedOrigins.includes(requestOrigin)) return false;
 
