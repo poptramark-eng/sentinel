@@ -27,7 +27,7 @@ export function WorkspaceShell({
 }: WorkspaceShellProps) {
   return (
     <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] flex-col border-r border-[var(--line)] bg-white lg:flex">
+      <aside className="print:hidden fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] flex-col border-r border-[var(--line)] bg-white lg:flex">
         <Link href="/workspace" className="flex h-[var(--topbar-height)] items-center gap-3 border-b border-[var(--line)] px-5" aria-label="Softflix cbe workspace home">
           <span className="grid size-9 place-items-center rounded-xl bg-[var(--brand)] text-[11px] font-bold tracking-wide text-white">cbe</span>
           <span className="min-w-0"><span className="block text-sm font-bold tracking-tight text-[var(--ink-strong)]">cbe</span><span className="block text-[10px] text-[var(--muted)]">by Softflix</span></span>
@@ -56,7 +56,7 @@ export function WorkspaceShell({
       </aside>
 
       <div className="min-h-screen lg:pl-[var(--sidebar-width)]">
-        <header className="sticky top-0 z-20 flex min-h-[var(--topbar-height)] items-center justify-between gap-4 border-b border-[var(--line)] bg-white/95 px-4 backdrop-blur sm:px-7">
+        <header className="print:hidden sticky top-0 z-20 flex min-h-[var(--topbar-height)] items-center justify-between gap-4 border-b border-[var(--line)] bg-white/95 px-4 backdrop-blur sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/workspace" className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--brand)] text-[11px] font-bold text-white lg:hidden">cbe</Link>
             <div className="min-w-0"><p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">{section}</p><p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{title}</p></div>
@@ -65,7 +65,7 @@ export function WorkspaceShell({
         </header>
         <main className="mx-auto w-full max-w-[var(--content-max)] px-4 py-7 sm:px-7 sm:py-9">
           {description ? <div className="mb-6 max-w-3xl"><p className="text-sm leading-6 text-[var(--muted)]">{description}</p></div> : null}
-          <nav aria-label="Mobile workspace navigation" className="mb-6 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+          <nav aria-label="Mobile workspace navigation" className="print:hidden mb-6 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {navigation.map((item) => <Link key={item.href} href={item.href} aria-current={item.active ? "page" : undefined} className={item.active ? "shrink-0 rounded-lg bg-[var(--brand-soft)] px-3 py-2 text-xs font-semibold text-[var(--brand-strong)]" : "shrink-0 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-xs font-medium text-[var(--muted)]"}>{item.label}</Link>)}
           </nav>
           {children}
