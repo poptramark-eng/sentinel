@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiRequest } from "../../../../../../../../../lib/api";
+import { WorkspaceShell } from "../../../../../../../../../components/workspace-shell";
 
 interface LearningArea { id: string; learningAreaCode: string; canonicalName: string; displayLabel: string | null; maxMarks: number; decimalPlaces: number; sortOrder: number }
 interface MarkCell { id: string; assessmentLearningAreaId: string; marks: number | null; status: "DRAFT" | "SUBMITTED" | "RETURNED"; submittedAt: string | null; returnedReason: string | null }
@@ -92,21 +93,53 @@ export default function AssessmentMarksPage() {
     finally { setSubmitting(false); }
   }
 
-  return <main className="min-h-screen bg-[#f6f8fc]">
-    <header className="border-b border-[#e5eaf1] bg-white"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8"><Link href="/school/teaching" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">S</span><span className="text-sm font-semibold text-[#172b4d]">Sentinel · Teaching workspace</span></Link><Link href="/school/teaching" className="text-xs font-semibold text-[#52647d]">Back to assigned classes</Link></div></header>
-    <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
-      <Link href="/school/teaching" className="text-xs font-semibold text-[#64748b] hover:text-[#2457c5]">← Teaching workspace</Link>
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Assessment data entry</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d] sm:text-3xl">{sheet?.assessment.name || "Assessment marks"}</h1>{sheet ? <p className="mt-2 text-xs text-[#64748b]">{sheet.assessment.code} · {sheet.class.grade.replace("GRADE_", "Grade ")} · {sheet.class.academicYear} · Stream {sheet.class.streamCode}</p> : null}</div>{sheet ? <div className="rounded-xl border border-[#e5eaf1] bg-white px-4 py-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a99ad]">Entry completion</p><p className="mt-1 text-lg font-semibold tabular-nums text-[#172b4d]">{filledCells} <span className="text-sm font-medium text-[#8a99ad]">/ {totalCells}</span></p></div> : null}</div>
-      {error ? <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-      {notice ? <p role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</p> : null}
-      {loading ? <div className="mt-8 rounded-2xl border border-[#e5eaf1] bg-white p-8 text-sm text-[#64748b]">Loading assessment candidates and learning areas…</div> : sheet ? <>
-        <div className="mt-6 rounded-xl border border-[#dce7f6] bg-[#f1f6ff] px-4 py-3 text-xs leading-5 text-[#526b93]">Enter marks in the cells and move focus away to save each value. Scores are validated against the assessment&apos;s maximum marks and decimal precision. Once submitted, marks are locked pending a formal correction workflow.</div>
-        <section className="mt-6 overflow-hidden rounded-2xl border border-[#e5eaf1] bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf0f5] px-5 py-4"><div><h2 className="text-sm font-semibold text-[#172b4d]">{learningAreaId ? "Learning-area mark sheet" : "Learner mark sheet"}</h2><p className="mt-1 text-xs text-[#7b8ba2]">{sheet.candidates.length} learners · {sheet.learningAreas.length} learning areas</p></div><span className="rounded-full bg-[#eaf8f2] px-3 py-1 text-[10px] font-semibold text-[#27825f]">Assessment open</span></div>
-          {sheet.candidates.length === 0 || sheet.learningAreas.length === 0 ? <div className="p-10 text-center text-sm text-[#64748b]">No assessment candidates or learning areas are available.</div> : <div className="overflow-x-auto"><table className="w-full min-w-[850px] border-collapse text-left"><thead className="bg-[#f8faff]"><tr><th className="sticky left-0 z-10 min-w-[230px] border-b border-[#e9eef5] bg-[#f8faff] px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]">Learner</th>{sheet.learningAreas.map((area) => <th key={area.id} className="min-w-[145px] border-b border-[#e9eef5] px-3 py-3 align-top"><p className="text-[11px] font-semibold text-[#263b5b]">{area.displayLabel || area.canonicalName}</p><p className="mt-1 text-[10px] font-medium text-[#8a99ad]">Max {area.maxMarks} · {area.decimalPlaces} dp</p></th>)}</tr></thead><tbody>{sheet.candidates.map((candidate) => <tr key={candidate.id} className="border-b border-[#f0f3f7] last:border-0"><td className="sticky left-0 z-10 border-r border-[#edf0f5] bg-white px-4 py-3"><p className="text-xs font-semibold text-[#263b5b]">{candidate.learnerName}</p><p className="mt-1 font-mono text-[10px] text-[#8a99ad]">{candidate.learnerNumber}</p></td>{sheet.learningAreas.map((area) => { const key = cellKey(candidate.id, area.id); const mark = candidate.marks.find((item) => item.assessmentLearningAreaId === area.id); const locked = mark?.status === "SUBMITTED"; return <td key={area.id} className="px-3 py-2"><div className="relative"><input aria-label={`${candidate.learnerName} — ${area.displayLabel || area.canonicalName}`} type="number" min="0" max={area.maxMarks} step={10 ** -area.decimalPlaces} value={values[key] ?? ""} disabled={locked || submitting} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.value }))} onBlur={() => { if (!locked && values[key] !== "") void saveCell(candidate, area); }} className="w-full rounded-lg border border-[#dbe3ee] bg-white px-3 py-2.5 text-sm tabular-nums text-[#172b4d] outline-none transition focus:border-[#6d94e8] focus:ring-2 focus:ring-[#edf4ff] disabled:bg-[#f5f7fa] disabled:text-[#8a99ad]" />{savingCells.includes(key) ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-[#2457c5]">Saving</span> : locked ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-[#27825f]">✓</span> : null}</div>{mark?.status === "RETURNED" && mark.returnedReason ? <p className="mt-1 max-w-[180px] text-[10px] leading-4 text-[#a15a38]">Correction: {mark.returnedReason}</p> : null}</td>})}</tr>)}</tbody></table></div>}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0f5] bg-[#fbfcfe] px-5 py-4"><p className="text-[11px] text-[#7b8ba2]">Save each cell by leaving it. {learningAreaId ? "Submission locks this learning area's marks." : "Submission locks all marks for this class."}</p><button onClick={() => void submitClass()} disabled={submitting || savingCells.length > 0 || totalCells === 0} className="rounded-xl bg-[#2457c5] px-5 py-3 text-xs font-semibold text-white hover:bg-[#1e49a6] disabled:opacity-50">{submitting ? "Submitting marks…" : learningAreaId ? "Submit learning-area marks" : "Submit class marks"}</button></div>
+  return (
+    <WorkspaceShell
+      section="School workspace"
+      title="Marks entry"
+      navigation={[
+        { label: "Workspace overview", href: "/workspace" },
+        { label: "Teaching desk", href: "/school/teaching" },
+        { label: "Current mark sheet", href: "#mark-sheet", active: true },
+      ]}
+      actions={<Link href="/school/teaching" className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)] hover:bg-[var(--surface-subtle)]">Back to teaching desk</Link>}
+    >
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div><p className="cbe-eyebrow">Assessment data entry</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink-strong)] sm:text-3xl">{sheet?.assessment.name || "Assessment marks"}</h1>{sheet ? <p className="mt-2 text-xs text-[var(--muted)]">{sheet.assessment.code} · {sheet.class.grade.replace("GRADE_", "Grade ")} · {sheet.class.academicYear} · Stream {sheet.class.streamCode}</p> : <p className="mt-2 text-sm text-[var(--muted)]">Loading assessment details…</p>}</div>
+        {sheet ? <div className="rounded-xl border border-[var(--line)] bg-white px-4 py-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Cells filled</p><p className="mt-1 cbe-tabular text-xl font-semibold text-[var(--ink-strong)]">{filledCells}<span className="text-sm font-medium text-[var(--subtle)]"> / {totalCells}</span></p></div> : null}
+      </div>
+
+      {error ? <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+      {notice ? <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</p> : null}
+      {loading ? <div className="cbe-panel p-8 text-sm text-[var(--muted)]">Loading assessment candidates and learning areas…</div> : sheet ? <>
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          <div className="cbe-panel p-4"><p className="text-[11px] font-medium text-[var(--muted)]">Learners</p><p className="mt-1 cbe-tabular text-xl font-semibold text-[var(--ink-strong)]">{sheet.candidates.length}</p></div>
+          <div className="cbe-panel p-4"><p className="text-[11px] font-medium text-[var(--muted)]">Learning areas</p><p className="mt-1 cbe-tabular text-xl font-semibold text-[var(--ink-strong)]">{sheet.learningAreas.length}</p></div>
+          <div className="cbe-panel p-4"><p className="text-[11px] font-medium text-[var(--muted)]">Assessment closes</p><p className="mt-1 text-sm font-semibold text-[var(--ink-strong)]">{sheet.assessment.closesAt ? new Intl.DateTimeFormat("en-KE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(sheet.assessment.closesAt)) : "Not specified"}</p></div>
+        </div>
+
+        <div className="mb-5 rounded-xl border border-[var(--brand-border)] bg-[var(--brand-soft)] px-4 py-3 text-xs leading-5 text-[var(--brand-strong)]">Enter each learner&apos;s score and leave the field to save it. Scores are checked against the assessment&apos;s maximum marks and decimal precision. Submitted marks are locked unless the Council initiates a formal correction workflow.</div>
+
+        <section id="mark-sheet" className="cbe-panel overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-4 sm:px-5">
+            <div><h2 className="text-sm font-semibold text-[var(--ink-strong)]">{learningAreaId ? "Learning-area mark sheet" : "Class mark sheet"}</h2><p className="mt-1 text-xs text-[var(--muted)]">{sheet.candidates.length} learners · {sheet.learningAreas.length} learning areas</p></div>
+            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--success-soft)] px-3 py-1.5 text-[10px] font-semibold text-[var(--success)]"><span className="size-1.5 rounded-full bg-[var(--success)]"/>Assessment open</span>
+          </div>
+          {sheet.candidates.length === 0 || sheet.learningAreas.length === 0 ? <div className="p-10 text-center"><p className="text-sm font-semibold text-[var(--ink)]">No mark-entry rows available</p><p className="mt-1 text-xs text-[var(--muted)]">No assessment candidates or learning areas are available for this sheet.</p></div> : <div className="overflow-x-auto">
+            <table className="report-table w-full min-w-[850px] border-collapse text-left">
+              <thead className="bg-[var(--surface-subtle)]"><tr><th scope="col" className="sticky left-0 z-10 min-w-[230px] border-b border-[var(--line)] bg-[var(--surface-subtle)] px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Learner</th>{sheet.learningAreas.map((area) => <th scope="col" key={area.id} className="min-w-[150px] border-b border-[var(--line)] px-3 py-3 align-top"><p className="text-[11px] font-semibold text-[var(--ink)]">{area.displayLabel || area.canonicalName}</p><p className="mt-1 text-[10px] font-medium text-[var(--muted)]">Maximum {area.maxMarks} · {area.decimalPlaces} dp</p></th>)}</tr></thead>
+              <tbody>{sheet.candidates.map((candidate) => <tr key={candidate.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--surface-subtle)]">
+                <th scope="row" className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-4 py-3 text-left"><p className="text-xs font-semibold text-[var(--ink)]">{candidate.learnerName}</p><p className="mt-1 font-mono text-[10px] font-normal text-[var(--muted)]">{candidate.learnerNumber}</p></th>
+                {sheet.learningAreas.map((area) => { const key = cellKey(candidate.id, area.id); const mark = candidate.marks.find((item) => item.assessmentLearningAreaId === area.id); const locked = mark?.status === "SUBMITTED"; return <td key={area.id} className="px-3 py-2 align-top"><div className="relative"><input aria-label={`${candidate.learnerName} — ${area.displayLabel || area.canonicalName}`} type="number" min="0" max={area.maxMarks} step={10 ** -area.decimalPlaces} value={values[key] ?? ""} disabled={locked || submitting} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.value }))} onBlur={() => { if (!locked && values[key] !== "") void saveCell(candidate, area); }} className="w-full rounded-lg border border-[var(--line-strong)] bg-white px-3 py-2.5 text-sm cbe-tabular text-[var(--ink)] outline-none transition focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:bg-[var(--surface-subtle)] disabled:text-[var(--subtle)]" />{savingCells.includes(key) ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-medium text-[var(--brand)]">Saving</span> : locked ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-semibold text-[var(--success)]">Saved</span> : null}</div>{mark?.status === "RETURNED" && mark.returnedReason ? <p className="mt-1 max-w-[180px] text-[10px] leading-4 text-[var(--warning)]">Correction: {mark.returnedReason}</p> : null}</td>; })}
+              </tr>)}</tbody>
+            </table>
+          </div>}
+          <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-[var(--surface-subtle)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <p className="max-w-xl text-[11px] leading-5 text-[var(--muted)]">Leave a score field to save it. {learningAreaId ? "Submitting locks this learning area's marks." : "Submitting locks all marks for this class."}</p>
+            <button onClick={() => void submitClass()} disabled={submitting || savingCells.length > 0 || totalCells === 0} className="rounded-lg bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white transition hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "Submitting marks…" : learningAreaId ? "Submit learning-area marks" : "Submit class marks"}</button>
+          </div>
         </section>
       </> : null}
-    </div>
-  </main>;
+    </WorkspaceShell>
+  );
 }
