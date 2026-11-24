@@ -620,6 +620,7 @@ export class CouncilAssessmentService {
           councilId: true,
           schoolClassId: true,
           learner: { select: { id: true, learnerNumber: true, givenName: true, familyName: true, otherNames: true, displayName: true } },
+          registration: { select: { school: { select: { id: true, name: true } } } },
           schoolClass: { select: { grade: true, streamCode: true } },
         },
         orderBy: [{ registrationId: "asc" }, { learner: { familyName: "asc" } }, { learner: { givenName: "asc" } }],
@@ -647,6 +648,8 @@ export class CouncilAssessmentService {
           learnerNumberSnapshot: enrollment.learner.learnerNumber,
           learnerNameSnapshot: enrollment.learner.displayName?.trim() ||
             [enrollment.learner.givenName, enrollment.learner.otherNames, enrollment.learner.familyName].filter(Boolean).join(" "),
+          schoolIdSnapshot: enrollment.registration.school.id,
+          schoolNameSnapshot: enrollment.registration.school.name,
           classGradeSnapshot: enrollment.schoolClass.grade,
           classStreamSnapshot: enrollment.schoolClass.streamCode,
         })),
