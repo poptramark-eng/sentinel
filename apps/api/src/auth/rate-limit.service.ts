@@ -243,6 +243,7 @@ export class RateLimitService {
   ): Promise<RateLimitDecision> {
     if (!this.prisma) {
       if (process.env.NODE_ENV === "production") {
+        console.error("[RateLimitService] PrismaService was not injected.");
         this.ensurePepper();
         throw new ServiceUnavailableException(
           "Authentication protection is temporarily unavailable.",
@@ -310,6 +311,14 @@ export class RateLimitService {
         { maxWait: 1_000, timeout: 2_500 },
       );
     } catch (error) {
+      console.error("[RateLimitService] PostgreSQL rate-limit operation failed.", {
+        name: error instanceof Error ? error.name : "UnknownError",
+        message: error instanceof Error ? error.message : String(error),
+        code:
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code?: unknown }).code)
+            : undefined,
+      });
       if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
         "Authentication protection is temporarily unavailable.",
