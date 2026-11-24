@@ -57,7 +57,7 @@ export class PlatformCurriculumService {
       return await this.prisma.client.$transaction(async (tx) => {
         const existingCurriculum = await tx.curriculum.findUnique({
           where: { code: input.curriculumCode },
-          select: { id: true, name: true, track: true },
+          select: { id: true, code: true, name: true, track: true },
         });
         if (
           existingCurriculum &&
