@@ -53,7 +53,7 @@ CREATE TABLE "AssessmentMark" (
   "assessmentId" UUID NOT NULL,
   "candidateId" UUID NOT NULL,
   "assessmentLearningAreaId" UUID NOT NULL,
-  "marks" DECIMAL(8,2),
+  "marks" DECIMAL(10,4),
   "status" "AssessmentMarkStatus" NOT NULL DEFAULT 'DRAFT',
   "enteredByAccountId" UUID,
   "submittedAt" TIMESTAMP(3),
@@ -68,8 +68,8 @@ CREATE TABLE "AssessmentMarkRevision" (
   "markId" UUID NOT NULL,
   "actorAccountId" UUID NOT NULL,
   "action" "AssessmentMarkRevisionAction" NOT NULL,
-  "previousMarks" DECIMAL(8,2),
-  "newMarks" DECIMAL(8,2),
+  "previousMarks" DECIMAL(10,4),
+  "newMarks" DECIMAL(10,4),
   "reason" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "AssessmentMarkRevision_pkey" PRIMARY KEY ("id")
@@ -178,7 +178,7 @@ FOR EACH ROW EXECUTE FUNCTION sentinel_require_assessment_roster();
 CREATE FUNCTION sentinel_validate_assessment_mark() RETURNS trigger AS $function$
 DECLARE
   target_status "AssessmentStatus";
-  target_max_marks DECIMAL(8,2);
+  target_max_marks DECIMAL(10,4);
   target_decimal_places INTEGER;
 BEGIN
   SELECT a."status", la."maxMarks", la."decimalPlaces"
