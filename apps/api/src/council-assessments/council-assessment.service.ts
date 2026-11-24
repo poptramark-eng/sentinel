@@ -560,10 +560,73 @@ export class CouncilAssessmentService {
     return this.prisma.client.$transaction(async (tx) => {
       const assessment = await tx.assessment.findFirst({
         where: { id: assessmentId, councilId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, grade: true, academicYear: true, curriculumVersionId: true },
       });
       if (!assessment) throw new NotFoundException("Assessment not found in this Council.");
       if (assessment.status !== "DRAFT") throw new ConflictException("Only a draft assessment can be scheduled.");
+
+      const enrollments = await tx.schoolLearnerEnrollment.findMany({
+        where: {
+          councilId,
+          status: "ACTIVE",
+          endedAt: null,
+          registration: { is: { status: "APPROVED", school: { is: { status: "ACTIVE" } } } },
+          schoolClass: { is: { grade: assessment.grade, academicYear: assessment.academicYear, status: "ACTIVE" } },
+        },
+        select: {
+          id: true,
+          learnerId: true,
+          registrationId: true,
+          councilId: true,
+          schoolClassId: true,
+          learner: { select: { id: true, learnerNumber: true, givenName: true, familyName: true, otherNames: true, displayName: true } },
+          schoolClass: { select: { grade: true, streamCode: true } },
+        },
+        orderBy: [{ registrationId: "asc" }, { learner: { familyName: "asc" } }, { learner: { givenName: "asc" } }],
+      });
+      if (enrollments.length === 0) {
+        throw new ConflictException("No active learner enrollments match this assessment's grade and academic year. Enroll learners before scheduling.");
+      }
+      const learnerIds = new Set<string>();
+      for (const enrollment of enrollments) {
+        if (learnerIds.has(enrollment.learnerId)) {
+          throw new ConflictException("A learner has active enrollments in more than one participating school. Resolve the duplicate enrollment before scheduling.");
+        }
+        learnerIds.add(enrollment.learnerId);
+      }
+
+      await tx.assessmentCandidate.createMany({
+        data: enrollments.map((enrollment) => ({
+          assessmentId,
+          councilId,
+          curriculumVersionId: assessment.curriculumVersionId,
+          learnerId: enrollment.learnerId,
+          enrollmentId: enrollment.id,
+          registrationId: enrollment.registrationId,
+          schoolClassId: enrollment.schoolClassId,
+          learnerNumberSnapshot: enrollment.learner.learnerNumber,
+          learnerNameSnapshot: enrollment.learner.displayName?.trim() ||
+            [enrollment.learner.givenName, enrollment.learner.otherNames, enrollment.learner.familyName].filter(Boolean).join(" "),
+          classGradeSnapshot: enrollment.schoolClass.grade,
+          classStreamSnapshot: enrollment.schoolClass.streamCode,
+        })),
+      });
+      const candidates = await tx.assessmentCandidate.findMany({
+        where: { assessmentId, status: "ACTIVE" },
+        select: { id: true },
+      });
+      const learningAreas = await tx.assessmentLearningArea.findMany({
+        where: { assessmentId },
+        select: { id: true },
+      });
+      await tx.assessmentMark.createMany({
+        data: candidates.flatMap((candidate) => learningAreas.map((area) => ({
+          assessmentId,
+          candidateId: candidate.id,
+          assessmentLearningAreaId: area.id,
+        }))),
+      });
+
       const updated = await tx.assessment.update({
         where: { id: assessmentId },
         data: { status: "SCHEDULED", opensAt, closesAt },
@@ -577,7 +640,7 @@ export class CouncilAssessmentService {
           resourceType: "Assessment",
           resourceId: assessmentId,
           decision: "ALLOW",
-          metadata: { opensAt: opensAt.toISOString(), closesAt: closesAt.toISOString() },
+          metadata: { opensAt: opensAt.toISOString(), closesAt: closesAt.toISOString(), candidateCount: candidates.length, participatingSchoolCount: new Set(enrollments.map((item) => item.registrationId)).size },
         },
       });
       return updated;
