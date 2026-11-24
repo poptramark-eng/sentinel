@@ -608,6 +608,7 @@ model AssessmentMark {
   createdAt                DateTime            @default(now())
   updatedAt                DateTime            @updatedAt
 
+  assessment         Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
   candidate          AssessmentCandidate   @relation(fields: [candidateId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
   assessmentLearningArea AssessmentLearningArea @relation(fields: [assessmentLearningAreaId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
   enteredBy          UserAccount?          @relation("AssessmentMarkEnteredBy", fields: [enteredByAccountId], references: [id], onDelete: Restrict)
