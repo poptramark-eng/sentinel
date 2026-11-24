@@ -6,10 +6,11 @@ import { CouncilRubricReaderGuard } from "../auth/council-rubric-reader.guard";
 import { DatabaseModule } from "../database/database.module";
 import { CouncilAssessmentsController } from "./council-assessments.controller";
 import { CouncilAssessmentService } from "./council-assessment.service";
+import { AssessmentResultsService } from "./assessment-results.service";
 
 @Module({
   imports: [AuthModule, DatabaseModule],
   controllers: [CouncilAssessmentsController],
-  providers: [CouncilAssessmentService, CouncilAdministratorGuard, CouncilGovernanceApproverGuard, CouncilRubricReaderGuard],
+  providers: [CouncilAssessmentService, AssessmentResultsService, CouncilAdministratorGuard, CouncilGovernanceApproverGuard, CouncilRubricReaderGuard],
 })
 export class CouncilAssessmentsModule {}
