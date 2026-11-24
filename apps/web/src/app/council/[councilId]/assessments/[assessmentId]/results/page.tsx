@@ -114,7 +114,6 @@ export default function AssessmentResultsPage() {
     } finally { setBusy(false); }
   }
 
-  const rows = published?.results ?? preview?.candidates ?? [];
   return (
     <main className="min-h-screen bg-[#f6f8fb]">
       <header className="border-b border-[#e5eaf1] bg-white">
