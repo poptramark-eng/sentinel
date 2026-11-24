@@ -80,13 +80,22 @@ export default function PlatformSchoolRegistrationsPage() {
   const [notice, setNotice] = useState("");
 
   const loadQueue = useCallback(async () => {
-    const response = await apiRequest("/platform/school-registrations");
-    if (response.status === 401 || response.status === 403) {
-      router.replace("/login");
-      return;
+    try {
+      const response = await apiRequest("/platform/school-registrations");
+      if (response.status === 401 || response.status === 403) {
+        router.replace("/login");
+        return;
+      }
+      if (!response.ok) {
+        throw new Error("The review queue could not be loaded.");
+      }
+      setQueue((await response.json()) as PageResult);
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to load queue.");
+    } finally {
+      setLoading(false);
     }
-    if (!response.ok) throw new Error("The review queue could not be loaded.");
-    setQueue((await response.json()) as PageResult);
   }, [router]);
 
   const loadDetail = useCallback(async (id: string) => {
@@ -97,9 +106,7 @@ export default function PlatformSchoolRegistrationsPage() {
   }, []);
 
   useEffect(() => {
-    loadQueue()
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Unable to load queue."))
-      .finally(() => setLoading(false));
+    void loadQueue();
   }, [loadQueue]);
 
   const visibleItems = (queue?.items ?? []).filter((item) =>
@@ -187,7 +194,7 @@ export default function PlatformSchoolRegistrationsPage() {
       <div className="mx-auto max-w-[1400px] px-5 py-8 sm:px-8">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Platform administration</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#172b4d]">School registrations</h1><p className="mt-2 text-sm text-[#64748b]">Review institutional identity, verify evidence and approve school access.</p></div>
-          <div className="flex items-center gap-3"><div className="rounded-xl border border-[#e5eaf1] bg-white px-4 py-3"><p className="text-[11px] font-medium text-[#64748b]">Awaiting review</p><p className="mt-1 text-xl font-semibold text-[#172b4d]">{queue?.total ?? "—"}</p></div><button onClick={() => { setLoading(true); loadQueue().catch((cause) => setError(cause instanceof Error ? cause.message : "Refresh failed.")).finally(() => setLoading(false)); }} className="rounded-xl border border-[#dbe3ee] bg-white px-4 py-3 text-sm font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Refresh</button></div>
+          <div className="flex items-center gap-3"><div className="rounded-xl border border-[#e5eaf1] bg-white px-4 py-3"><p className="text-[11px] font-medium text-[#64748b]">Awaiting review</p><p className="mt-1 text-xl font-semibold text-[#172b4d]">{queue?.total ?? "—"}</p></div><button onClick={() => { setLoading(true); void loadQueue(); }} className="rounded-xl border border-[#dbe3ee] bg-white px-4 py-3 text-sm font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Refresh</button></div>
         </div>
 
         {error ? <p role="alert" className="mt-5 rounded-xl border border-[#f3d0d0] bg-[#fff7f7] px-4 py-3 text-sm text-[#a33b3b]">{error}</p> : null}
