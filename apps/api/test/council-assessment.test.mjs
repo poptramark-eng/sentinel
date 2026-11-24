@@ -369,6 +369,6 @@ test("assessment scheduling rejects duplicate active learner identities across p
       opensAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       closesAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     }),
-    (error) => error instanceof ConflictException && /more than one school/.test(error.message),
+    (error) => error instanceof ConflictException && /more than one participating school/.test(error.message),
   );
 });
