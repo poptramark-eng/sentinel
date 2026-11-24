@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api";
+import { apiRequest, clearStoredCsrfToken } from "../../lib/api";
 
 interface CurrentUser {
   id: string;
@@ -27,7 +25,7 @@ export default function WorkspacePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE}/auth/me`, { credentials: "include", cache: "no-store" })
+    apiRequest("/auth/me")
       .then(async (response) => {
         if (!response.ok) {
           router.replace("/login");
@@ -51,7 +49,7 @@ export default function WorkspacePage() {
       <header className="border-b border-[#e5eaf1] bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <a href="/" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Examination Management</span></a>
-          <button onClick={async () => { const csrf = document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("cbe_csrf="))?.split("=").slice(1).join("="); await fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include", headers: { "x-csrf-token": decodeURIComponent(csrf ?? "") } }); router.replace("/login"); }} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button>
+          <button onClick={async () => { await apiRequest("/auth/logout", { method: "POST" }); clearStoredCsrfToken(); router.replace("/login"); }} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button>
         </div>
       </header>
       <section className="mx-auto max-w-6xl px-6 py-12">
