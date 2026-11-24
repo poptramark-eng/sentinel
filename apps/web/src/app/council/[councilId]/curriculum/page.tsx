@@ -306,7 +306,7 @@ export default function CouncilCurriculumPage() {
                               </label>
                               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                                 <p className="text-[10px] text-[var(--subtle)]">Source classification: {source.optionality === "UNKNOWN" ? "Unresolved" : source.optionality}</p>
-                                <button type="button" disabled={busy || !changed} aria-busy={busy} onClick={() => void saveArea(area)} className="rounded-lg border border-[var(--line-strong)] bg-white px-3 py-2 text-[11px] font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)] disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Saving…" : "Save configuration"}</button>
+                                <button type="button" disabled={busy || !changed} aria-busy={busy} onClick={() => void saveArea(area)} className="rounded-lg border border-[var(--line-strong)] bg-white px-3 py-2 text-[11px] font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)] disabled:cursor-not-allowed disabled:opacity-40">Save configuration</button>
                               </div>
                             </article>
                           );
