@@ -1,0 +1,1 @@
+ALTER TYPE "StaffAssignmentType" ADD VALUE 'SUBJECT_TEACHER';

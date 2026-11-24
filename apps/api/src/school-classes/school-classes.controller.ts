@@ -12,6 +12,7 @@ import {
 import { AccessTokenGuard, AuthenticatedRequest } from "../auth/access-token.guard";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { AssignClassTeacherDto } from "./dto/assign-class-teacher.dto";
+import { AssignSubjectTeacherDto } from "./dto/assign-subject-teacher.dto";
 import { CreateSchoolClassDto } from "./dto/create-school-class.dto";
 import { SchoolClassService } from "./school-class.service";
 
@@ -42,6 +43,35 @@ export class SchoolClassesController {
     @Body() body: AssignClassTeacherDto,
   ) {
     return this.classes.assignClassTeacher({ accountId: request.auth!.accountId, personId: request.auth!.personId }, registrationId, classId, body);
+  }
+
+  @Get(":classId/subject-teachers")
+  listSubjectTeachers(
+    @Req() request: AuthenticatedRequest,
+    @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
+    @Param("classId", new ParseUUIDPipe()) classId: string,
+  ) {
+    return this.classes.listSubjectTeacherAssignments({ accountId: request.auth!.accountId, personId: request.auth!.personId }, registrationId, classId);
+  }
+
+  @Post(":classId/subject-teachers")
+  assignSubjectTeacher(
+    @Req() request: AuthenticatedRequest,
+    @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
+    @Param("classId", new ParseUUIDPipe()) classId: string,
+    @Body() body: AssignSubjectTeacherDto,
+  ) {
+    return this.classes.assignSubjectTeacher({ accountId: request.auth!.accountId, personId: request.auth!.personId }, registrationId, classId, body);
+  }
+
+  @Delete(":classId/subject-teachers/:assignmentId")
+  endSubjectTeacher(
+    @Req() request: AuthenticatedRequest,
+    @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
+    @Param("classId", new ParseUUIDPipe()) classId: string,
+    @Param("assignmentId", new ParseUUIDPipe()) assignmentId: string,
+  ) {
+    return this.classes.endSubjectTeacher({ accountId: request.auth!.accountId, personId: request.auth!.personId }, registrationId, classId, assignmentId);
   }
 
   @Delete(":classId/class-teacher")

@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
 import { AssignClassTeacherDto } from "./dto/assign-class-teacher.dto";
+import { AssignSubjectTeacherDto } from "./dto/assign-subject-teacher.dto";
 import { CreateSchoolClassDto } from "./dto/create-school-class.dto";
 
 interface SchoolActor {
@@ -194,6 +195,148 @@ export class SchoolClassService {
       }
       throw error;
     }
+  }
+
+
+  async listSubjectTeacherAssignments(actor: SchoolActor, registrationId: string, classId: string) {
+    const scope = await this.resolveAdminScope(this.prisma.client, actor, registrationId);
+    const schoolClass = await this.prisma.client.schoolClass.findFirst({
+      where: { id: classId, registrationId: scope.registrationId, councilId: scope.councilId, status: "ACTIVE" },
+      select: { id: true, grade: true, academicYear: true, streamCode: true },
+    });
+    if (!schoolClass) throw new NotFoundException("The class was not found in this approved school.");
+
+    const now = new Date();
+    const mappings = await this.prisma.client.councilGradeLearningArea.findMany({
+      where: {
+        councilId: scope.councilId,
+        OR: [
+          {
+            enabled: true,
+            gradeLearningArea: { is: { grade: schoolClass.grade } },
+            councilCurriculum: { is: {
+              status: "ACTIVE",
+              effectiveFrom: { lte: now },
+              OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
+              curriculumVersion: { is: { status: "PUBLISHED" } },
+            } },
+          },
+          { staffAssignments: { some: { schoolClassId: classId, type: "SUBJECT_TEACHER", status: "ACTIVE", endsAt: null } } },
+        ],
+      },
+      orderBy: [{ sortOrder: "asc" }],
+      select: {
+        id: true,
+        curriculumVersionId: true,
+        displayLabel: true,
+        gradeLearningArea: { select: { sourceLabel: true, learningArea: { select: { code: true, canonicalName: true } } } },
+        staffAssignments: {
+          where: { schoolClassId: classId, type: "SUBJECT_TEACHER", status: "ACTIVE", endsAt: null },
+          take: 1,
+          select: { id: true, membershipId: true, startsAt: true, membership: { select: { person: { select: { givenName: true, familyName: true, displayName: true } } } } },
+        },
+      },
+    });
+    return {
+      schoolClass,
+      learningAreas: mappings.map((mapping) => {
+        const assignment = mapping.staffAssignments[0];
+        return {
+          id: mapping.id,
+          curriculumVersionId: mapping.curriculumVersionId,
+          code: mapping.gradeLearningArea.learningArea.code,
+          name: mapping.displayLabel?.trim() || mapping.gradeLearningArea.sourceLabel || mapping.gradeLearningArea.learningArea.canonicalName,
+          canonicalName: mapping.gradeLearningArea.learningArea.canonicalName,
+          assignment: assignment ? { id: assignment.id, membershipId: assignment.membershipId, teacherName: personName(assignment.membership.person), startsAt: assignment.startsAt } : null,
+        };
+      }),
+    };
+  }
+
+  async assignSubjectTeacher(actor: SchoolActor, registrationId: string, classId: string, input: AssignSubjectTeacherDto) {
+    try {
+      return await this.prisma.client.$transaction(async (tx) => {
+        const scope = await this.resolveAdminScope(tx, actor, registrationId);
+        const schoolClass = await tx.schoolClass.findFirst({
+          where: { id: classId, registrationId: scope.registrationId, councilId: scope.councilId, status: "ACTIVE" },
+          select: { id: true, grade: true, academicYear: true },
+        });
+        if (!schoolClass) throw new NotFoundException("The class was not found in this approved school.");
+
+        const teacher = await tx.schoolMembership.findFirst({
+          where: {
+            id: input.membershipId, registrationId: scope.registrationId, councilId: scope.councilId,
+            role: "TEACHER", status: "ACTIVE", endsAt: null,
+            OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }],
+            person: { account: { is: { status: "ACTIVE" } } },
+          },
+          select: { id: true, person: { select: { givenName: true, familyName: true, displayName: true } } },
+        });
+        if (!teacher) throw new NotFoundException("An active teacher membership for this school was not found.");
+
+        const now = new Date();
+        const mapping = await tx.councilGradeLearningArea.findFirst({
+          where: {
+            id: input.councilGradeLearningAreaId,
+            councilId: scope.councilId,
+            enabled: true,
+            gradeLearningArea: { is: { grade: schoolClass.grade } },
+            councilCurriculum: { is: {
+              status: "ACTIVE", effectiveFrom: { lte: now },
+              OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
+              curriculumVersion: { is: { status: "PUBLISHED" } },
+            } },
+          },
+          select: { id: true, curriculumVersionId: true, displayLabel: true, gradeLearningArea: { select: { sourceLabel: true, learningArea: { select: { canonicalName: true } } } } },
+        });
+        if (!mapping) throw new NotFoundException("This learning area is not enabled in the currently published curriculum for the class grade.");
+
+        const existing = await tx.staffAssignment.findFirst({
+          where: { schoolClassId: classId, councilGradeLearningAreaId: mapping.id, type: "SUBJECT_TEACHER", status: "ACTIVE", endsAt: null },
+          select: { id: true },
+        });
+        if (existing) throw new ConflictException("This learning area already has an active Subject Teacher. End that assignment before replacing it.");
+
+        const assignment = await tx.staffAssignment.create({
+          data: {
+            registrationId: scope.registrationId, councilId: scope.councilId, schoolClassId: classId,
+            membershipId: teacher.id, type: "SUBJECT_TEACHER", councilGradeLearningAreaId: mapping.id,
+            curriculumVersionId: mapping.curriculumVersionId, status: "ACTIVE", startsAt: now,
+          },
+          select: { id: true, membershipId: true, councilGradeLearningAreaId: true, startsAt: true },
+        });
+        const learningAreaName = mapping.displayLabel?.trim() || mapping.gradeLearningArea.sourceLabel || mapping.gradeLearningArea.learningArea.canonicalName;
+        await tx.auditEvent.create({
+          data: {
+            actorAccountId: actor.accountId, councilId: scope.councilId,
+            action: "SCHOOL_SUBJECT_TEACHER_ASSIGNED", resourceType: "StaffAssignment", resourceId: assignment.id,
+            decision: "ALLOW", metadata: { registrationId: scope.registrationId, schoolClassId: classId, membershipId: teacher.id, councilGradeLearningAreaId: mapping.id, learningAreaName },
+          },
+        });
+        return { ...assignment, teacherName: personName(teacher.person), learningAreaName };
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      if (prismaCode(error) === "P2002" || prismaCode(error) === "P2034") {
+        throw new ConflictException("The Subject Teacher assignment changed concurrently. Refresh and try again.");
+      }
+      throw error;
+    }
+  }
+
+  async endSubjectTeacher(actor: SchoolActor, registrationId: string, classId: string, assignmentId: string) {
+    return this.prisma.client.$transaction(async (tx) => {
+      const scope = await this.resolveAdminScope(tx, actor, registrationId);
+      const assignment = await tx.staffAssignment.findFirst({
+        where: { id: assignmentId, schoolClassId: classId, registrationId: scope.registrationId, councilId: scope.councilId, type: "SUBJECT_TEACHER", status: "ACTIVE", endsAt: null },
+        select: { id: true, councilGradeLearningAreaId: true },
+      });
+      if (!assignment) throw new NotFoundException("No active Subject Teacher assignment was found for this class.");
+      await tx.staffAssignment.update({ where: { id: assignment.id }, data: { status: "ENDED", endsAt: new Date() } });
+      await tx.auditEvent.create({
+        data: { actorAccountId: actor.accountId, councilId: scope.councilId, action: "SCHOOL_SUBJECT_TEACHER_ENDED", resourceType: "StaffAssignment", resourceId: assignment.id, decision: "ALLOW", metadata: { registrationId: scope.registrationId, schoolClassId: classId, councilGradeLearningAreaId: assignment.councilGradeLearningAreaId } },
+      });
+      return { success: true };
+    }, { isolationLevel: "Serializable" });
   }
 
   async endClassTeacher(actor: SchoolActor, registrationId: string, classId: string) {

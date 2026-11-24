@@ -100,6 +100,7 @@ enum SchoolClassStatus {
 
 enum StaffAssignmentType {
   CLASS_TEACHER
+  SUBJECT_TEACHER
 }
 
 enum StaffAssignmentStatus {
@@ -216,21 +217,21 @@ model UserAccount {
   updatedAt    DateTime      @updatedAt
   lastLoginAt  DateTime?
 
-  person                  Person                      @relation(fields: [personId], references: [id], onDelete: Restrict)
-  platformOperator        PlatformOperator?
-  refreshTokens           RefreshToken[]
-  loginIdentifiers        LoginIdentifier[]
-  emailVerificationTokens EmailVerificationToken[]
-  reviewedRegistrations   CouncilSchoolRegistration[] @relation("RegistrationReviewer")
-  createdCurriculumVersions  CurriculumVersion[] @relation("CurriculumVersionAuthor")
-  reviewedCurriculumVersions CurriculumVersion[] @relation("CurriculumVersionReviewer")
-  createdRubricVersions   GradingRubricVersion[] @relation("GradingRubricVersionAuthor")
-  reviewedRubricVersions  GradingRubricVersion[] @relation("GradingRubricVersionReviewer")
-  createdAssessments      Assessment[] @relation("AssessmentAuthor")
-  enteredAssessmentMarks  AssessmentMark[] @relation("AssessmentMarkEnteredBy")
-  assessmentMarkRevisions AssessmentMarkRevision[]
+  person                     Person                        @relation(fields: [personId], references: [id], onDelete: Restrict)
+  platformOperator           PlatformOperator?
+  refreshTokens              RefreshToken[]
+  loginIdentifiers           LoginIdentifier[]
+  emailVerificationTokens    EmailVerificationToken[]
+  reviewedRegistrations      CouncilSchoolRegistration[]   @relation("RegistrationReviewer")
+  createdCurriculumVersions  CurriculumVersion[]           @relation("CurriculumVersionAuthor")
+  reviewedCurriculumVersions CurriculumVersion[]           @relation("CurriculumVersionReviewer")
+  createdRubricVersions      GradingRubricVersion[]        @relation("GradingRubricVersionAuthor")
+  reviewedRubricVersions     GradingRubricVersion[]        @relation("GradingRubricVersionReviewer")
+  createdAssessments         Assessment[]                  @relation("AssessmentAuthor")
+  enteredAssessmentMarks     AssessmentMark[]              @relation("AssessmentMarkEnteredBy")
+  assessmentMarkRevisions    AssessmentMarkRevision[]
   publishedAssessmentResults AssessmentResultPublication[] @relation("AssessmentResultPublisher")
-  auditEvents             AuditEvent[]
+  auditEvents                AuditEvent[]
 
   @@index([status])
 }
@@ -292,11 +293,11 @@ model Council {
 
   memberships          CouncilMembership[]
   registrations        CouncilSchoolRegistration[]
-  regions               Region[]
+  regions              Region[]
   curriculumSelections CouncilCurriculum[]
-  gradingRubrics        GradingRubric[]
-  assessments           Assessment[]
-  auditEvents           AuditEvent[]
+  gradingRubrics       GradingRubric[]
+  assessments          Assessment[]
+  auditEvents          AuditEvent[]
 
   @@index([status, name])
 }
@@ -449,14 +450,14 @@ model CouncilSchoolRegistration {
   updatedAt                 DateTime           @updatedAt
   version                   Int                @default(0)
 
-  council           Council            @relation(fields: [councilId], references: [id], onDelete: Restrict)
-  school            School             @relation(fields: [schoolId], references: [id], onDelete: Restrict)
-  cluster           Cluster            @relation(fields: [clusterId, councilId], references: [id, councilId], onDelete: Restrict)
-  initialRegistrant Person             @relation("RegistrationInitialRegistrant", fields: [initialRegistrantPersonId], references: [id], onDelete: Restrict)
-  reviewedBy        UserAccount?       @relation("RegistrationReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
-  memberships       SchoolMembership[]
-  schoolClasses     SchoolClass[]
-  learnerEnrollments SchoolLearnerEnrollment[]
+  council              Council                   @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  school               School                    @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  cluster              Cluster                   @relation(fields: [clusterId, councilId], references: [id, councilId], onDelete: Restrict)
+  initialRegistrant    Person                    @relation("RegistrationInitialRegistrant", fields: [initialRegistrantPersonId], references: [id], onDelete: Restrict)
+  reviewedBy           UserAccount?              @relation("RegistrationReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
+  memberships          SchoolMembership[]
+  schoolClasses        SchoolClass[]
+  learnerEnrollments   SchoolLearnerEnrollment[]
   assessmentCandidates AssessmentCandidate[]
 
   @@unique([id, councilId])
@@ -477,8 +478,8 @@ model SchoolMembership {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  registration    CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
-  person          Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
+  registration     CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
+  person           Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
   staffAssignments StaffAssignment[]
 
   @@unique([id, registrationId, councilId])
@@ -486,7 +487,6 @@ model SchoolMembership {
   @@index([personId, status])
   @@index([registrationId, status, role])
 }
-
 
 model SchoolClass {
   id             String            @id @default(uuid()) @db.Uuid
@@ -500,9 +500,9 @@ model SchoolClass {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
-  assignments  StaffAssignment[]
-  learnerEnrollments SchoolLearnerEnrollment[]
+  registration         CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
+  assignments          StaffAssignment[]
+  learnerEnrollments   SchoolLearnerEnrollment[]
   assessmentCandidates AssessmentCandidate[]
 
   @@unique([id, registrationId, councilId])
@@ -512,20 +512,23 @@ model SchoolClass {
 }
 
 model StaffAssignment {
-  id             String                @id @default(uuid()) @db.Uuid
-  registrationId String                @db.Uuid
-  councilId      String                @db.Uuid
-  schoolClassId  String                @db.Uuid
-  membershipId   String                @db.Uuid
-  type           StaffAssignmentType   @default(CLASS_TEACHER)
-  status         StaffAssignmentStatus @default(ACTIVE)
-  startsAt       DateTime              @default(now())
-  endsAt         DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  id                         String                @id @default(uuid()) @db.Uuid
+  registrationId             String                @db.Uuid
+  councilId                  String                @db.Uuid
+  schoolClassId              String                @db.Uuid
+  membershipId               String                @db.Uuid
+  type                       StaffAssignmentType   @default(CLASS_TEACHER)
+  councilGradeLearningAreaId String?               @db.Uuid
+  curriculumVersionId        String?               @db.Uuid
+  status                     StaffAssignmentStatus @default(ACTIVE)
+  startsAt                   DateTime              @default(now())
+  endsAt                     DateTime?
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
 
-  schoolClass SchoolClass     @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
-  membership  SchoolMembership @relation(fields: [membershipId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+  schoolClass              SchoolClass               @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+  membership               SchoolMembership          @relation(fields: [membershipId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+  councilGradeLearningArea CouncilGradeLearningArea? @relation(fields: [councilGradeLearningAreaId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
 
   @@unique([id, registrationId, councilId])
   @@index([registrationId, status, type])
@@ -543,28 +546,28 @@ model Learner {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  enrollments SchoolLearnerEnrollment[]
+  enrollments          SchoolLearnerEnrollment[]
   assessmentCandidates AssessmentCandidate[]
 
   @@index([familyName, givenName])
 }
 
 model SchoolLearnerEnrollment {
-  id             String                 @id @default(uuid()) @db.Uuid
-  learnerId      String                 @db.Uuid
-  registrationId String                 @db.Uuid
-  councilId      String                 @db.Uuid
-  schoolClassId  String                 @db.Uuid
+  id              String                  @id @default(uuid()) @db.Uuid
+  learnerId       String                  @db.Uuid
+  registrationId  String                  @db.Uuid
+  councilId       String                  @db.Uuid
+  schoolClassId   String                  @db.Uuid
   admissionNumber String?
-  status         LearnerEnrollmentStatus @default(ACTIVE)
-  enrolledAt     DateTime               @default(now())
-  endedAt        DateTime?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  status          LearnerEnrollmentStatus @default(ACTIVE)
+  enrolledAt      DateTime                @default(now())
+  endedAt         DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
-  learner      Learner                  @relation(fields: [learnerId], references: [id], onDelete: Restrict)
-  registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
-  schoolClass  SchoolClass              @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+  learner              Learner                   @relation(fields: [learnerId], references: [id], onDelete: Restrict)
+  registration         CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
+  schoolClass          SchoolClass               @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
   assessmentCandidates AssessmentCandidate[]
 
   @@unique([id, learnerId, registrationId, councilId])
@@ -573,28 +576,28 @@ model SchoolLearnerEnrollment {
 }
 
 model AssessmentCandidate {
-  id                       String                    @id @default(uuid()) @db.Uuid
-  assessmentId             String                    @db.Uuid
-  councilId                String                    @db.Uuid
-  curriculumVersionId      String                    @db.Uuid
-  learnerId                String                    @db.Uuid
-  enrollmentId             String                    @db.Uuid
-  registrationId           String                    @db.Uuid
-  schoolClassId            String                    @db.Uuid
-  learnerNumberSnapshot    String
-  learnerNameSnapshot      String
-  schoolIdSnapshot         String   @db.Uuid
-  schoolNameSnapshot       String
-  classGradeSnapshot       SchoolGrade
-  classStreamSnapshot      String
-  status                   AssessmentCandidateStatus @default(ACTIVE)
-  createdAt                DateTime                  @default(now())
+  id                    String                    @id @default(uuid()) @db.Uuid
+  assessmentId          String                    @db.Uuid
+  councilId             String                    @db.Uuid
+  curriculumVersionId   String                    @db.Uuid
+  learnerId             String                    @db.Uuid
+  enrollmentId          String                    @db.Uuid
+  registrationId        String                    @db.Uuid
+  schoolClassId         String                    @db.Uuid
+  learnerNumberSnapshot String
+  learnerNameSnapshot   String
+  schoolIdSnapshot      String                    @db.Uuid
+  schoolNameSnapshot    String
+  classGradeSnapshot    SchoolGrade
+  classStreamSnapshot   String
+  status                AssessmentCandidateStatus @default(ACTIVE)
+  createdAt             DateTime                  @default(now())
 
-  assessment   Assessment             @relation(fields: [assessmentId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
-  learner      Learner                @relation(fields: [learnerId], references: [id], onDelete: Restrict)
-  enrollment   SchoolLearnerEnrollment @relation(fields: [enrollmentId, learnerId, registrationId, councilId], references: [id, learnerId, registrationId, councilId], onDelete: Restrict)
+  assessment   Assessment                @relation(fields: [assessmentId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  learner      Learner                   @relation(fields: [learnerId], references: [id], onDelete: Restrict)
+  enrollment   SchoolLearnerEnrollment   @relation(fields: [enrollmentId, learnerId, registrationId, councilId], references: [id, learnerId, registrationId, councilId], onDelete: Restrict)
   registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
-  schoolClass  SchoolClass            @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+  schoolClass  SchoolClass               @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
   marks        AssessmentMark[]
   results      AssessmentResult[]
 
@@ -605,23 +608,23 @@ model AssessmentCandidate {
 }
 
 model AssessmentMark {
-  id                       String              @id @default(uuid()) @db.Uuid
-  assessmentId             String              @db.Uuid
-  candidateId              String              @db.Uuid
-  assessmentLearningAreaId String              @db.Uuid
-  marks                    Decimal?            @db.Decimal(10, 4)
+  id                       String               @id @default(uuid()) @db.Uuid
+  assessmentId             String               @db.Uuid
+  candidateId              String               @db.Uuid
+  assessmentLearningAreaId String               @db.Uuid
+  marks                    Decimal?             @db.Decimal(10, 4)
   status                   AssessmentMarkStatus @default(DRAFT)
-  enteredByAccountId       String?             @db.Uuid
+  enteredByAccountId       String?              @db.Uuid
   submittedAt              DateTime?
   returnedReason           String?
-  createdAt                DateTime            @default(now())
-  updatedAt                DateTime            @updatedAt
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
 
-  assessment         Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
-  candidate          AssessmentCandidate   @relation(fields: [candidateId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
-  assessmentLearningArea AssessmentLearningArea @relation(fields: [assessmentLearningAreaId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
-  enteredBy          UserAccount?          @relation("AssessmentMarkEnteredBy", fields: [enteredByAccountId], references: [id], onDelete: Restrict)
-  revisions          AssessmentMarkRevision[]
+  assessment             Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  candidate              AssessmentCandidate      @relation(fields: [candidateId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  assessmentLearningArea AssessmentLearningArea   @relation(fields: [assessmentLearningAreaId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  enteredBy              UserAccount?             @relation("AssessmentMarkEnteredBy", fields: [enteredByAccountId], references: [id], onDelete: Restrict)
+  revisions              AssessmentMarkRevision[]
 
   @@unique([candidateId, assessmentLearningAreaId])
   @@index([assessmentId, status])
@@ -629,14 +632,14 @@ model AssessmentMark {
 }
 
 model AssessmentMarkRevision {
-  id             String                     @id @default(uuid()) @db.Uuid
-  markId         String                     @db.Uuid
-  actorAccountId String                     @db.Uuid
+  id             String                       @id @default(uuid()) @db.Uuid
+  markId         String                       @db.Uuid
+  actorAccountId String                       @db.Uuid
   action         AssessmentMarkRevisionAction
-  previousMarks  Decimal?                   @db.Decimal(10, 4)
-  newMarks       Decimal?                   @db.Decimal(10, 4)
+  previousMarks  Decimal?                     @db.Decimal(10, 4)
+  newMarks       Decimal?                     @db.Decimal(10, 4)
   reason         String?
-  createdAt      DateTime                   @default(now())
+  createdAt      DateTime                     @default(now())
 
   mark  AssessmentMark @relation(fields: [markId], references: [id], onDelete: Restrict)
   actor UserAccount    @relation(fields: [actorAccountId], references: [id], onDelete: Restrict)
@@ -683,7 +686,6 @@ model RefreshToken {
   @@index([expiresAt])
 }
 
-
 model Curriculum {
   id        String   @id @default(uuid()) @db.Uuid
   code      String   @unique
@@ -698,25 +700,25 @@ model Curriculum {
 }
 
 model CurriculumVersion {
-  id                 String                  @id @default(uuid()) @db.Uuid
-  curriculumId       String                  @db.Uuid
-  versionLabel       String
-  status             CurriculumVersionStatus @default(DRAFT)
-  sourceTitle        String
-  sourceUrl          String
-  sourceRetrievedAt  DateTime
-  sourceSha256       String                  @db.VarChar(64)
-  effectiveFrom      DateTime?
-  effectiveTo        DateTime?
-  createdByAccountId String                  @db.Uuid
-  reviewedByAccountId String?                @db.Uuid
-  publishedAt        DateTime?
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  id                  String                  @id @default(uuid()) @db.Uuid
+  curriculumId        String                  @db.Uuid
+  versionLabel        String
+  status              CurriculumVersionStatus @default(DRAFT)
+  sourceTitle         String
+  sourceUrl           String
+  sourceRetrievedAt   DateTime
+  sourceSha256        String                  @db.VarChar(64)
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  createdByAccountId  String                  @db.Uuid
+  reviewedByAccountId String?                 @db.Uuid
+  publishedAt         DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
-  curriculum Curriculum   @relation(fields: [curriculumId], references: [id], onDelete: Restrict)
-  author     UserAccount  @relation("CurriculumVersionAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
-  reviewer   UserAccount? @relation("CurriculumVersionReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
+  curriculum         Curriculum          @relation(fields: [curriculumId], references: [id], onDelete: Restrict)
+  author             UserAccount         @relation("CurriculumVersionAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
+  reviewer           UserAccount?        @relation("CurriculumVersionReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
   gradeLearningAreas GradeLearningArea[]
   councilCurricula   CouncilCurriculum[]
 
@@ -727,11 +729,11 @@ model CurriculumVersion {
 }
 
 model LearningArea {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique
   canonicalName String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   gradeLearningAreas GradeLearningArea[]
 
@@ -739,21 +741,21 @@ model LearningArea {
 }
 
 model GradeLearningArea {
-  id                 String                 @id @default(uuid()) @db.Uuid
-  curriculumVersionId String                @db.Uuid
-  learningAreaId     String                 @db.Uuid
-  grade              SchoolGrade
-  sourceLabel        String
-  sourceUrl          String
-  sortOrder          Int                    @default(0)
-  optionality        CurriculumOptionality  @default(UNKNOWN)
-  reviewStatus       CurriculumReviewStatus @default(REVIEW_REQUIRED)
-  reviewNote         String?
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
+  id                  String                 @id @default(uuid()) @db.Uuid
+  curriculumVersionId String                 @db.Uuid
+  learningAreaId      String                 @db.Uuid
+  grade               SchoolGrade
+  sourceLabel         String
+  sourceUrl           String
+  sortOrder           Int                    @default(0)
+  optionality         CurriculumOptionality  @default(UNKNOWN)
+  reviewStatus        CurriculumReviewStatus @default(REVIEW_REQUIRED)
+  reviewNote          String?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
-  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
-  learningArea      LearningArea      @relation(fields: [learningAreaId], references: [id], onDelete: Restrict)
+  curriculumVersion     CurriculumVersion          @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
+  learningArea          LearningArea               @relation(fields: [learningAreaId], references: [id], onDelete: Restrict)
   councilConfigurations CouncilGradeLearningArea[]
 
   @@unique([curriculumVersionId, grade, learningAreaId])
@@ -764,17 +766,17 @@ model GradeLearningArea {
 }
 
 model CouncilCurriculum {
-  id                 String                  @id @default(uuid()) @db.Uuid
-  councilId          String                  @db.Uuid
-  curriculumVersionId String                 @db.Uuid
-  status             CouncilCurriculumStatus @default(ACTIVE)
-  effectiveFrom      DateTime                @default(now())
-  effectiveTo        DateTime?
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  id                  String                  @id @default(uuid()) @db.Uuid
+  councilId           String                  @db.Uuid
+  curriculumVersionId String                  @db.Uuid
+  status              CouncilCurriculumStatus @default(ACTIVE)
+  effectiveFrom       DateTime                @default(now())
+  effectiveTo         DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
-  council           Council           @relation(fields: [councilId], references: [id], onDelete: Restrict)
-  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
+  council           Council                    @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  curriculumVersion CurriculumVersion          @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
   gradeAreas        CouncilGradeLearningArea[]
   assessments       Assessment[]
 
@@ -798,9 +800,10 @@ model CouncilGradeLearningArea {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  councilCurriculum CouncilCurriculum @relation(fields: [councilCurriculumId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
-  gradeLearningArea GradeLearningArea @relation(fields: [gradeLearningAreaId, curriculumVersionId], references: [id, curriculumVersionId], onDelete: Restrict)
+  councilCurriculum CouncilCurriculum        @relation(fields: [councilCurriculumId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  gradeLearningArea GradeLearningArea        @relation(fields: [gradeLearningAreaId, curriculumVersionId], references: [id, curriculumVersionId], onDelete: Restrict)
   assessmentItems   AssessmentLearningArea[]
+  staffAssignments  StaffAssignment[]
 
   @@unique([councilCurriculumId, gradeLearningAreaId])
   @@unique([id, councilId, curriculumVersionId])
@@ -826,25 +829,25 @@ model GradingRubric {
 }
 
 model GradingRubricVersion {
-  id                String             @id @default(uuid()) @db.Uuid
-  rubricId          String             @db.Uuid
-  councilId         String             @db.Uuid
-  versionLabel      String
-  status            RubricVersionStatus @default(DRAFT)
-  scaleType         RubricScaleType
-  scoreUnit         String?
-  minScore          Decimal?           @db.Decimal(10, 4)
-  maxScore          Decimal?           @db.Decimal(10, 4)
-  createdByAccountId String            @db.Uuid
-  reviewedByAccountId String?          @db.Uuid
-  publishedAt       DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                  String              @id @default(uuid()) @db.Uuid
+  rubricId            String              @db.Uuid
+  councilId           String              @db.Uuid
+  versionLabel        String
+  status              RubricVersionStatus @default(DRAFT)
+  scaleType           RubricScaleType
+  scoreUnit           String?
+  minScore            Decimal?            @db.Decimal(10, 4)
+  maxScore            Decimal?            @db.Decimal(10, 4)
+  createdByAccountId  String              @db.Uuid
+  reviewedByAccountId String?             @db.Uuid
+  publishedAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
-  rubric     GradingRubric @relation(fields: [rubricId, councilId], references: [id, councilId], onDelete: Restrict)
-  author     UserAccount   @relation("GradingRubricVersionAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
-  reviewer   UserAccount?  @relation("GradingRubricVersionReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
-  bands      RubricBand[]
+  rubric      GradingRubric @relation(fields: [rubricId, councilId], references: [id, councilId], onDelete: Restrict)
+  author      UserAccount   @relation("GradingRubricVersionAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
+  reviewer    UserAccount?  @relation("GradingRubricVersionReviewer", fields: [reviewedByAccountId], references: [id], onDelete: Restrict)
+  bands       RubricBand[]
   assessments Assessment[]
 
   @@unique([id, councilId])
@@ -855,18 +858,18 @@ model GradingRubricVersion {
 }
 
 model RubricBand {
-  id               String   @id @default(uuid()) @db.Uuid
-  rubricVersionId  String   @db.Uuid
-  code             String
-  label            String
-  description      String?
-  lowerBound       Decimal? @db.Decimal(10, 4)
-  upperBound       Decimal? @db.Decimal(10, 4)
-  sortOrder        Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(uuid()) @db.Uuid
+  rubricVersionId String   @db.Uuid
+  code            String
+  label           String
+  description     String?
+  lowerBound      Decimal? @db.Decimal(10, 4)
+  upperBound      Decimal? @db.Decimal(10, 4)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  rubricVersion GradingRubricVersion @relation(fields: [rubricVersionId], references: [id], onDelete: Restrict)
+  rubricVersion       GradingRubricVersion   @relation(fields: [rubricVersionId], references: [id], onDelete: Restrict)
   assessmentSnapshots AssessmentRubricBand[]
 
   @@unique([id, rubricVersionId])
@@ -876,31 +879,31 @@ model RubricBand {
 }
 
 model Assessment {
-  id                    String          @id @default(uuid()) @db.Uuid
-  councilId             String          @db.Uuid
-  councilCurriculumId   String          @db.Uuid
-  curriculumVersionId   String          @db.Uuid
-  rubricVersionId       String          @db.Uuid
-  name                  String
-  code                  String
-  academicYear          Int
-  grade                 SchoolGrade
-  type                  AssessmentType
-  status                AssessmentStatus @default(DRAFT)
-  opensAt               DateTime?
-  closesAt              DateTime?
-  createdByAccountId    String          @db.Uuid
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  id                  String           @id @default(uuid()) @db.Uuid
+  councilId           String           @db.Uuid
+  councilCurriculumId String           @db.Uuid
+  curriculumVersionId String           @db.Uuid
+  rubricVersionId     String           @db.Uuid
+  name                String
+  code                String
+  academicYear        Int
+  grade               SchoolGrade
+  type                AssessmentType
+  status              AssessmentStatus @default(DRAFT)
+  opensAt             DateTime?
+  closesAt            DateTime?
+  createdByAccountId  String           @db.Uuid
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
-  council           Council                @relation(fields: [councilId], references: [id], onDelete: Restrict)
-  councilCurriculum CouncilCurriculum      @relation(fields: [councilCurriculumId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
-  rubricVersion     GradingRubricVersion   @relation(fields: [rubricVersionId, councilId], references: [id, councilId], onDelete: Restrict)
-  author            UserAccount            @relation("AssessmentAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
-  learningAreas     AssessmentLearningArea[]
-  rubricBands       AssessmentRubricBand[]
-  candidates        AssessmentCandidate[]
-  marks             AssessmentMark[]
+  council            Council                       @relation(fields: [councilId], references: [id], onDelete: Restrict)
+  councilCurriculum  CouncilCurriculum             @relation(fields: [councilCurriculumId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  rubricVersion      GradingRubricVersion          @relation(fields: [rubricVersionId, councilId], references: [id, councilId], onDelete: Restrict)
+  author             UserAccount                   @relation("AssessmentAuthor", fields: [createdByAccountId], references: [id], onDelete: Restrict)
+  learningAreas      AssessmentLearningArea[]
+  rubricBands        AssessmentRubricBand[]
+  candidates         AssessmentCandidate[]
+  marks              AssessmentMark[]
   resultPublications AssessmentResultPublication[]
 
   @@unique([id, councilId, curriculumVersionId])
@@ -912,25 +915,25 @@ model Assessment {
 }
 
 model AssessmentLearningArea {
-  id                       String   @id @default(uuid()) @db.Uuid
-  assessmentId             String   @db.Uuid
-  councilId                String   @db.Uuid
-  curriculumVersionId      String   @db.Uuid
-  councilGradeLearningAreaId String @db.Uuid
-  grade                    SchoolGrade
-  learningAreaCode         String
-  canonicalName            String
-  sourceLabel              String
-  displayLabel             String?
-  maxMarks                 Decimal  @db.Decimal(8, 2)
-  decimalPlaces            Int      @default(0)
-  sortOrder                Int      @default(0)
-  createdAt                DateTime @default(now())
+  id                         String      @id @default(uuid()) @db.Uuid
+  assessmentId               String      @db.Uuid
+  councilId                  String      @db.Uuid
+  curriculumVersionId        String      @db.Uuid
+  councilGradeLearningAreaId String      @db.Uuid
+  grade                      SchoolGrade
+  learningAreaCode           String
+  canonicalName              String
+  sourceLabel                String
+  displayLabel               String?
+  maxMarks                   Decimal     @db.Decimal(8, 2)
+  decimalPlaces              Int         @default(0)
+  sortOrder                  Int         @default(0)
+  createdAt                  DateTime    @default(now())
 
-  assessment Assessment @relation(fields: [assessmentId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
-  councilGradeLearningArea CouncilGradeLearningArea @relation(fields: [councilGradeLearningAreaId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
-  marks AssessmentMark[]
-  resultLearningAreas AssessmentResultLearningArea[]
+  assessment               Assessment                     @relation(fields: [assessmentId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  councilGradeLearningArea CouncilGradeLearningArea       @relation(fields: [councilGradeLearningAreaId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
+  marks                    AssessmentMark[]
+  resultLearningAreas      AssessmentResultLearningArea[]
 
   @@unique([id, assessmentId])
   @@unique([assessmentId, councilGradeLearningAreaId])
@@ -938,22 +941,21 @@ model AssessmentLearningArea {
   @@index([councilGradeLearningAreaId])
 }
 
-
 model AssessmentResultPublication {
-  id                   String                           @id @default(uuid()) @db.Uuid
-  assessmentId         String                           @db.Uuid
-  councilId            String                           @db.Uuid
-  version              Int                              @default(1)
+  id                   String                            @id @default(uuid()) @db.Uuid
+  assessmentId         String                            @db.Uuid
+  councilId            String                            @db.Uuid
+  version              Int                               @default(1)
   status               AssessmentResultPublicationStatus @default(PUBLISHED)
-  publishedByAccountId String                           @db.Uuid
+  publishedByAccountId String                            @db.Uuid
   candidateCount       Int
   schoolCount          Int
-  publishedAt          DateTime                         @default(now())
-  createdAt            DateTime                         @default(now())
+  publishedAt          DateTime                          @default(now())
+  createdAt            DateTime                          @default(now())
 
-  assessment Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
-  publishedBy UserAccount @relation("AssessmentResultPublisher", fields: [publishedByAccountId], references: [id], onDelete: Restrict)
-  results    AssessmentResult[]
+  assessment  Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  publishedBy UserAccount        @relation("AssessmentResultPublisher", fields: [publishedByAccountId], references: [id], onDelete: Restrict)
+  results     AssessmentResult[]
 
   @@unique([id, assessmentId])
   @@unique([assessmentId, version])
@@ -961,28 +963,28 @@ model AssessmentResultPublication {
 }
 
 model AssessmentResult {
-  id                         String   @id @default(uuid()) @db.Uuid
-  publicationId              String   @db.Uuid
-  assessmentId               String   @db.Uuid
-  candidateId                String   @db.Uuid
-  registrationId             String   @db.Uuid
-  schoolClassId              String   @db.Uuid
-  schoolIdSnapshot            String   @db.Uuid
-  learnerNumberSnapshot      String
-  learnerNameSnapshot        String
-  schoolNameSnapshot         String
-  schoolClassNameSnapshot    String
-  gradeSnapshot              SchoolGrade
-  totalMarks                 Decimal  @db.Decimal(12, 4)
-  maximumMarks               Decimal  @db.Decimal(12, 4)
-  percentage                Decimal  @db.Decimal(8, 4)
-  rank                       Int
-  overallBandCode            String?
-  overallBandLabel           String?
-  createdAt                  DateTime @default(now())
+  id                      String      @id @default(uuid()) @db.Uuid
+  publicationId           String      @db.Uuid
+  assessmentId            String      @db.Uuid
+  candidateId             String      @db.Uuid
+  registrationId          String      @db.Uuid
+  schoolClassId           String      @db.Uuid
+  schoolIdSnapshot        String      @db.Uuid
+  learnerNumberSnapshot   String
+  learnerNameSnapshot     String
+  schoolNameSnapshot      String
+  schoolClassNameSnapshot String
+  gradeSnapshot           SchoolGrade
+  totalMarks              Decimal     @db.Decimal(12, 4)
+  maximumMarks            Decimal     @db.Decimal(12, 4)
+  percentage              Decimal     @db.Decimal(8, 4)
+  rank                    Int
+  overallBandCode         String?
+  overallBandLabel        String?
+  createdAt               DateTime    @default(now())
 
-  publication AssessmentResultPublication @relation(fields: [publicationId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
-  candidate   AssessmentCandidate         @relation(fields: [candidateId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  publication   AssessmentResultPublication    @relation(fields: [publicationId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  candidate     AssessmentCandidate            @relation(fields: [candidateId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
   learningAreas AssessmentResultLearningArea[]
 
   @@unique([id, assessmentId])
@@ -1006,7 +1008,7 @@ model AssessmentResultLearningArea {
   sortOrder                Int
   createdAt                DateTime @default(now())
 
-  result AssessmentResult @relation(fields: [resultId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  result                 AssessmentResult       @relation(fields: [resultId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
   assessmentLearningArea AssessmentLearningArea @relation(fields: [assessmentLearningAreaId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
 
   @@unique([resultId, assessmentLearningAreaId])
@@ -1014,22 +1016,21 @@ model AssessmentResultLearningArea {
 }
 
 model AssessmentRubricBand {
-  id               String   @id @default(uuid()) @db.Uuid
-  assessmentId     String   @db.Uuid
-  rubricVersionId  String   @db.Uuid
-  sourceRubricBandId String @db.Uuid
-  code             String
-  label            String
-  description      String?
-  lowerBound       Decimal? @db.Decimal(10, 4)
-  upperBound       Decimal? @db.Decimal(10, 4)
-  sortOrder        Int      @default(0)
-  createdAt        DateTime @default(now())
+  id                 String   @id @default(uuid()) @db.Uuid
+  assessmentId       String   @db.Uuid
+  rubricVersionId    String   @db.Uuid
+  sourceRubricBandId String   @db.Uuid
+  code               String
+  label              String
+  description        String?
+  lowerBound         Decimal? @db.Decimal(10, 4)
+  upperBound         Decimal? @db.Decimal(10, 4)
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
 
   assessment Assessment @relation(fields: [assessmentId, rubricVersionId], references: [id, rubricVersionId], onDelete: Restrict)
-  sourceBand  RubricBand @relation(fields: [sourceRubricBandId, rubricVersionId], references: [id, rubricVersionId], onDelete: Restrict)
+  sourceBand RubricBand @relation(fields: [sourceRubricBandId, rubricVersionId], references: [id, rubricVersionId], onDelete: Restrict)
 
   @@unique([assessmentId, sourceRubricBandId])
   @@index([assessmentId, sortOrder])
 }
-

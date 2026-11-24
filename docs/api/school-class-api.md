@@ -33,3 +33,17 @@ The selected membership must be an active `TEACHER` membership in the same regis
 ## Capability boundary
 
 This first assignment slice supports `CLASS_TEACHER` only. It coordinates class readiness; it does not grant marks entry, learner-record access, assessment visibility or result access. `SUBJECT_TEACHER` assignments will be added only when the versioned curriculum mapping and Council learning-area configuration are published. No learner enrollment or learner personal data is created by these endpoints.
+
+## Subject Teacher assignments
+
+Subject Teacher assignments are class-scoped and tied to a specific enabled `CouncilGradeLearningArea` from the Council's currently effective published curriculum. They do not create a new school membership or global role. The school administrator selects an existing active teacher membership and one grade learning-area mapping. A class can have only one active Subject Teacher assignment per learning area; the same teacher may be assigned to multiple learning areas or classes.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/school/registrations/:registrationId/classes/:classId/subject-teachers` | List currently assignable curriculum learning areas and their active Subject Teacher assignments |
+| `POST` | `/api/school/registrations/:registrationId/classes/:classId/subject-teachers` | Assign an active school teacher to one enabled learning area |
+| `DELETE` | `/api/school/registrations/:registrationId/classes/:classId/subject-teachers/:assignmentId` | End an assignment without deleting its history |
+
+The POST body is `{ "membershipId": "...", "councilGradeLearningAreaId": "..." }`. The API verifies the active School Administrator membership, approved school and Council, class grade, active teacher membership, effective Council curriculum selection, published curriculum version, and enabled grade-to-learning-area mapping in a serializable transaction. Database composite foreign keys and a partial unique index enforce mapping ownership and one active assignment per class/learning area. Every assignment and end operation is audited.
+
+A Class Teacher retains access to all learning areas for the assigned class. A Subject Teacher can read, save and submit marks only for the assigned learning area. The mark-sheet GET and submit routes accept `learningAreaId` (the assessment's learning-area snapshot ID) to scope the operation. An unqualified mark-sheet request remains Class-Teacher-only.

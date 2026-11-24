@@ -29,9 +29,11 @@ test("only the active assigned Class Teacher can save a mark within the assessme
     schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
   };
   const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
     assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
     assessmentCandidate: { findFirst: async () => ({ id: candidateId }) },
-    assessmentLearningArea: { findFirst: async () => ({ id: areaId, maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: areaId, councilGradeLearningAreaId: "66666666-6666-4666-8666-666666666666", maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
     assessmentMark: {
       findFirst: async () => ({ id: markId, marks: null, status: "DRAFT" }),
       update: async ({ data }) => { records.updated = data; return { id: markId, marks: data.marks, status: "DRAFT", updatedAt: new Date() }; },
@@ -58,9 +60,11 @@ test("mark entry rejects a score above the learning area maximum", async () => {
     schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
   };
   const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
     assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
     assessmentCandidate: { findFirst: async () => ({ id: candidateId }) },
-    assessmentLearningArea: { findFirst: async () => ({ id: areaId, maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: areaId, councilGradeLearningAreaId: "66666666-6666-4666-8666-666666666666", maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
   };
   const client = { ...base, $transaction: async (callback) => callback(tx) };
   await assert.rejects(
@@ -75,6 +79,8 @@ test("unassigned teachers cannot access another class mark sheet", async () => {
   const client = {
     schoolClass: { findFirst: async () => classAccess() },
     schoolMembership: { findFirst: async () => null },
+    assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
+    assessmentLearningArea: { findFirst: async () => null },
   };
   await assert.rejects(
     new SchoolAssessmentMarkService({ client }).getMarkSheet(actor, registrationId, classId, assessmentId),
@@ -89,9 +95,11 @@ test("submitted marks cannot be overwritten", async () => {
     schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
   };
   const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
     assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
     assessmentCandidate: { findFirst: async () => ({ id: candidateId }) },
-    assessmentLearningArea: { findFirst: async () => ({ id: areaId, maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: areaId, councilGradeLearningAreaId: "66666666-6666-4666-8666-666666666666", maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
     assessmentMark: { findFirst: async () => ({ id: markId, marks: 72, status: "SUBMITTED" }), update: async () => { records.updated = true; } },
   };
   const client = { ...base, $transaction: async (callback) => callback(tx) };
@@ -112,6 +120,8 @@ test("class mark submission requires every mark cell and locks the complete clas
     schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
   };
   const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
     assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
     assessmentCandidate: {
       findMany: async () => [
@@ -130,7 +140,7 @@ test("class mark submission requires every mark cell and locks the complete clas
   assert.equal(records.revisions.length, 2);
   assert.equal(records.revisions[0].action, "SUBMITTED");
   assert.equal(records.audit.action, "ASSESSMENT_CLASS_MARKS_SUBMITTED");
-  assert.deepEqual(result, { success: true, candidateCount: 1, markCount: 2 });
+  assert.deepEqual(result, { success: true, candidateCount: 1, markCount: 2, learningAreaId: null });
 });
 
 test("class mark submission rejects incomplete mark cells", async () => {
@@ -139,6 +149,8 @@ test("class mark submission rejects incomplete mark cells", async () => {
     schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
   };
   const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
     assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
     assessmentCandidate: {
       findMany: async () => [{ id: candidateId, marks: [{ id: markId, marks: null, status: "DRAFT" }] }],
@@ -160,9 +172,11 @@ test("a returned mark can be corrected while the assessment is reopened", async 
     schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
   };
   const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
     assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
     assessmentCandidate: { findFirst: async () => ({ id: candidateId }) },
-    assessmentLearningArea: { findFirst: async () => ({ id: areaId, maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: areaId, councilGradeLearningAreaId: "66666666-6666-4666-8666-666666666666", maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
     assessmentMark: {
       findFirst: async () => ({ id: markId, marks: 72, status: "RETURNED" }),
       update: async ({ data }) => { records.updated = data; return { id: markId, marks: data.marks, status: "RETURNED", updatedAt: new Date() }; },
@@ -191,6 +205,8 @@ test("class resubmission accepts complete returned marks and records a new submi
     schoolMembership: { findFirst: async ({ where }) => where.role === "TEACHER" ? teacherMembership() : null },
   };
   const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
     assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
     assessmentCandidate: {
       findMany: async () => [{ id: candidateId, marks: [{ id: markId, marks: 74.5, status: "RETURNED" }] }],
@@ -208,5 +224,60 @@ test("class resubmission accepts complete returned marks and records a new submi
   assert.deepEqual(records.update.where.status.in, ["DRAFT", "RETURNED"]);
   assert.equal(records.update.data.status, "SUBMITTED");
   assert.equal(records.revisions[0].action, "SUBMITTED");
-  assert.deepEqual(result, { success: true, candidateCount: 1, markCount: 1 });
+  assert.deepEqual(result, { success: true, candidateCount: 1, markCount: 1, learningAreaId: null });
+});
+
+
+test("Subject Teacher can save marks only for the assigned curriculum learning area", async () => {
+  const records = {};
+  const mappingId = "77777777-7777-4777-8777-777777777777";
+  const base = {
+    schoolClass: { findFirst: async () => classAccess() },
+    schoolMembership: { findFirst: async ({ where }) => {
+      const allowed = where.staffAssignments.some.OR.some((item) => item.type === "SUBJECT_TEACHER" && item.councilGradeLearningAreaId === mappingId);
+      return allowed ? teacherMembership() : null;
+    } },
+  };
+  const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
+    assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
+    assessmentCandidate: { findFirst: async () => ({ id: candidateId }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: areaId, councilGradeLearningAreaId: mappingId, maxMarks: 80, decimalPlaces: 1, canonicalName: "Mathematics" }) },
+    assessmentMark: {
+      findFirst: async () => ({ id: markId, marks: null, status: "DRAFT" }),
+      update: async ({ data }) => { records.updated = data; return { id: markId, marks: data.marks, status: "DRAFT", updatedAt: new Date() }; },
+    },
+    assessmentMarkRevision: { create: async ({ data }) => data },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const client = { ...base, $transaction: async (callback) => callback(tx) };
+  await new SchoolAssessmentMarkService({ client }).saveMark(actor, registrationId, classId, assessmentId, {
+    candidateId, assessmentLearningAreaId: areaId, marks: 74,
+  });
+  assert.equal(records.updated.marks, "74");
+});
+
+test("Subject Teacher cannot save marks for a different learning area", async () => {
+  const assignedMappingId = "77777777-7777-4777-8777-777777777777";
+  const requestedMappingId = "88888888-8888-4888-8888-888888888888";
+  const base = {
+    schoolClass: { findFirst: async () => classAccess() },
+    schoolMembership: { findFirst: async ({ where }) => {
+      const allowed = where.staffAssignments.some.OR.some((item) => item.type === "SUBJECT_TEACHER" && item.councilGradeLearningAreaId === assignedMappingId);
+      return allowed ? teacherMembership() : null;
+    } },
+  };
+  const tx = {
+    schoolClass: base.schoolClass,
+    schoolMembership: base.schoolMembership,
+    assessment: { findFirst: async () => ({ id: assessmentId, status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
+    assessmentCandidate: { findFirst: async () => ({ id: candidateId }) },
+    assessmentLearningArea: { findFirst: async () => ({ id: areaId, councilGradeLearningAreaId: requestedMappingId, maxMarks: 80, decimalPlaces: 1, canonicalName: "Science" }) },
+  };
+  const client = { ...base, $transaction: async (callback) => callback(tx) };
+  await assert.rejects(
+    new SchoolAssessmentMarkService({ client }).saveMark(actor, registrationId, classId, assessmentId, { candidateId, assessmentLearningAreaId: areaId, marks: 60 }),
+    (error) => error instanceof ForbiddenException,
+  );
 });

@@ -54,3 +54,7 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 ## Not yet implemented
 
 This milestone does not yet provide bulk Excel import, learner transfer wizard, subject-teacher assignment, mark moderation/return/correction, assessment reopening, result aggregation, ranking, result publication, or report exports. Result computation must use the immutable assessment candidate and learning-area snapshots, not the current live class roster.
+
+## Subject Teacher mark access
+
+A Subject Teacher assignment is attached to a school class and a specific Council-approved curriculum learning-area mapping. It is not implied by the global TEACHER membership. For an open assessment, the teacher's assignment must match the assessment learning-area snapshot's `councilGradeLearningAreaId`. Subject Teachers can read only that learning-area column, save only its mark cells, and submit only that learning area's marks across the active class candidates. Class Teachers retain full-class mark-sheet access and may submit the complete class sheet. All marks remain subject to the same score maximum, decimal precision, revision history and immutable submission rules.

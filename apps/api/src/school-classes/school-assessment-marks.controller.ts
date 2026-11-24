@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { AccessTokenGuard, AuthenticatedRequest } from "../auth/access-token.guard";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { UpdateAssessmentMarkDto } from "./dto/update-assessment-mark.dto";
@@ -15,10 +15,11 @@ export class SchoolAssessmentMarksController {
     @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
     @Param("classId", new ParseUUIDPipe()) classId: string,
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+    @Query("learningAreaId") learningAreaId?: string,
   ) {
     return this.marks.getMarkSheet(
       { accountId: request.auth!.accountId, personId: request.auth!.personId },
-      registrationId, classId, assessmentId,
+      registrationId, classId, assessmentId, learningAreaId,
     );
   }
 
@@ -42,10 +43,11 @@ export class SchoolAssessmentMarksController {
     @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
     @Param("classId", new ParseUUIDPipe()) classId: string,
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
+    @Query("learningAreaId") learningAreaId?: string,
   ) {
     return this.marks.submitClassMarks(
       { accountId: request.auth!.accountId, personId: request.auth!.personId },
-      registrationId, classId, assessmentId,
+      registrationId, classId, assessmentId, learningAreaId,
     );
   }
 }
