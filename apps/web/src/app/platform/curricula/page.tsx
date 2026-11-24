@@ -326,7 +326,7 @@ export default function PlatformCurriculaPage() {
         if (!/^GRADE_[1-9]$/.test(grade)) throw new Error(`CSV row ${index + 2} has an unsupported grade.`);
         if (!/^[A-Z0-9]+(?:_[A-Z0-9]+)*$/.test(learningAreaCode)) throw new Error(`CSV row ${index + 2} has an invalid learning-area code.`);
         if (sourceLabel.length < 2) throw new Error(`CSV row ${index + 2} is missing its exact source label.`);
-        try { new URL(sourceUrl); } catch { throw new Error(`CSV row ${index + 2} has an invalid source URL.`); }
+        try { const parsed = new URL(sourceUrl); if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error(); } catch { throw new Error(`CSV row ${index + 2} has an invalid source URL.`); }
         const optionality = values.is_optional === "CORE" || values.is_optional === "OPTIONAL" ? values.is_optional : "UNKNOWN";
         return {
           grade,
@@ -347,7 +347,7 @@ export default function PlatformCurriculaPage() {
       if (draftCurriculumName.trim().length < 2 || draftVersionLabel.trim().length < 1 || draftSourceTitle.trim().length < 3) {
         throw new Error("Enter the curriculum name, version label and source title.");
       }
-      try { new URL(draftSourceUrl); } catch { throw new Error("Enter a valid source document URL."); }
+      try { const parsed = new URL(draftSourceUrl); if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error(); } catch { throw new Error("Enter a valid HTTP or HTTPS source document URL."); }
       if (!draftRetrievedAt) throw new Error("Enter the date the source was retrieved.");
       const payload: CurriculumDraftImportPayload = {
         curriculumCode,

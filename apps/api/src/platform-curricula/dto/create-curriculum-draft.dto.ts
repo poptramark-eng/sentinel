@@ -35,7 +35,7 @@ export class CurriculumDraftRowDto {
   @Length(2, 180)
   sourceLabel!: string;
 
-  @IsUrl({ require_protocol: true })
+  @IsUrl({ protocols: ["http", "https"], require_protocol: true })
   @Length(8, 2048)
   sourceUrl!: string;
 

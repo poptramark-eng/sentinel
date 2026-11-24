@@ -152,7 +152,7 @@ export class PlatformCurriculumService {
         };
       }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 60_000 });
     } catch (error) {
-      if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+      if (typeof error === "object" && error !== null && "code" in error && (error.code === "P2002" || error.code === "P2034")) {
         throw new ConflictException("This curriculum version label or learning-area code already exists. Refresh and resolve the conflict.");
       }
       throw error;
