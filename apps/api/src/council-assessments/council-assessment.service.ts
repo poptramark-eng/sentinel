@@ -557,7 +557,8 @@ export class CouncilAssessmentService {
     if (closesAt <= opensAt || opensAt <= new Date()) {
       throw new BadRequestException("Scheduling requires a future opening time and a later closing time.");
     }
-    return this.prisma.client.$transaction(async (tx) => {
+    try {
+      return await this.prisma.client.$transaction(async (tx) => {
       const assessment = await tx.assessment.findFirst({
         where: { id: assessmentId, councilId },
         select: { id: true, status: true, grade: true, academicYear: true, curriculumVersionId: true },
@@ -644,9 +645,14 @@ export class CouncilAssessmentService {
         },
       });
       return updated;
-    });
+      }, { isolationLevel: "Serializable", maxWait: 10_000, timeout: 30_000 });
+    } catch (error) {
+      if (prismaCode(error) === "P2034") {
+        throw new ConflictException("The active school roster changed while this assessment was being scheduled. Refresh and try again.");
+      }
+      throw error;
+    }
   }
-
   async openAssessment(actor: CouncilActor, councilId: string, assessmentId: string) {
     return this.prisma.client.$transaction(async (tx) => {
       const assessment = await tx.assessment.findFirst({
