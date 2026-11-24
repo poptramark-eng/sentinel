@@ -47,7 +47,6 @@ export default function MarksEntryPrototypePage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [previewMessage, setPreviewMessage] = useState("");
-  const [localSaved, setLocalSaved] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -72,7 +71,6 @@ export default function MarksEntryPrototypePage() {
 
   function updateValue(id: string, value: string) {
     setValues((current) => ({ ...current, [id]: value }));
-    setLocalSaved(false);
     setPreviewMessage("");
   }
 
@@ -88,7 +86,6 @@ export default function MarksEntryPrototypePage() {
   }
 
   function savePreview() {
-    setLocalSaved(true);
     setPreviewMessage("Preview state acknowledged in this page only. Nothing has been sent to a server or database.");
   }
 
@@ -173,7 +170,6 @@ export default function MarksEntryPrototypePage() {
               </div>
 
               {previewMessage && <div role="status" className="border-b border-[#dce9ff] bg-[#f2f7ff] px-5 py-3 text-xs leading-5 text-[#315a9f]">{previewMessage}</div>}
-              {localSaved && <div className="border-b border-[#dceee5] bg-[#f1faf5] px-5 py-2.5 text-[11px] text-[#287653]">Local preview action acknowledged. This does not persist marks.</div>}
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] border-collapse text-left">
