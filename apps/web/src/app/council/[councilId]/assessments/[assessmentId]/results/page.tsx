@@ -196,7 +196,7 @@ export default function AssessmentResultsPage() {
   }
 
   return (
-    <CouncilWorkspaceShell councilId={councilId} active="results">
+    <CouncilWorkspaceShell councilId={councilId} active="assessments">
       <div className="report-screen mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div className="report-print-header"><p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color: "#2457c5" }}>SENTINEL · COUNCIL ASSESSMENT REPORT</p><h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 8 }}>{published ? (published.publication.status === "PUBLISHED" ? "Official assessment results" : "Historical assessment results · Superseded") : "Assessment results preview"}</h1><p style={{ fontSize: 11, marginTop: 4 }}>{published ? `Publication v${published.publication.version} · Published ${dateTime(published.publication.publishedAt)}` : "PREVIEW · NOT PUBLISHED"}</p></div><div className="no-print flex flex-wrap items-center justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Assessment outcomes</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d] sm:text-3xl">Results review</h1></div>{published ? <button type="button" onClick={() => window.print()} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1e49a6]">{published.publication.status === "PUBLISHED" ? "Print official report" : "Print historical snapshot"} ↗</button> : null}</div>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[#64748b]">Review candidate totals, grade-wide ranks and school performance before publication. Calculations use the assessment&apos;s frozen candidate, learning-area and rubric snapshots.</p>
