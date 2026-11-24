@@ -1,6 +1,6 @@
 # Assessment, School and Result Workflow State Machines
 
-**Status:** Proposed workflow contract derived from the CBE workspace; exact enum names and edge-case policy remain open.
+**Status:** Working workflow contract. Decision register ADR-005 and ADR-007 supersede earlier actor assumptions where they differ.
 
 ## 1. School registration and initial administrator
 
@@ -72,7 +72,7 @@ This is a high-level lifecycle only. Internal and external result governance are
 ~~~mermaid
 flowchart TD
   A[Subject teachers enter marks] --> B[Class teacher coordinates completeness]
-  B --> C[Class teacher submits school marks]
+  B --> C[School Administrator finalizes school submission]
   C --> D[Validation and review]
   D -->|Issues| E[Return to school for correction]
   E --> A
@@ -93,7 +93,7 @@ flowchart TD
 
 ~~~mermaid
 flowchart TD
-  A[Participating schools enter marks] --> B[Class teacher coordinates and submits]
+  A[Participating schools enter marks] --> B[Class teacher coordinates; School Administrator submits]
   B --> C[Organizer validates submissions]
   C -->|Issues| D[Return to school for resolution]
   D --> A
