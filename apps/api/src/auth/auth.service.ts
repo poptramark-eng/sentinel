@@ -44,7 +44,7 @@ export class AuthService {
     const account = identifier.account;
     const valid = account.passwordHash
       ? await verifyPassword(password, account.passwordHash)
-      : false;
+      : await verifyPassword(password, await this.dummyHash);
 
     if (!valid || account.status !== "ACTIVE") {
       throw new UnauthorizedException("Invalid email or password.");
@@ -52,14 +52,29 @@ export class AuthService {
 
     const refreshToken = createRefreshToken();
     const familyId = randomUUID();
-    await this.prisma.client.refreshToken.create({
-      data: {
-        accountId: account.id,
-        familyId,
-        tokenHash: hashRefreshToken(refreshToken),
-        expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
-      },
-    });
+    await this.prisma.client.$transaction([
+      this.prisma.client.refreshToken.create({
+        data: {
+          accountId: account.id,
+          familyId,
+          tokenHash: hashRefreshToken(refreshToken),
+          expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+        },
+      }),
+      this.prisma.client.auditEvent.create({
+        data: {
+          actorAccountId: account.id,
+          action: "AUTH_LOGIN",
+          resourceType: "UserAccount",
+          resourceId: account.id,
+          decision: "ALLOW",
+        },
+      }),
+      this.prisma.client.userAccount.update({
+        where: { id: account.id },
+        data: { lastLoginAt: new Date() },
+      }),
+    ]);
 
     return {
       accessToken: signAccessToken(
@@ -138,7 +153,17 @@ export class AuthService {
           },
         });
       });
-    } catch {
+    } catch (error) {
+      const isRotationRace =
+        error instanceof Error && error.message === "REFRESH_ROTATION_RACE";
+      const isSerializationConflict =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "P2034";
+
+      if (!isRotationRace && !isSerializationConflict) throw error;
+
       await this.revokeFamilyAfterReplay(current.familyId, current.accountId);
       throw new UnauthorizedException("Refresh token could not be rotated.");
     }
