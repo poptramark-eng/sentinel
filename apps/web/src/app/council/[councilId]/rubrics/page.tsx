@@ -117,7 +117,7 @@ export default function CouncilRubricsPage() {
         <section className="mt-7 rounded-2xl border border-[var(--line)] bg-white p-5 sm:p-6">
           <h2 className="text-base font-semibold text-[var(--ink-strong)]">Create a rubric version</h2>
           <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Do not use unverified national grading boundaries. Enter only formally approved Council criteria.</p>
-          <form onSubmit={(event) => void create(event)} className="mt-5 space-y-5">
+          <form aria-busy={busy} onSubmit={(event) => void create(event)} className="mt-5 space-y-5">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label className="text-xs font-medium text-[var(--muted)]">Rubric code<input required maxLength={40} value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase() })} placeholder="e.g. CBE-PL" className="mt-2 w-full rounded-xl border border-[var(--line-strong)] px-3 py-3 text-sm" /></label>
               <label className="text-xs font-medium text-[var(--muted)]">Name<input required minLength={2} maxLength={160} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Council performance levels" className="mt-2 w-full rounded-xl border border-[var(--line-strong)] px-3 py-3 text-sm" /></label>
@@ -138,10 +138,10 @@ export default function CouncilRubricsPage() {
                   <label className="text-[11px] font-medium text-[var(--muted)]">Lower bound<input required type="number" step="0.0001" value={band.lowerBound} onChange={(event) => setBands((previous) => previous.map((item, i) => i === index ? { ...item, lowerBound: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-[var(--line-strong)] px-2.5 py-2 text-sm" /></label>
                   <label className="text-[11px] font-medium text-[var(--muted)]">Upper bound<input required type="number" step="0.0001" value={band.upperBound} onChange={(event) => setBands((previous) => previous.map((item, i) => i === index ? { ...item, upperBound: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-[var(--line-strong)] px-2.5 py-2 text-sm" /></label>
                 </> : null}
-                <div className="sm:col-span-2 lg:col-span-4 flex justify-end"><button type="button" disabled={bands.length === 1} onClick={() => setBands((previous) => previous.filter((_, i) => i !== index))} className="text-[11px] font-semibold text-red-600 disabled:opacity-40">Remove band</button></div>
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end"><button type="button" aria-label={`Remove rubric band ${index + 1}`} disabled={bands.length === 1} onClick={() => setBands((previous) => previous.filter((_, i) => i !== index))} className="text-[11px] font-semibold text-red-600 disabled:opacity-40">Remove band</button></div>
               </div>)}
             </div>
-            <div className="flex justify-end border-t border-[var(--line)] pt-4"><button type="submit" disabled={busy} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : "Create and submit for review"}</button></div>
+            <div className="flex justify-end border-t border-[var(--line)] pt-4"><button type="submit" aria-busy={busy} disabled={busy} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : "Create and submit for review"}</button></div>
           </form>
         </section>
         <section className="mt-8"><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-lg font-semibold text-[var(--ink-strong)]">Rubric register</h2><p className="mt-1 text-xs text-[var(--muted)]">A version must be independently approved before assessment use.</p></div><span aria-live="polite" className="text-xs tabular-nums text-[var(--muted)]">{filteredRubrics.length} of {rubrics.length} rubrics</span></div>
