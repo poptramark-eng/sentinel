@@ -392,7 +392,7 @@ export default function PlatformCouncilsPage() {
       <header className="border-b border-[#e5eaf1] bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
           <Link href="/workspace" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">S</span><span className="text-sm font-semibold text-[#172b4d]">Platform operations</span></Link>
-          <div className="flex items-center gap-3"><Link href="/platform/school-registrations" className="hidden text-xs font-semibold text-[#64748b] hover:text-[#2457c5] sm:inline">School reviews</Link><button onClick={signOut} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button></div>
+          <div className="flex items-center gap-3"><Link href="/platform/curricula" className="hidden text-xs font-semibold text-[#64748b] hover:text-[#2457c5] sm:inline">Curriculum</Link><Link href="/platform/school-registrations" className="hidden text-xs font-semibold text-[#64748b] hover:text-[#2457c5] sm:inline">School reviews</Link><button onClick={signOut} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button></div>
         </div>
       </header>
 
