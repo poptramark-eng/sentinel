@@ -324,6 +324,7 @@ test("scheduling freezes active matching learner enrollments and initializes eve
           id: enrollmentId, learnerId, registrationId: "15151515-1515-4515-8515-151515151515",
           councilId, schoolClassId: classId,
           learner: { id: learnerId, learnerNumber: "LRN-TEST-001", givenName: "Amina", otherNames: "Wanjiku", familyName: "Otieno", displayName: null },
+          registration: { school: { id: "17171717-1717-4717-8717-171717171717", name: "Test Primary School" } },
           schoolClass: { grade: "GRADE_4", streamCode: "EAST" },
         }];
       },
@@ -346,6 +347,8 @@ test("scheduling freezes active matching learner enrollments and initializes eve
   assert.equal(candidateRows.length, 1);
   assert.equal(candidateRows[0].learnerNumberSnapshot, "LRN-TEST-001");
   assert.equal(candidateRows[0].learnerNameSnapshot, "Amina Wanjiku Otieno");
+  assert.equal(candidateRows[0].schoolNameSnapshot, "Test Primary School");
+  assert.equal(candidateRows[0].schoolIdSnapshot, "17171717-1717-4717-8717-171717171717");
   assert.equal(candidateRows[0].classStreamSnapshot, "EAST");
   assert.equal(markRows.length, 1);
   assert.equal(markRows[0].assessmentLearningAreaId, areaId);
