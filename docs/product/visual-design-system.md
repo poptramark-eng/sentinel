@@ -132,3 +132,20 @@ The first Astryx UI unification increment is implemented on `feat/astryx-ui-unif
 This is a progressive migration, not a claim that every route has been fully rebuilt. The Council workspace screens were previously aligned in PR #3; Council/geography setup is in PR #4. Remaining work includes applying the shared shell to all school administration routes, migrating the data-entry and marks surfaces to shared controls, and completing browser/device/print QA.
 
 No API contracts, route semantics, authorization, data lifecycle, assessment calculations, or persistence behavior were intentionally changed. PR #5 is stacked on PR #4. CI has not yet run for PR #5 because its base is the preceding feature branch; run the repository validation after the stack is ready to target `main`.
+
+
+## 13. School operations workspace migration — 25 November 2026
+
+Extended the Astryx shared workspace into the core school administration and assessment operations:
+
+- Class and stream administration now use the shared workspace shell and consistent navigation.
+- Assessment submission desk now uses the shared shell, with school submission as a distinct navigation destination.
+- Class learner roster now uses the shared shell and semantic colour tokens; learner creation, lookup, enrollment and CSV import behavior are unchanged.
+- Subject Teacher assignment now uses the shared shell; assignment scope, teacher eligibility, audit history and API behavior are unchanged.
+- School submission and published school results now use the shared shell, with clear return navigation to the assessment desk.
+- School marks entry already used the shared shell and semantic tokens; it remains the operational data-entry screen.
+- Updated visible product identity and CSV export naming to cbe where touched.
+
+The change is presentation and navigation only. It does not change school roles, class access, learner identity, teacher membership, subject assignment rules, mark validation, submission locking, publication, ranking or result calculations. No API routes, schema migrations or UI dependencies were added.
+
+CI run 416 is validating the cumulative PR #5 head after this increment. Browser/device/print QA remains pending; Vercel preview deployments are blocked by the account's daily deployment quota.
