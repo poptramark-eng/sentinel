@@ -15,6 +15,7 @@ import { PlatformOperatorGuard } from "../auth/platform-operator.guard";
 import { ReturnCurriculumForChangesDto } from "./dto/return-curriculum-for-changes.dto";
 import { ReviewGradeLearningAreaDto } from "./dto/review-grade-learning-area.dto";
 import { CreateCurriculumDraftDto } from "./dto/create-curriculum-draft.dto";
+import { UpdateCurriculumGradeAreaDto } from "./dto/update-curriculum-grade-area.dto";
 import { PlatformCurriculumService } from "./platform-curriculum.service";
 
 @Controller("platform/curricula")
@@ -46,6 +47,21 @@ export class PlatformCurriculaController {
   @Get(":versionId")
   getVersion(@Param("versionId", new ParseUUIDPipe()) versionId: string) {
     return this.curricula.getVersion(versionId);
+  }
+
+  @Patch(":versionId/grade-areas/:gradeLearningAreaId")
+  updateGradeLearningArea(
+    @Req() request: AuthenticatedRequest,
+    @Param("versionId", new ParseUUIDPipe()) versionId: string,
+    @Param("gradeLearningAreaId", new ParseUUIDPipe()) gradeLearningAreaId: string,
+    @Body() body: UpdateCurriculumGradeAreaDto,
+  ) {
+    return this.curricula.updateGradeLearningArea(
+      { accountId: request.auth!.accountId },
+      versionId,
+      gradeLearningAreaId,
+      body,
+    );
   }
 
   @Patch(":versionId/grade-areas/:gradeLearningAreaId/review")

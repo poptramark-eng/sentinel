@@ -217,6 +217,60 @@ export class PlatformCurriculumService {
     };
   }
 
+  async updateGradeLearningArea(
+    actor: PlatformActor,
+    versionId: string,
+    gradeLearningAreaId: string,
+    input: { sourceLabel: string; sourceUrl: string; sortOrder: number; reason: string },
+  ) {
+    return this.prisma.client.$transaction(async (tx) => {
+      const versionLock = await tx.curriculumVersion.updateMany({
+        where: { id: versionId, status: "DRAFT" },
+        data: { updatedAt: new Date() },
+      });
+      if (versionLock.count !== 1) {
+        const version = await tx.curriculumVersion.findUnique({
+          where: { id: versionId },
+          select: { id: true },
+        });
+        if (!version) throw new NotFoundException("Curriculum version not found.");
+        throw new ConflictException("Only draft curriculum versions can be edited. Return the version to draft before making changes.");
+      }
+
+      const mapping = await tx.gradeLearningArea.findFirst({
+        where: { id: gradeLearningAreaId, curriculumVersionId: versionId },
+        select: { id: true, sourceLabel: true, sourceUrl: true, sortOrder: true, grade: true },
+      });
+      if (!mapping) throw new NotFoundException("Grade learning area not found in this curriculum version.");
+
+      const updated = await tx.gradeLearningArea.update({
+        where: { id: mapping.id },
+        data: {
+          sourceLabel: input.sourceLabel,
+          sourceUrl: input.sourceUrl,
+          sortOrder: input.sortOrder,
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorAccountId: actor.accountId,
+          action: "PLATFORM_CURRICULUM_GRADE_AREA_EDITED",
+          resourceType: "GradeLearningArea",
+          resourceId: mapping.id,
+          decision: "ALLOW",
+          reason: input.reason,
+          metadata: {
+            curriculumVersionId: versionId,
+            grade: mapping.grade,
+            before: { sourceLabel: mapping.sourceLabel, sourceUrl: mapping.sourceUrl, sortOrder: mapping.sortOrder },
+            after: { sourceLabel: updated.sourceLabel, sourceUrl: updated.sourceUrl, sortOrder: updated.sortOrder },
+          },
+        },
+      });
+      return updated;
+    });
+  }
+
   async reviewGradeLearningArea(
     actor: PlatformActor,
     versionId: string,

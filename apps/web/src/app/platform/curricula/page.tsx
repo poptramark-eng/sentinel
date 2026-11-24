@@ -195,6 +195,7 @@ export default function PlatformCurriculaPage() {
   const [search, setSearch] = useState("");
   const [returnReason, setReturnReason] = useState("");
   const [mappingReviews, setMappingReviews] = useState<Record<string, { optionality: "CORE" | "OPTIONAL" | ""; reason: string }>>({});
+  const [mappingEdits, setMappingEdits] = useState<Record<string, { sourceLabel: string; sourceUrl: string; sortOrder: number; reason: string }>>({});
   const [draftFile, setDraftFile] = useState<File | null>(null);
   const [draftSourceTitle, setDraftSourceTitle] = useState("");
   const [draftSourceUrl, setDraftSourceUrl] = useState("");
@@ -411,6 +412,33 @@ export default function PlatformCurriculaPage() {
       setDraftImportError(cause instanceof Error ? cause.message : "The curriculum draft import failed.");
     } finally {
       setDraftImportBusy(false);
+    }
+  }
+
+  async function saveMappingEdit(area: GradeLearningArea) {
+    if (!detail) return;
+    const edit = mappingEdits[area.id] ?? { sourceLabel: area.sourceLabel, sourceUrl: area.sourceUrl, sortOrder: area.sortOrder, reason: "" };
+    if (edit.reason.trim().length < 10) {
+      setError("Add a change reason of at least 10 characters.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiRequest(`/platform/curricula/${detail.id}/grade-areas/${area.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(edit),
+      });
+      const payload = await response.json().catch(() => null) as { message?: string | string[] } | null;
+      if (!response.ok) throw new Error(Array.isArray(payload?.message) ? payload.message.join(" ") : payload?.message ?? "The mapping changes could not be saved.");
+      await loadDetail(detail.id);
+      setNotice(`${area.grade.replace("_", " ")} mapping updated and audited.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The mapping update failed.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -688,6 +716,27 @@ export default function PlatformCurriculaPage() {
                                   <span className={`rounded-full px-2 py-1 text-[10px] font-medium ${area.reviewStatus === "REVIEWED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{area.reviewStatus === "REVIEWED" ? "Reviewed" : "Needs review"}</span>
                                   <span className="rounded-full bg-[#f1f4f8] px-2 py-1 text-[10px] font-medium text-[#52647d]">{area.optionality === "UNKNOWN" ? "Optionality unknown" : area.optionality}</span>
                                 </div>
+                                {detail.status === "DRAFT" ? (
+                                  <div className="mt-3 grid gap-2 rounded-lg bg-[#f8fafc] p-3">
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                      <label className="text-[10px] font-semibold text-[#64748b]">Source label
+                                        <input value={mappingEdits[area.id]?.sourceLabel ?? area.sourceLabel} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: event.target.value, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      </label>
+                                      <label className="text-[10px] font-semibold text-[#64748b]">Source URL
+                                        <input value={mappingEdits[area.id]?.sourceUrl ?? area.sourceUrl} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: event.target.value, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      </label>
+                                    </div>
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                      <label className="text-[10px] font-semibold text-[#64748b] sm:w-28">Sort order
+                                        <input type="number" min="0" max="10000" value={mappingEdits[area.id]?.sortOrder ?? area.sortOrder} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: Number(event.target.value), reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      </label>
+                                      <label className="min-w-0 flex-1 text-[10px] font-semibold text-[#64748b]">Reason for change
+                                        <input value={mappingEdits[area.id]?.reason ?? ""} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: event.target.value } }))} placeholder="Required for the audit trail" className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      </label>
+                                      <button disabled={busy} onClick={() => void saveMappingEdit(area)} className="self-end rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-[11px] font-semibold text-[#2457c5] hover:bg-[#eef4ff] disabled:opacity-50">Save changes</button>
+                                    </div>
+                                  </div>
+                                ) : null}
                                 {detail.status === "IN_REVIEW" ? (
                                   <div className="mt-3 grid gap-2 rounded-lg bg-[#f8fafc] p-3 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-end">
                                     <label className="text-[10px] font-semibold text-[#64748b]">Optionality
