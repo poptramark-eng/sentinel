@@ -1,10 +1,10 @@
 # Physical Data Model — Foundation Slice
 
-**Status:** Physical design baseline for the first implementation slice.  
-**Scope:** Platform identity, Council tenant, geography, canonical School, Council registration episodes, school membership and audit.  
-**Not included yet:** Assessment, candidate, marks, curriculum, result, payment or external-provider tables. Those are separate bounded contexts and will be added after the foundation is exercised.  
-**Database:** PostgreSQL. ORM: Prisma 7.  
-**Schema implementation:** packages/database/prisma/schema.prisma.  
+**Status:** Physical design baseline for the first implementation slice.
+**Scope:** Platform identity, Council tenant, geography, canonical School, Council registration episodes, school membership and audit.
+**Not included yet:** Assessment, candidate, marks, curriculum, result, payment or external-provider tables. Those are separate bounded contexts and will be added after the foundation is exercised.
+**Database:** PostgreSQL. ORM: Prisma 7.
+**Schema implementation:** packages/database/prisma/schema.prisma.
 **Migration:** `202611240001_foundation` is generated from the reviewed Prisma schema and includes the PostgreSQL partial unique index for one active registration episode per Council/School. CI applies it to an ephemeral PostgreSQL 18 service and verifies tenant-boundary constraints. It has not been applied to a persistent development, staging or production database.
 
 ## 1. First vertical slice
@@ -176,7 +176,7 @@ Every operation must resolve an ACTIVE SchoolMembership against an APPROVED Coun
 4. Add PostgreSQL integration tests, including composite-FK and partial-index cases.
 5. Generate and inspect SQL migration; CI applies it to an ephemeral PostgreSQL 18 service on every push/PR.
 6. Exercise the registration API and authorization lifecycle against PostgreSQL integration fixtures before exposing the workflow publicly.
-7. Complete distributed rate limiting, account onboarding/verification and operational recovery before production onboarding.
+7. Extend distributed rate limiting to onboarding/recovery and complete account verification and operational recovery before production onboarding.
 8. Deploy only to a non-production environment with synthetic test data until legal/privacy and registry gates are satisfied.
 
 ## 8. Explicitly deferred

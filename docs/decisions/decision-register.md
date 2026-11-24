@@ -1,8 +1,8 @@
 # Architecture and Domain Decision Register — Sentinel
 
-**Date:** 24 November 2026  
-**Status:** Decisions adopted as the working implementation baseline unless explicitly marked provisional.  
-**Authority:** Product/engineering decisions made to unblock implementation under the user's instruction to proceed autonomously.  
+**Date:** 24 November 2026
+**Status:** Decisions adopted as the working implementation baseline unless explicitly marked provisional.
+**Authority:** Product/engineering decisions made to unblock implementation under the user's instruction to proceed autonomously.
 **Repository:** `poptramark-eng/sentinel`, branch `main`.
 
 This register resolves the previously open design questions with conservative defaults. It supersedes earlier TBD markers only where it explicitly records a decision. It does not override statutory requirements, Council contracts, or a later explicit product decision.
@@ -244,6 +244,29 @@ These gates do not block synthetic-data development, domain tests, physical sche
 
 - New accounts use Argon2id. Legacy scrypt support can be removed after the migration window and account inventory confirm no remaining legacy hashes.
 - Authentication tests cover Argon2id verification, invalid passwords, legacy verification/rehash, refresh rotation and refresh replay response.
-- Distributed login throttling remains a production blocker; password hashing alone does not prevent credential-stuffing or resource-exhaustion attacks.
+- Distributed login/refresh rate limiting is defined separately in ADR-013. It is now implemented for those routes; signup, verification, recovery, invitations and export limits remain production blockers until their endpoints exist and are protected.
 
 **Confidence:** High for algorithm selection; production cost tuning remains deployment-specific.
+
+
+## ADR-013 — Distributed authentication rate limiting
+
+**Decision**
+
+- Use Upstash Redis with the official `@upstash/ratelimit` and `@upstash/redis` SDKs for distributed API rate limiting. This avoids process-local counters that reset across instances and supports the serverless/deployment topology.
+- Login limits: 30 requests per source IP per 15 minutes and 5 requests per normalized email per 15 minutes. Refresh limit: 60 requests per source IP per 5 minutes. Use sliding-window policies.
+- HMAC normalized email values before using them as Redis identifiers. Do not store raw email addresses in rate-limit keys.
+- Disable analytics initially to reduce command volume and avoid collecting additional identifier telemetry. Use the SDK's bounded ephemeral cache to reject repeated blocked requests without a Redis round trip.
+- Development may run without Redis credentials. Production must fail closed with 503 when credentials are absent, Redis fails, or the SDK reports a timeout. Requests exceeding policy return 429 with `Retry-After`.
+- Do not create or activate a Redis database automatically. Provisioning and secret configuration require explicit owner authorization.
+
+**Consequences**
+
+- Production requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` in the API runtime secret store.
+- `TRUST_PROXY` stays false unless the API is behind a known reverse proxy and the trusted-proxy configuration is verified.
+- Extend rate limits to signup, verification, password reset, invitations, OTP and expensive exports before those features launch.
+- Sliding windows cost more than fixed windows; analytics are off and blocked-identifier caching is enabled to control request volume. Revisit thresholds with real traffic and abuse telemetry.
+
+**Implementation references:** [Upstash Ratelimit TypeScript getting started](https://upstash.com/docs/redis/sdks/ratelimit-ts/gettingstarted), [algorithms](https://upstash.com/docs/redis/sdks/ratelimit-ts/algorithms), and [features](https://upstash.com/docs/redis/sdks/ratelimit-ts/features).
+
+**Confidence:** High for the distributed limiter choice; thresholds are conservative starting values and require production observation.

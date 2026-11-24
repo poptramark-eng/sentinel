@@ -40,3 +40,5 @@
 ## Security acceptance gates
 
 Authentication lifecycle tests; authorization matrix and tenant-isolation tests; CSRF, rate-limit and brute-force tests; audit completeness; backup restore rehearsal; secret scanning and dependency review; secure headers, TLS and production cookie configuration.
+
+- Protect login and refresh with distributed Upstash Redis rate limits; fail closed in production when the rate-limit dependency is unavailable. Never trust forwarded IP headers unless the reverse-proxy trust boundary is explicitly configured.

@@ -1,7 +1,7 @@
 # Authentication and Authorization Architecture
 
-**Status:** Working design. First-party login/refresh/logout/me foundation is implemented; account onboarding, verification, recovery, rate limiting, and complete authorization remain in progress.  
-**Implementation:** NestJS + Fastify API, PostgreSQL, Prisma, Next.js client.  
+**Status:** Working design. First-party login/refresh/logout/me foundation is implemented; account onboarding, verification, recovery, rate limits for non-auth endpoints, and complete authorization remain in progress.
+**Implementation:** NestJS + Fastify API, PostgreSQL, Prisma, Next.js client.
 **Identity provider:** First-party application authentication. No Auth0, Clerk, Firebase Auth, Cognito, Supabase Auth or other third-party identity provider.
 
 ## 1. Identity model
@@ -77,7 +77,7 @@ Use established cryptographic libraries. Do not invent cryptographic primitives.
 
 ## 4. Authentication flows
 
-- Login: normalize email; verify account status and verified identifier; verify Argon2id (or migrate a legacy scrypt hash); issue access + refresh cookies; record a security audit event. Login throttling is not yet implemented and is a release blocker.
+- Login: normalize email; verify account status and verified identifier; verify Argon2id (or migrate a legacy scrypt hash); issue access + refresh cookies; record a security audit event. Login and refresh throttling are enforced by the Upstash rate-limit guard; production credentials are mandatory and the API fails closed when the service is unavailable.
 - Refresh: validate refresh-token hash and family state; rotate transactionally; detect replay; issue new access token.
 - Logout: revoke the current device refresh-token family and clear its cookies.
 - Logout all: increment authentication version, revoke all refresh families and clear current cookies.
@@ -130,7 +130,10 @@ The policy decision uses:
 
 ## 7. Abuse controls and audit
 
-- Rate-limit login, reset, verification, invitations, OTP and expensive exports by appropriate account, network and target dimensions.
+- Login and refresh are rate-limited through Upstash Redis and `@upstash/ratelimit`: 30 login attempts/IP/15 minutes, 5 login attempts/normalized email/15 minutes, and 60 refresh attempts/IP/5 minutes. Sliding windows are used to reduce fixed-window boundary bursts; analytics are disabled to avoid unnecessary request volume.
+- Email identifiers are HMACed before they become Redis keys. IP identity uses Fastify's resolved `request.ip`; `TRUST_PROXY` remains false unless the API is behind a known trusted proxy.
+- In development, missing Upstash credentials allow local work. In production, missing/invalid credentials, Redis errors or rate-limit timeouts fail closed with 503; exceeded limits return 429 with `Retry-After`. Production deployment is blocked until a dedicated Upstash database and secrets are configured.
+- Extend the same controls to signup, verification, password reset, invitations, OTP and expensive exports before those endpoints are exposed.
 - Add progressive delays and risk signals without permanently locking out legitimate school users.
 - Audit successful and failed privileged operations, account lifecycle events, membership/role changes, authority grants, approval decisions, marks corrections, submissions, releases, exports and support access.
 - Redact credentials, tokens, reset links, OTPs and unnecessary personal/learner data from logs.
@@ -154,7 +157,7 @@ The policy decision uses:
 
 Implemented in the API foundation: email/password login for pre-provisioned active accounts; Argon2id password hashing with legacy scrypt rehash-on-login; 10-minute HS256 access JWT in an HttpOnly cookie; opaque refresh-token hash persistence and transactional rotation; refresh-family replay response; account auth-version checks; CSRF double-submit plus exact origin allowlist for refresh/logout; logout; current-user endpoint; developer-controlled PlatformAdministrator bootstrap; and authenticated school-registration submission, withdrawal, status and PlatformAdministrator review/identifier-verification endpoints.
 
-Not yet implemented: public account signup, email verification delivery, password reset, MFA/passkeys, distributed rate limiting, brute-force protection, login alerting, full Council/School/Organizer authorization policies, and database-backed integration tests. Do not expose this API to production users until these are completed and tested. The current implementation has not been penetration-tested.
+Not yet implemented: public account signup, email verification delivery, password reset, MFA/passkeys, rate limits for signup/recovery/invitations/exports, login alerting, full Council/School/Organizer authorization policies, and full database-backed API integration tests. Login and refresh rate limiting are implemented but require production Upstash credentials. Do not expose this API to production users until the remaining controls are completed and tested. The current implementation has not been penetration-tested.
 
 ## 10. Decisions still required before production
 

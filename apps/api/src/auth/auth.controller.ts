@@ -21,6 +21,7 @@ import {
 } from "./cookie";
 import { AccessTokenGuard, AuthenticatedRequest } from "./access-token.guard";
 import { createCsrfToken } from "./token";
+import { AuthRateLimit } from "./rate-limit.guard";
 
 @Controller("auth")
 export class AuthController {
@@ -39,6 +40,7 @@ export class AuthController {
     return { csrfToken };
   }
 
+  @AuthRateLimit("LOGIN")
   @Post("login")
   async login(
     @Body() body: LoginDto,
@@ -58,6 +60,7 @@ export class AuthController {
     return { user: result.user, csrfToken: result.csrfToken };
   }
 
+  @AuthRateLimit("REFRESH")
   @Post("refresh")
   async refresh(
     @Req() request: AuthenticatedRequest,

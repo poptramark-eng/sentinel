@@ -4,7 +4,7 @@ A multi-council platform for configuring and administering assessments, managing
 
 ## Project status
 
-The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: migrations, account onboarding/verification, rate limiting, full authorization, school-registration endpoints, and production operations remain incomplete. Use synthetic learner and assessment data only.
+The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: account onboarding/verification, recovery, full authorization, remaining domain modules and production operations remain incomplete. The foundation migration is CI-tested; login/refresh rate limits are implemented but require production Upstash credentials. Use synthetic learner and assessment data only.
 
 ## Architecture
 
@@ -28,6 +28,7 @@ PostgreSQL is the system of record. Redis is not a permanent ledger or source of
 - Core identity, tenant, geography and school-registration foundation models are implemented in Prisma. The first migration is not yet generated or applied.
 - Core identity and authorization decisions are recorded in docs/decisions/decision-register.md; legal/privacy and external identifier validation gates remain open.
 - The initial foundation migration is generated and CI applies it to an ephemeral PostgreSQL 18 database, then checks cross-Council foreign keys and active-registration uniqueness.
+- Login and refresh use distributed Upstash rate limits; production requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` and fails closed if they are missing or unavailable.
 
 Read:
 - `docs/architecture/` — ADRs and architecture boundaries

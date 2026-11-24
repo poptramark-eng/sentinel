@@ -156,4 +156,4 @@ The first Prisma foundation slice now implements the following refinements:
 - SchoolIdentifier claims are initially unverified. A PlatformAdministrator must verify the claim with its issuer before the registration can be approved.
 - AuditEvent captures account authentication and registration lifecycle decisions.
 
-The schema is validated in CI. These are schema-level structures only; no migration has yet been generated or applied.
+The foundation migration is generated and CI-applied to ephemeral PostgreSQL 18; these structures have not yet been applied to a persistent development, staging or production database.
