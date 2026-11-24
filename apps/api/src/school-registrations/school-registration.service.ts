@@ -88,16 +88,27 @@ export class SchoolRegistrationService {
             });
 
             if (identifier && !identifier.verifiedAt) {
-              throw new ConflictException({
-                code: "IDENTIFIER_REVIEW_REQUIRED",
-                message:
-                  "This school identifier is already under review. The registration requires manual identity review.",
+              const priorEpisode = await tx.councilSchoolRegistration.findFirst({
+                where: {
+                  councilId: input.councilId,
+                  schoolId: identifier.schoolId,
+                  status: { in: ["REJECTED", "WITHDRAWN", "EXPIRED"] },
+                },
+                select: { id: true },
               });
+              if (!priorEpisode) {
+                throw new ConflictException({
+                  code: "IDENTIFIER_REVIEW_REQUIRED",
+                  message:
+                    "This school identifier is already under review. The registration requires manual identity review.",
+                });
+              }
+              school = identifier.school;
             }
 
             if (identifier?.verifiedAt) {
               school = identifier.school;
-            } else {
+            } else if (!school) {
               school = await tx.school.create({
                 data: { name: input.school.name.trim() },
                 select: { id: true, name: true },
