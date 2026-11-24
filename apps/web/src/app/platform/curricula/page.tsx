@@ -86,7 +86,7 @@ export default function PlatformCurriculaPage() {
   const [detail, setDetail] = useState<CurriculumVersionDetail | null>(null);
   const [search, setSearch] = useState("");
   const [returnReason, setReturnReason] = useState("");
-  const [mappingReviews, setMappingReviews] = useState<Record<string, { optionality: "CORE" | "OPTIONAL"; reason: string }>>({});
+  const [mappingReviews, setMappingReviews] = useState<Record<string, { optionality: "CORE" | "OPTIONAL" | ""; reason: string }>>({});
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -178,7 +178,11 @@ export default function PlatformCurriculaPage() {
 
   async function saveMappingReview(area: GradeLearningArea) {
     if (!detail) return;
-    const review = mappingReviews[area.id] ?? { optionality: "CORE" as const, reason: "" };
+    const review = mappingReviews[area.id] ?? { optionality: area.optionality === "UNKNOWN" ? "" as const : area.optionality, reason: "" };
+    if (!review.optionality) {
+      setError("Choose whether this learning area is core or optional. The system will not infer this classification.");
+      return;
+    }
     if (review.reason.trim().length < 10) {
       setError("Add a review note of at least 10 characters for this learning area.");
       return;
@@ -389,12 +393,12 @@ export default function PlatformCurriculaPage() {
                                 {detail.status === "IN_REVIEW" ? (
                                   <div className="mt-3 grid gap-2 rounded-lg bg-[#f8fafc] p-3 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-end">
                                     <label className="text-[10px] font-semibold text-[#64748b]">Optionality
-                                      <select value={(mappingReviews[area.id]?.optionality ?? (area.optionality === "OPTIONAL" ? "OPTIONAL" : "CORE"))} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: event.target.value as "CORE" | "OPTIONAL", reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs">
-                                        <option value="CORE">Core</option><option value="OPTIONAL">Optional</option>
+                                      <select value={(mappingReviews[area.id]?.optionality ?? (area.optionality === "UNKNOWN" ? "" : area.optionality))} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: event.target.value as "CORE" | "OPTIONAL" | "", reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs">
+                                        <option value="">Select classification</option><option value="CORE">Core</option><option value="OPTIONAL">Optional</option>
                                       </select>
                                     </label>
                                     <label className="text-[10px] font-semibold text-[#64748b]">Review note
-                                      <input value={mappingReviews[area.id]?.reason ?? area.reviewNote ?? ""} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: current[area.id]?.optionality ?? (area.optionality === "OPTIONAL" ? "OPTIONAL" : "CORE"), reason: event.target.value } }))} placeholder="Evidence supporting this classification" className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs outline-none focus:border-[#6d94e8]" />
+                                      <input value={mappingReviews[area.id]?.reason ?? area.reviewNote ?? ""} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: current[area.id]?.optionality ?? (area.optionality === "UNKNOWN" ? "" : area.optionality), reason: event.target.value } }))} placeholder="Evidence supporting this classification" className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs outline-none focus:border-[#6d94e8]" />
                                     </label>
                                     <button disabled={busy} onClick={() => void saveMappingReview(area)} className="rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-[11px] font-semibold text-[#2457c5] hover:bg-[#eef4ff] disabled:opacity-50">Save review</button>
                                   </div>
