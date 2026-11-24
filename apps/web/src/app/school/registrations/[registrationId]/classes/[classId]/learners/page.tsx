@@ -97,7 +97,7 @@ export default function ClassLearnersPage() {
   }
 
   const schoolClass = data?.class;
-  return <WorkspaceShell section="School workspace" title="Class learner roster" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Classes", href: `/school/registrations/${registrationId}/classes` }, { label: "Learners", href: "#learners", active: true }]} actions={<Link href={`/school/registrations/${registrationId}/classes`} className="cbe-button cbe-button-secondary">Back to classes</Link>}>
+  return <WorkspaceShell section="School workspace" title="Class learner roster" navigation={[{ label: "Workspace overview", href: "/workspace" }, { label: "Teaching desk", href: "/school/teaching" }, { label: "Classes", href: `/school/registrations/${registrationId}/classes` }, { label: "Learners", href: `/school/registrations/${registrationId}/classes/${classId}/learners`, active: true }]} actions={<Link href={`/school/registrations/${registrationId}/classes`} className="cbe-button cbe-button-secondary">Back to classes</Link>}>
 
     
     <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
