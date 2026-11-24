@@ -524,7 +524,7 @@ try {
       `INSERT INTO "SchoolLearnerEnrollment"
         ("id", "learnerId", "registrationId", "councilId", "schoolClassId", "updatedAt")
        VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [id(), ids.learnerA, ids.registrationHistory, ids.councilA, ids.classB],
+      [id(), ids.learnerA, ids.registrationA, ids.councilA, ids.classA],
     ),
   );
   await client.query(
