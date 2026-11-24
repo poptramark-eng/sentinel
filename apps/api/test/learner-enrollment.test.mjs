@@ -134,3 +134,52 @@ test("ending a learner enrollment preserves the row and records a transfer reaso
   assert.equal(records.audit.metadata.withdrawnAssessmentCandidates, 2);
   assert.equal(result.status, "TRANSFERRED");
 });
+
+test("CSV learner import previews without writes and commits all rows atomically", async () => {
+  const records = { learners: [], enrollments: [], audits: [] };
+  let nextId = 0;
+  const tx = {
+    schoolMembership: { findFirst: async () => adminScope() },
+    schoolClass: { findFirst: async () => ({ id: classId, grade: "GRADE_4", academicYear: 2026 }) },
+    learner: {
+      findFirst: async () => null,
+      create: async ({ data }) => { const value = { id: `learner-${++nextId}`, ...data }; records.learners.push(value); return value; },
+    },
+    schoolLearnerEnrollment: {
+      findFirst: async () => null,
+      create: async ({ data }) => { const value = { id: `enrollment-${++nextId}`, ...data }; records.enrollments.push(value); return value; },
+    },
+    auditEvent: { create: async ({ data }) => { records.audits.push(data); return data; } },
+  };
+  const client = { ...tx, $transaction: async (callback, options) => { assert.equal(options.isolationLevel, "Serializable"); return callback(tx); } };
+  const service = new LearnerEnrollmentService({ client });
+  const csv = "learnerNumber,givenName,otherNames,familyName,admissionNumber\nKCBE-001,Amina,Wanjiku,Otieno,A-001\nKCBE-002,Peter,,Mwangi,A-002";
+  const preview = await service.importLearners({ accountId, personId }, registrationId, classId, csv, true);
+  assert.equal(preview.totalRows, 2);
+  assert.equal(preview.validRows, 2);
+  assert.equal(preview.created, 2);
+  assert.equal(records.learners.length, 0);
+  assert.equal(records.enrollments.length, 0);
+
+  const result = await service.importLearners({ accountId, personId }, registrationId, classId, csv, false);
+  assert.equal(result.enrolled, 2);
+  assert.equal(result.created, 2);
+  assert.equal(records.learners.length, 2);
+  assert.equal(records.enrollments.length, 2);
+  assert.equal(records.audits.length, 2);
+  assert.equal(records.enrollments[0].schoolClassId, classId);
+  assert.equal(records.audits[0].metadata.source, "CSV_IMPORT");
+});
+
+test("CSV learner import rejects duplicate identifiers and malformed rows before writes", async () => {
+  const client = { schoolMembership: { findFirst: async () => adminScope() } };
+  const service = new LearnerEnrollmentService({ client });
+  const result = await service.importLearners(
+    { accountId, personId }, registrationId, classId,
+    "learnerNumber,givenName,familyName\nKCBE-001,Amina,Otieno\nKCBE-001,Peter,Mwangi",
+    true,
+  );
+  assert.equal(result.validRows, 1);
+  assert.equal(result.issues.length, 1);
+  assert.match(result.issues[0].message, /Duplicate learner number/);
+});

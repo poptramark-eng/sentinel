@@ -3,6 +3,7 @@ import { AccessTokenGuard, AuthenticatedRequest } from "../auth/access-token.gua
 import { CsrfGuard } from "../auth/csrf.guard";
 import { EnrollLearnerDto } from "./dto/enroll-learner.dto";
 import { EndLearnerEnrollmentDto } from "./dto/end-learner-enrollment.dto";
+import { ImportLearnersDto } from "./dto/import-learners.dto";
 import { LearnerEnrollmentService } from "./learner-enrollment.service";
 
 @Controller("school/registrations/:registrationId")
@@ -49,6 +50,22 @@ export class LearnerEnrollmentController {
       enrollmentId,
       body.status,
       body.reason.trim(),
+    );
+  }
+
+  @Post("classes/:classId/learners/import")
+  importLearners(
+    @Req() request: AuthenticatedRequest,
+    @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
+    @Param("classId", new ParseUUIDPipe()) classId: string,
+    @Body() body: ImportLearnersDto,
+  ) {
+    return this.learners.importLearners(
+      { accountId: request.auth!.accountId, personId: request.auth!.personId },
+      registrationId,
+      classId,
+      body.csv,
+      body.dryRun ?? true,
     );
   }
 

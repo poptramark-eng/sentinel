@@ -64,3 +64,19 @@ The API derives Council and school scope from the caller's active School Adminis
 The first successful submission creates version 1 and an immutable snapshot of candidate, class, mark-row, learning-area and mark-value references. A repeated request while the submission is already `SUBMITTED` is idempotent and does not create another version. After a Council Governance Approver returns the school's class or learning-area marks for correction, the submission becomes `RETURNED`; Subject Teachers correct only their assigned areas and resubmit those marks. The School Administrator then creates the next immutable school submission version. Every submission and resubmission is audited.
 
 The Council cannot close the assessment until every participating school has a `SUBMITTED` school record and every active candidate has all learning-area marks submitted. The Council return workflow changes the affected school's submission to `RETURNED` before reopening the assessment for correction.
+
+## Learner roster and CSV import
+
+Learner identities are system-wide and do not have learner login accounts. A learner number is an identifier, never an authentication secret. School Administrators manage enrollment; an assigned Class Teacher may view only the roster for their assigned class. The learner and enrollment records are retained when an enrollment ends.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/school/registrations/:registrationId/classes/:classId/learners` | Read a class roster (School Administrator or assigned Class Teacher) |
+| `GET` | `/api/school/registrations/:registrationId/learners/search?q=...` | Find an existing global learner identity for reuse (School Administrator) |
+| `POST` | `/api/school/registrations/:registrationId/classes/:classId/learners` | Enroll one new or existing learner (School Administrator) |
+| `PATCH` | `/api/school/registrations/:registrationId/learners/:enrollmentId/end` | End an enrollment with a reason (School Administrator) |
+| `POST` | `/api/school/registrations/:registrationId/classes/:classId/learners/import` | Validate or atomically import a CSV roster (School Administrator) |
+
+CSV import accepts JSON `{ "csv": "...", "dryRun": true }`. Omit `dryRun` to preview; set it to `false` only after reviewing the preview to commit. The upload is limited to 1 MB and 500 data rows. Required headers are `learnerNumber`, `givenName`, and `familyName`; optional headers are `otherNames` and `admissionNumber`. CSV quoting and escaped double quotes are supported. Unknown or duplicate headers, duplicate identifiers, malformed rows, conflicting existing identities and active enrollments are reported before any write. Existing global learner numbers are matched case-insensitively and reused only when all supplied names match; an existing identity is never overwritten by import. An active enrollment at any school blocks the row and must be resolved through the transfer process first.
+
+The preview is read-only. A confirmed import revalidates within a serializable transaction, creates new identities and enrollments as one atomic batch, and records an audit event for every enrollment. A conflict aborts the complete batch; it never leaves a partial import. The browser workflow provides a downloadable CSV template, validation summary, row-level errors and a separate confirmation before commit. Excel workbooks should be exported to CSV before upload.
