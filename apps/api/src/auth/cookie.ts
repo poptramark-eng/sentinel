@@ -1,12 +1,24 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
 import { timingSafeEqual } from "node:crypto";
+
+export interface CookieRequest {
+  headers: {
+    cookie?: string;
+    "x-csrf-token"?: string | string[];
+    origin?: string;
+    referer?: string;
+  };
+}
+
+export interface CookieReply {
+  header(name: string, value: string | string[]): unknown;
+}
 
 const ACCESS_COOKIE = "cbe_access";
 const REFRESH_COOKIE = "cbe_refresh";
 const CSRF_COOKIE = "cbe_csrf";
 
 export function readCookie(
-  request: FastifyRequest,
+  request: CookieRequest,
   name: string,
 ): string | null {
   const header = request.headers.cookie;
@@ -30,7 +42,7 @@ function cookieOptions(httpOnly: boolean, path: string, maxAge: number) {
 }
 
 export function setAuthCookies(
-  reply: FastifyReply,
+  reply: CookieReply,
   accessToken: string,
   refreshToken: string,
   csrfToken: string,
