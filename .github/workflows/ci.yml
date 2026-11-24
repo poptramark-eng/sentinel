@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 22.12.0
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Validate Prisma schema
         run: pnpm db:validate
       - name: Type check
