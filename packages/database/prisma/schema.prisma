@@ -109,6 +109,7 @@ model UserAccount {
 
   person                Person                     @relation(fields: [personId], references: [id], onDelete: Restrict)
   platformOperator      PlatformOperator?
+  refreshTokens         RefreshToken[]
   loginIdentifiers      LoginIdentifier[]
   reviewedRegistrations CouncilSchoolRegistration[] @relation("RegistrationReviewer")
   auditEvents           AuditEvent[]
@@ -358,4 +359,22 @@ model AuditEvent {
   @@index([councilId, createdAt])
   @@index([resourceType, resourceId, createdAt])
   @@index([actorAccountId, createdAt])
+}
+
+
+model RefreshToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  accountId   String    @db.Uuid
+  familyId    String    @db.Uuid
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  replacedById String?  @db.Uuid
+  createdAt   DateTime  @default(now())
+
+  account UserAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([accountId, revokedAt])
+  @@index([familyId, revokedAt])
+  @@index([expiresAt])
 }
