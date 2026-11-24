@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cbe_platform?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+      - name: Type check
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: Build applications
+        run: pnpm build
