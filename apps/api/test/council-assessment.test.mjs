@@ -272,3 +272,30 @@ test("rubric author cannot return their own version for changes", async () => {
   );
   assert.equal(updateCalled, false);
 });
+
+
+test("only a rubric author may add bands to their own draft version", async () => {
+  let createCalled = false;
+  const service = serviceFor({
+    gradingRubricVersion: {
+      findFirst: async () => ({
+        id: rubricVersionId,
+        createdByAccountId: "99999999-9999-4999-8999-999999999999",
+        scaleType: "PERFORMANCE_LEVELS",
+        minScore: null,
+        maxScore: null,
+        bands: [],
+      }),
+    },
+    rubricBand: { create: async () => { createCalled = true; } },
+  });
+  await assert.rejects(
+    service.addRubricBand({ accountId }, councilId, rubricVersionId, {
+      code: "PL1",
+      label: "Council-approved descriptor",
+      sortOrder: 0,
+    }),
+    (error) => error instanceof ConflictException && /Only the rubric author/.test(error.message),
+  );
+  assert.equal(createCalled, false);
+});
