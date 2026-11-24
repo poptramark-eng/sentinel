@@ -3,7 +3,8 @@ import { resolve } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client";
 
-dotenv.config({ path: resolve(__dirname, "../../../.env") });
+dotenv.config();
+dotenv.config({ path: resolve(process.cwd(), "../../.env") });
 
 export { PrismaClient };
 
