@@ -106,9 +106,12 @@ export class CouncilAssessmentsController {
   }
 
   @Get("assessments")
-  @UseGuards(CouncilAdministratorGuard)
-  listAssessments(@Param("councilId", new ParseUUIDPipe()) councilId: string) {
-    return this.assessments.listAssessments(councilId);
+  @UseGuards(CouncilRubricReaderGuard)
+  listAssessments(
+    @Req() request: AuthenticatedRequest,
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+  ) {
+    return this.assessments.listAssessments(councilId, request.auth!.accountId);
   }
 
   @Post("assessments")
