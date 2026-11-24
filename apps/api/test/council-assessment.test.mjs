@@ -372,3 +372,76 @@ test("assessment scheduling rejects duplicate active learner identities across p
     (error) => error instanceof ConflictException && /more than one participating school/.test(error.message),
   );
 });
+
+
+test("governance moderation returns every submitted mark for one class and reopens correction entry", async () => {
+  const classId = "21212121-2121-4121-8121-212121212121";
+  const registrationId = "23232323-2323-4323-8323-232323232323";
+  const candidateId = "24242424-2424-4424-8424-242424242424";
+  const markIds = ["25252525-2525-4525-8525-252525252525", "26262626-2626-4626-8626-262626262626"];
+  const reason = "Please verify the two entries against the signed class assessment record.";
+  const records = {};
+  const tx = {
+    assessment: {
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026 }),
+      update: async ({ data }) => { records.assessment = data; return { id: assessmentId, ...data }; },
+    },
+    schoolClass: { findFirst: async () => ({ id: classId, registrationId }) },
+    assessmentCandidate: { findMany: async () => [{ id: candidateId }] },
+    assessmentMark: {
+      findMany: async () => markIds.map((id) => ({ id, marks: 72, status: "SUBMITTED" })),
+      updateMany: async ({ where, data }) => { records.markUpdate = { where, data }; return { count: 2 }; },
+    },
+    assessmentMarkRevision: { createMany: async ({ data }) => { records.revisions = data; return { count: data.length }; } },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const client = { $transaction: async (callback, options) => {
+    assert.equal(options.isolationLevel, "Serializable");
+    return callback(tx);
+  } };
+  const result = await new CouncilAssessmentService({ client }).returnClassMarksForCorrection(
+    { accountId }, councilId, assessmentId, classId, reason,
+  );
+  assert.deepEqual(records.markUpdate.where.id.in, markIds);
+  assert.equal(records.markUpdate.data.status, "RETURNED");
+  assert.equal(records.markUpdate.data.returnedReason, reason);
+  assert.equal(records.markUpdate.data.submittedAt, null);
+  assert.equal(records.revisions.length, 2);
+  assert.equal(records.revisions[0].action, "RETURNED");
+  assert.equal(records.revisions[0].reason, reason);
+  assert.equal(records.assessment.status, "OPEN");
+  assert.equal(records.audit.action, "ASSESSMENT_CLASS_MARKS_RETURNED_FOR_CORRECTION");
+  assert.equal(records.audit.reason, reason);
+  assert.equal(result.markCount, 2);
+});
+
+test("moderation cannot return a class while any mark is missing or unsubmitted", async () => {
+  const classId = "21212121-2121-4121-8121-212121212121";
+  const tx = {
+    assessment: {
+      findFirst: async () => ({ id: assessmentId, grade: "GRADE_4", academicYear: 2026 }),
+    },
+    schoolClass: { findFirst: async () => ({ id: classId, registrationId: "23232323-2323-4323-8323-232323232323" }) },
+    assessmentCandidate: { findMany: async () => [{ id: "24242424-2424-4424-8424-242424242424" }] },
+    assessmentMark: { findMany: async () => [{ id: "25252525-2525-4525-8525-252525252525", marks: null, status: "DRAFT" }] },
+  };
+  await assert.rejects(
+    new CouncilAssessmentService({ client: { $transaction: async (callback) => callback(tx) } })
+      .returnClassMarksForCorrection(
+        { accountId }, councilId, assessmentId, classId,
+        "Please correct the missing assessment marks.",
+      ),
+    (error) => error instanceof ConflictException && /every mark has been submitted/.test(error.message),
+  );
+});
+
+test("moderation requires a substantive reason before opening a transaction", async () => {
+  let called = false;
+  const service = new CouncilAssessmentService({ client: { $transaction: async () => { called = true; } } });
+  await assert.rejects(
+    service.returnClassMarksForCorrection({ accountId }, councilId, assessmentId,
+      "21212121-2121-4121-8121-212121212121", "fix"),
+    (error) => error instanceof BadRequestException && /10 and 2,000/.test(error.message),
+  );
+  assert.equal(called, false);
+});
