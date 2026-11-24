@@ -185,6 +185,11 @@ enum AssessmentMarkRevisionAction {
   RETURNED
 }
 
+enum AssessmentResultPublicationStatus {
+  PUBLISHED
+  SUPERSEDED
+}
+
 model Person {
   id          String   @id @default(uuid()) @db.Uuid
   givenName   String
@@ -224,6 +229,7 @@ model UserAccount {
   createdAssessments      Assessment[] @relation("AssessmentAuthor")
   enteredAssessmentMarks  AssessmentMark[] @relation("AssessmentMarkEnteredBy")
   assessmentMarkRevisions AssessmentMarkRevision[]
+  publishedAssessmentResults AssessmentResultPublication[] @relation("AssessmentResultPublisher")
   auditEvents             AuditEvent[]
 
   @@index([status])
@@ -588,6 +594,7 @@ model AssessmentCandidate {
   registration CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
   schoolClass  SchoolClass            @relation(fields: [schoolClassId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
   marks        AssessmentMark[]
+  results      AssessmentResult[]
 
   @@unique([id, assessmentId])
   @@unique([assessmentId, learnerId])
@@ -892,6 +899,7 @@ model Assessment {
   rubricBands       AssessmentRubricBand[]
   candidates        AssessmentCandidate[]
   marks             AssessmentMark[]
+  resultPublications AssessmentResultPublication[]
 
   @@unique([id, councilId, curriculumVersionId])
   @@unique([id, rubricVersionId])
@@ -920,11 +928,87 @@ model AssessmentLearningArea {
   assessment Assessment @relation(fields: [assessmentId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
   councilGradeLearningArea CouncilGradeLearningArea @relation(fields: [councilGradeLearningAreaId, councilId, curriculumVersionId], references: [id, councilId, curriculumVersionId], onDelete: Restrict)
   marks AssessmentMark[]
+  resultLearningAreas AssessmentResultLearningArea[]
 
   @@unique([id, assessmentId])
   @@unique([assessmentId, councilGradeLearningAreaId])
   @@index([assessmentId, sortOrder])
   @@index([councilGradeLearningAreaId])
+}
+
+
+model AssessmentResultPublication {
+  id                   String                           @id @default(uuid()) @db.Uuid
+  assessmentId         String                           @db.Uuid
+  councilId            String                           @db.Uuid
+  version              Int                              @default(1)
+  status               AssessmentResultPublicationStatus @default(PUBLISHED)
+  publishedByAccountId String                           @db.Uuid
+  candidateCount       Int
+  schoolCount          Int
+  publishedAt          DateTime                         @default(now())
+  createdAt            DateTime                         @default(now())
+
+  assessment Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  publishedBy UserAccount @relation("AssessmentResultPublisher", fields: [publishedByAccountId], references: [id], onDelete: Restrict)
+  results    AssessmentResult[]
+
+  @@unique([id, assessmentId])
+  @@unique([assessmentId, version])
+  @@index([councilId, publishedAt])
+}
+
+model AssessmentResult {
+  id                         String   @id @default(uuid()) @db.Uuid
+  publicationId              String   @db.Uuid
+  assessmentId               String   @db.Uuid
+  candidateId                String   @db.Uuid
+  registrationId             String   @db.Uuid
+  schoolClassId              String   @db.Uuid
+  schoolIdSnapshot            String   @db.Uuid
+  learnerNumberSnapshot      String
+  learnerNameSnapshot        String
+  schoolNameSnapshot         String
+  schoolClassNameSnapshot    String
+  gradeSnapshot              SchoolGrade
+  totalMarks                 Decimal  @db.Decimal(12, 4)
+  maximumMarks               Decimal  @db.Decimal(12, 4)
+  percentage                Decimal  @db.Decimal(8, 4)
+  rank                       Int
+  overallBandCode            String?
+  overallBandLabel           String?
+  createdAt                  DateTime @default(now())
+
+  publication AssessmentResultPublication @relation(fields: [publicationId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  candidate   AssessmentCandidate         @relation(fields: [candidateId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  learningAreas AssessmentResultLearningArea[]
+
+  @@unique([id, assessmentId])
+  @@unique([publicationId, candidateId])
+  @@index([publicationId, rank])
+  @@index([registrationId, schoolClassId])
+  @@index([schoolIdSnapshot, rank])
+}
+
+model AssessmentResultLearningArea {
+  id                       String   @id @default(uuid()) @db.Uuid
+  resultId                 String   @db.Uuid
+  assessmentId             String   @db.Uuid
+  assessmentLearningAreaId String   @db.Uuid
+  learningAreaCode         String
+  learningAreaName         String
+  displayLabel             String
+  marks                    Decimal  @db.Decimal(12, 4)
+  maximumMarks             Decimal  @db.Decimal(12, 4)
+  percentage               Decimal  @db.Decimal(8, 4)
+  sortOrder                Int
+  createdAt                DateTime @default(now())
+
+  result AssessmentResult @relation(fields: [resultId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+  assessmentLearningArea AssessmentLearningArea @relation(fields: [assessmentLearningAreaId, assessmentId], references: [id, assessmentId], onDelete: Restrict)
+
+  @@unique([resultId, assessmentLearningAreaId])
+  @@index([assessmentId, assessmentLearningAreaId])
 }
 
 model AssessmentRubricBand {
