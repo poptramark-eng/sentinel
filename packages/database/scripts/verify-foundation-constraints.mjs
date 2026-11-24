@@ -17,6 +17,7 @@ const ids = {
   clusterA: id(), clusterB: id(),
   registrationA: id(), registrationDuplicate: id(), registrationHistory: id(),
   membershipA: id(), membershipB: id(), membershipC: id(), classA: id(), classB: id(), classDuplicate: id(), assignmentA: id(), assignmentB: id(),
+  learnerA: id(), enrollmentA: id(), candidateA: id(),
 };
 
 async function expectSqlStateFailure(sqlState, operation) {
@@ -493,6 +494,26 @@ try {
     [assessmentRubricBandA, assessmentId, rubricVersionId, rubricBandA, assessmentRubricBandB, rubricBandB],
   );
   await client.query(
+    `INSERT INTO "Learner" ("id", "learnerNumber", "givenName", "familyName", "updatedAt")
+     VALUES ($1, 'SENTINEL-TEST-LEARNER', 'Test', 'Learner', NOW())`,
+    [ids.learnerA],
+  );
+  await client.query(
+    `INSERT INTO "SchoolLearnerEnrollment"
+      ("id", "learnerId", "registrationId", "councilId", "schoolClassId", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, NOW())`,
+    [ids.enrollmentA, ids.learnerA, ids.registrationA, ids.councilA, ids.classA],
+  );
+  await client.query(
+    `INSERT INTO "AssessmentCandidate"
+      ("id", "assessmentId", "councilId", "curriculumVersionId", "learnerId", "enrollmentId",
+       "registrationId", "schoolClassId", "learnerNumberSnapshot", "learnerNameSnapshot",
+       "classGradeSnapshot", "classStreamSnapshot")
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SENTINEL-TEST-LEARNER', 'Test Learner', 'GRADE_4', 'MAIN')`,
+    [ids.candidateA, assessmentId, ids.councilA, curriculumVersionId, ids.learnerA,
+      ids.enrollmentA, ids.registrationA, ids.classA],
+  );
+  await client.query(
     `UPDATE "Assessment" SET "opensAt" = NOW() + INTERVAL '1 day',
        "closesAt" = NOW() + INTERVAL '2 days', "status" = 'SCHEDULED', "updatedAt" = NOW()
      WHERE "id" = $1`,
@@ -566,7 +587,7 @@ try {
   );
 
   await client.query("ROLLBACK");
-  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, registration lifecycle, email-token ownership, class assignments, curriculum publication immutability, Council selection and version-scoped learning areas.");
+  console.log("Foundation PostgreSQL constraints passed: tenant boundaries, registration lifecycle, email-token ownership, class assignments, learner enrollment, assessment roster snapshots, curriculum publication immutability, Council selection and version-scoped learning areas.");
 } catch (error) {
   await client.query("ROLLBACK").catch(() => undefined);
   throw error;
