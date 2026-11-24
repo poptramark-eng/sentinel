@@ -59,7 +59,7 @@ export async function apiRequest(
 ): Promise<Response> {
   const method = (init.method ?? "GET").toUpperCase();
   const isMutation = !["GET", "HEAD", "OPTIONS"].includes(method);
-  const isAuthEndpoint = path.startsWith("/auth/");
+  const isAuthEndpoint = ["/auth/login", "/auth/refresh", "/auth/csrf"].includes(path);
 
   const headers = new Headers(init.headers);
   if (isMutation && path !== "/auth/login" && path !== "/auth/refresh") {
