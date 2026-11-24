@@ -55,6 +55,15 @@ Legend:
 - Assessment eligibility is denied unless the Council area is enabled and its source mapping has `REVIEWED` status with optionality resolved to `CORE` or `OPTIONAL`.
 - Each Council selection and grade-area configuration change is audited. The Council Administrator guard checks the active, effective-dated membership; a platform role or UI link alone does not grant access.
 
+### Implemented assessment and rubric permissions
+
+- An active `COUNCIL_ADMINISTRATOR` membership may create and manage rubric drafts and Council assessment configuration only within the Council in the route scope.
+- Rubric authors may submit their own draft for independent review. The author cannot publish their own version.
+- An active `COUNCIL_GOVERNANCE_APPROVER` membership is required to publish a rubric version. Publication records the reviewer and timestamp; published and retired rubric versions and bands are immutable.
+- Assessment creation requires an active published Council curriculum, an independently published rubric version and grade-level learning areas that are enabled, reviewed, optionality-resolved and explicitly assessment-eligible.
+- Assessment configuration snapshots are locked by database triggers after leaving `DRAFT`. Council Administrator membership alone does not grant permission to publish results.
+- Assessment configuration, scheduling, opening and closing actions are audited. Client-side route visibility is not an authorization control.
+
 ## 4. Organizer authority and delegation
 
 | Action | CouncilAdministrator | CouncilApprover | OrganizationAdministrator | OrganizerStaff |
