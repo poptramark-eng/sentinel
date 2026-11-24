@@ -583,6 +583,8 @@ model AssessmentCandidate {
   schoolClassId            String                    @db.Uuid
   learnerNumberSnapshot    String
   learnerNameSnapshot      String
+  schoolIdSnapshot         String   @db.Uuid
+  schoolNameSnapshot       String
   classGradeSnapshot       SchoolGrade
   classStreamSnapshot      String
   status                   AssessmentCandidateStatus @default(ACTIVE)
