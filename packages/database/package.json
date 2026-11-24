@@ -13,7 +13,9 @@
     "generate": "prisma generate",
     "validate": "prisma validate",
     "migrate": "prisma migrate dev",
-    "migration:generate": "bash scripts/generate-foundation-migration.sh"
+    "migrate:deploy": "prisma migrate deploy",
+    "migration:generate": "bash scripts/generate-foundation-migration.sh",
+    "test:constraints": "node scripts/verify-foundation-constraints.mjs"
   },
   "dependencies": {
     "@prisma/client": "7.10.1",

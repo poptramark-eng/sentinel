@@ -3,7 +3,7 @@
 ## Identity and sessions
 
 - Build first-party authentication using vetted cryptographic libraries, not custom cryptography.
-- Use Argon2id for password hashing after confirming runtime support and tuning parameters.
+- Use Argon2id for password hashing. The initial implementation uses 19 MiB memory, 2 iterations and parallelism 1; benchmark under expected login concurrency before production and tune only with capacity evidence.
 - Use short-lived access tokens and rotating, one-time refresh tokens.
 - Store refresh-token hashes, not reusable raw refresh tokens.
 - Deliver tokens only through secure, HTTP-only, appropriately SameSite cookies.

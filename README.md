@@ -4,7 +4,7 @@ A multi-council platform for configuring and administering assessments, managing
 
 ## Project status
 
-The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party login/refresh/logout/current-user API are in place. The platform is not production-ready: migrations, account onboarding/verification, rate limiting, full authorization, school-registration endpoints, and production operations remain incomplete. Use synthetic learner and assessment data only.
+The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: migrations, account onboarding/verification, rate limiting, full authorization, school-registration endpoints, and production operations remain incomplete. Use synthetic learner and assessment data only.
 
 ## Architecture
 
@@ -27,6 +27,7 @@ PostgreSQL is the system of record. Redis is not a permanent ledger or source of
 - Internal and external assessment result-governance paths are distinct.
 - Core identity, tenant, geography and school-registration foundation models are implemented in Prisma. The first migration is not yet generated or applied.
 - Core identity and authorization decisions are recorded in docs/decisions/decision-register.md; legal/privacy and external identifier validation gates remain open.
+- The initial foundation migration is generated and CI applies it to an ephemeral PostgreSQL 18 database, then checks cross-Council foreign keys and active-registration uniqueness.
 
 Read:
 - `docs/architecture/` — ADRs and architecture boundaries
@@ -98,5 +99,5 @@ CI runs the same validation/build checks with frozen-lockfile installation.
 
 - Do not load real learner data in development.
 - Do not create production credentials or activate paid providers without explicit approval.
-- Do not run Prisma migrations against production. The foundation schema is validated, but the initial SQL migration still needs generation, review and a non-production PostgreSQL test.
+- Do not run Prisma migrations against production. The foundation migration is generated and CI-tested against ephemeral PostgreSQL; it still needs a deliberate non-production deployment and restore/recovery rehearsal before production use.
 - Never commit secrets, tokens, private keys or personal learner information.

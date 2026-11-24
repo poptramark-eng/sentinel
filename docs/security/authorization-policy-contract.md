@@ -1,8 +1,8 @@
 # Authorization Policy Contract — Sentinel
 
-**Status:** Implementation contract proposal, derived from the current domain and authorization baselines.  
-**Approval state:** Explicit rules below are treated as established project constraints; items marked TBD remain blocked from implementation.  
-**Applies to:** NestJS/Fastify API, domain services, database access, exports, reports, and asynchronous workers.  
+**Status:** Working authorization contract, adopted alongside ADR-001 through ADR-012 in `docs/decisions/decision-register.md`.
+**Approval state:** The adopted ADRs resolve several earlier TBDs below. Any remaining implementation-specific details must follow the decision register; external legal and institutional validation remains a production gate.
+**Applies to:** NestJS/Fastify API, domain services, database access, exports, reports, and asynchronous workers.
 **Migration status:** No Prisma schema or migration is authorized by this document.
 
 ## 1. Authorization decision model
@@ -180,22 +180,27 @@ Every policy key implemented must have positive and negative tests. At minimum:
 
 Also test race conditions: simultaneous approvals, authority revocation during a release, duplicate submissions, stale version writes, and export authorization changes between request and execution.
 
-## 8. Blocking decisions — do not guess
+## 8. Adopted decisions and remaining implementation gates
 
-These decisions remain open and block the corresponding feature or schema constraint:
+The following earlier TBD items are now resolved as working defaults:
 
-1. Complete PlatformAdministrator and CouncilAdministrator read/action catalogues, especially candidates, marks, results, audit, and reports.
-2. School Administrator replacement: independent approval, identity verification, transfer timing, account recovery, and emergency process.
-3. Council visibility of identifiable school/candidate/mark data versus metadata and aggregates.
-4. Whether School Administrators may enter/correct marks or only assign staff and oversee progress.
-5. Class Teacher designation, final submission authority, reassignment, and delegation.
-6. Teacher access to learner demographics, identifiers, historical results, and class-wide records.
-7. Organizer validation, candidate correction, mark correction, and result-release action catalogue.
-8. Break-glass/support access, approval, scope, expiry, notification, and audit review.
-9. Payment/billing administration and separation from educational data access.
-10. Report/export field-level permissions, consolidated-report thresholds, recipients, expiry, retention, and lawful deletion.
-11. Exact role-combination constraints and self-assignment rules for Council memberships.
-12. Revocation latency and cache invalidation requirements.
+- School Administrator mark editing and submission: teachers may edit their own draft marks within active assignment and entry window; SchoolAdministrator finalizes submission; post-submission changes require governed correction. (ADR-005)
+- Class Teacher: explicit class-coordination assignment; may review completeness and coordinate readiness but cannot bypass subject assignments or finalize submission. (ADR-005)
+- Council/Platform visibility: aggregate operational oversight by default; identifiable learner/candidate/mark access requires purpose-limited, named, expiring and audited access. (ADR-006)
+- Teacher data access: constrained to learners and assessment records needed for active school membership and assignments; field-level details must be implemented against that scope. (ADR-006)
+- Organizer validation/correction: organizer staff may validate, create/resolve issues and return submissions, but cannot directly change school-entered marks. (ADR-007)
+- Governance and SchoolAdministrator replacement: independent governance approval, two-person replacement, and time-limited audited recovery process. (ADR-008)
+- Export/privacy: allowlisted fields, asynchronous reauthorization at execution/download, short-lived retrieval, aggregate-only consolidated reports by default, and no invented retention periods. (ADR-009)
+- Tenant enforcement: tenant-scoped repositories and composite constraints; PostgreSQL RLS deferred until transaction context and connection pooling are proven. (ADR-010)
+
+Remaining implementation gates are operational rather than ideation blockers:
+
+1. Translate every adopted action into policy service methods and endpoint-level tests before exposing that endpoint.
+2. Configure the named reviewer/approval workflow for post-submission mark corrections and correction evidence requirements per assessment.
+3. Define field allowlists for each report/export type before implementing those exports.
+4. Implement the purpose-limited DataAccessGrant/ReviewCase before Council or Platform users can inspect identifiable learner data.
+5. Validate institutional identity-proofing and recovery procedures, and obtain legal/controller approval for child-data retention and sharing.
+6. Implement distributed rate limiting, account recovery and email verification before production onboarding.
 
 ## 9. Exit criteria before protected feature implementation
 

@@ -5,7 +5,7 @@
 **Not included yet:** Assessment, candidate, marks, curriculum, result, payment or external-provider tables. Those are separate bounded contexts and will be added after the foundation is exercised.  
 **Database:** PostgreSQL. ORM: Prisma 7.  
 **Schema implementation:** packages/database/prisma/schema.prisma.  
-**Migrations:** Not generated or applied in this commit. The database target and deployment environment have not yet been configured.
+**Migration:** `202611240001_foundation` is generated from the reviewed Prisma schema and includes the PostgreSQL partial unique index for one active registration episode per Council/School. CI applies it to an ephemeral PostgreSQL 18 service and verifies tenant-boundary constraints. It has not been applied to a persistent development, staging or production database.
 
 ## 1. First vertical slice
 
@@ -174,10 +174,10 @@ Every operation must resolve an ACTIVE SchoolMembership against an APPROVED Coun
 2. Add domain service and API contracts for registration submission/review.
 3. Add unit tests for state transitions and tenant invariants.
 4. Add PostgreSQL integration tests, including composite-FK and partial-index cases.
-5. Generate and inspect SQL migration; test from empty database and rollback/recovery procedure.
-6. Implement first-party authentication and authorization guards before exposing the workflow publicly.
-7. Build registrant and PlatformAdministrator UX, including pending/rejected states and audit history.
-8. Only then deploy a non-production environment with test data.
+5. Generate and inspect SQL migration; CI applies it to an ephemeral PostgreSQL 18 service on every push/PR.
+6. Exercise the registration API and authorization lifecycle against PostgreSQL integration fixtures before exposing the workflow publicly.
+7. Complete distributed rate limiting, account onboarding/verification and operational recovery before production onboarding.
+8. Deploy only to a non-production environment with synthetic test data until legal/privacy and registry gates are satisfied.
 
 ## 8. Explicitly deferred
 

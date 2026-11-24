@@ -14,7 +14,7 @@ mkdir -p "$MIGRATION_DIR"
 cd "$ROOT_DIR"
 pnpm exec prisma migrate diff \
   --from-empty \
-  --to-schema-datamodel prisma/schema.prisma \
+  --to-schema prisma/schema.prisma \
   --script > "$MIGRATION_DIR/migration.sql"
 
 cat >> "$MIGRATION_DIR/migration.sql" <<'SQL'

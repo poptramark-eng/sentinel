@@ -99,6 +99,20 @@ export class AuthController {
   }
 
   @UseGuards(AccessTokenGuard)
+  @Post("logout-all")
+  async logoutAll(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: CookieReply,
+  ) {
+    if (!hasValidCsrf(request as never)) {
+      throw new UnauthorizedException("CSRF validation failed.");
+    }
+    await this.authService.logoutAll(request.auth!.accountId);
+    clearAuthCookies(reply as never);
+    return { status: "SIGNED_OUT_ALL_DEVICES" };
+  }
+
+  @UseGuards(AccessTokenGuard)
   @Get("me")
   async me(@Req() request: AuthenticatedRequest) {
     return this.authService.getCurrentUser(request.auth!.accountId);

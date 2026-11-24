@@ -1,57 +1,47 @@
+import { Algorithm, hash as argon2Hash, verify as argon2Verify } from "@node-rs/argon2";
 import {
-  randomBytes,
   scrypt as scryptCallback,
   timingSafeEqual,
 } from "node:crypto";
 
-const COST = 32_768;
-const BLOCK_SIZE = 8;
-const PARALLELIZATION = 1;
-const KEY_LENGTH = 64;
-const MAX_MEMORY = 64 * 1024 * 1024;
+// OWASP's minimum recommended Argon2id profile: 19 MiB, t=2, p=1.
+// Re-benchmark on production hardware before raising this cost.
+const ARGON2_OPTIONS = {
+  algorithm: Algorithm.Argon2id,
+  memoryCost: 19 * 1024,
+  timeCost: 2,
+  parallelism: 1,
+  outputLen: 32,
+} as const;
 
-interface ScryptOptions {
+interface LegacyScryptOptions {
   N: number;
   r: number;
   p: number;
   maxmem: number;
 }
 
-function deriveKey(
+const LEGACY_SCRYPT = {
+  N: 32_768,
+  r: 8,
+  p: 1,
+  maxmem: 64 * 1024 * 1024,
+} satisfies LegacyScryptOptions;
+
+function deriveLegacyKey(
   password: string,
   salt: Buffer,
   keyLength: number,
 ): Promise<Buffer> {
-  const options: ScryptOptions = {
-    N: COST,
-    r: BLOCK_SIZE,
-    p: PARALLELIZATION,
-    maxmem: MAX_MEMORY,
-  };
-
   return new Promise((resolve, reject) => {
-    scryptCallback(password, salt, keyLength, options, (error, derived) => {
+    scryptCallback(password, salt, keyLength, LEGACY_SCRYPT, (error, derived) => {
       if (error) reject(error);
       else resolve(derived);
     });
   });
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const derived = await deriveKey(password, salt, KEY_LENGTH);
-
-  return [
-    "scrypt",
-    COST,
-    BLOCK_SIZE,
-    PARALLELIZATION,
-    salt.toString("base64url"),
-    derived.toString("base64url"),
-  ].join("$");
-}
-
-export async function verifyPassword(
+async function verifyLegacyScrypt(
   password: string,
   encoded: string,
 ): Promise<boolean> {
@@ -60,9 +50,9 @@ export async function verifyPassword(
 
   if (
     algorithm !== "scrypt" ||
-    cost !== String(COST) ||
-    blockSize !== String(BLOCK_SIZE) ||
-    parallelization !== String(PARALLELIZATION) ||
+    cost !== String(LEGACY_SCRYPT.N) ||
+    blockSize !== String(LEGACY_SCRYPT.r) ||
+    parallelization !== String(LEGACY_SCRYPT.p) ||
     !saltValue ||
     !hashValue
   ) {
@@ -72,12 +62,35 @@ export async function verifyPassword(
   try {
     const salt = Buffer.from(saltValue, "base64url");
     const expected = Buffer.from(hashValue, "base64url");
-    const actual = await deriveKey(password, salt, expected.length);
-
-    return (
-      actual.length === expected.length && timingSafeEqual(actual, expected)
-    );
+    if (salt.length !== 16 || expected.length !== 64) return false;
+    const actual = await deriveLegacyKey(password, salt, expected.length);
+    return timingSafeEqual(actual, expected);
   } catch {
     return false;
   }
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  return argon2Hash(password, ARGON2_OPTIONS);
+}
+
+export async function verifyPassword(
+  password: string,
+  encoded: string,
+): Promise<boolean> {
+  if (encoded.startsWith("$argon2id$")) {
+    try {
+      return await argon2Verify(encoded, password);
+    } catch {
+      return false;
+    }
+  }
+
+  // One-time compatibility path for hashes created by the initial Sentinel
+  // prototype. Successful logins are upgraded to Argon2id by AuthService.
+  return verifyLegacyScrypt(password, encoded);
+}
+
+export function needsPasswordRehash(encoded: string): boolean {
+  return !encoded.startsWith("$argon2id$");
 }

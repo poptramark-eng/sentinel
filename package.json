@@ -17,7 +17,8 @@
     "db:validate": "pnpm --filter @cbe/database validate",
     "db:migrate": "pnpm --filter @cbe/database migrate",
     "test": "pnpm db:generate && pnpm --filter @cbe/database build && pnpm --filter @cbe/api build && pnpm --filter @cbe/api test",
-    "db:migration:generate": "pnpm --filter @cbe/database migration:generate"
+    "db:migration:generate": "pnpm --filter @cbe/database migration:generate",
+    "db:test:constraints": "pnpm --filter @cbe/database test:constraints"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

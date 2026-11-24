@@ -51,10 +51,10 @@ Learner identifiers locate learner records only. They are not passwords, one-tim
 Use established cryptographic libraries. Do not invent cryptographic primitives.
 
 ### Passwords
-- Initial implementation uses Node.js scrypt with N=32768, r=8, p=1, a 16-byte random salt and a 64-byte derived key; max memory is bounded at 64 MiB.
-- Store the algorithm and parameters alongside the encoded salt/hash so future parameter upgrades can be versioned.
-- Never store plaintext or reversible passwords. Enforce a 12–128 character input range at the API boundary.
-- Benchmark the parameters on the production runtime before launch; add rehash-on-login when parameters change. Argon2id may replace scrypt later if a maintained native/WASM package and deployment support are selected.
+- Use Argon2id via the maintained `@node-rs/argon2` native binding. The initial profile is 19 MiB memory, 2 iterations, parallelism 1, and a 32-byte output, encoded in PHC format.
+- Keep algorithm and parameters in the encoded hash. Benchmark latency and memory under expected concurrent login load before production; tune the cost upward only when the deployment can sustain it without creating a denial-of-service risk.
+- Never store plaintext or reversible passwords. Enforce a 12–128 character input range at the API boundary and apply account/network/identifier rate limits before production.
+- Existing prototype scrypt hashes are verified only for migration compatibility and are upgraded to Argon2id after a successful login. New hashes are always Argon2id.
 - Password reset is a one-time, short-lived, high-entropy token; persist only its hash.
 
 ### Access and refresh tokens
@@ -73,13 +73,13 @@ Use established cryptographic libraries. Do not invent cryptographic primitives.
 - Use exact CORS origin allowlists and credentials only for trusted frontend origins.
 - Protect state-changing cookie-authenticated refresh/logout requests with a double-submit CSRF token and exact Origin/Referer allowlist validation. SameSite alone is not the only CSRF control.
 - Never expose tokens to localStorage, sessionStorage, URL parameters or client logs.
-- Logout clears cookies and revokes the refresh-token family.
+- Logout clears cookies and revokes only the current device refresh-token family. Logout-all revokes every family and increments the account authentication version, immediately invalidating all outstanding access tokens.
 
 ## 4. Authentication flows
 
-- Login: normalize email; verify account status and verified identifier; verify scrypt hash; issue access + refresh cookies; record a security audit event. Login throttling is not yet implemented and is a release blocker.
+- Login: normalize email; verify account status and verified identifier; verify Argon2id (or migrate a legacy scrypt hash); issue access + refresh cookies; record a security audit event. Login throttling is not yet implemented and is a release blocker.
 - Refresh: validate refresh-token hash and family state; rotate transactionally; detect replay; issue new access token.
-- Logout: revoke current refresh token/family and clear cookies.
+- Logout: revoke the current device refresh-token family and clear its cookies.
 - Logout all: increment authentication version, revoke all refresh families and clear current cookies.
 - Email verification: send a short-lived one-time link through Resend; persist only token hash; make operation idempotent.
 - Password reset: return the same public response regardless of whether an account exists; send a one-time reset link only when eligible; revoke refresh families and increment authentication version after reset.
@@ -152,19 +152,19 @@ The policy decision uses:
 
 ## 9. Current implementation boundary
 
-Implemented in the API foundation: email/password login for pre-provisioned active accounts, scrypt password verification, 10-minute HS256 access JWT in an HttpOnly cookie, opaque refresh token hash persistence and rotation, refresh-family replay response, account auth-version checks, CSRF double-submit plus exact origin allowlist for refresh/logout, logout, and a minimal current-user endpoint.
+Implemented in the API foundation: email/password login for pre-provisioned active accounts; Argon2id password hashing with legacy scrypt rehash-on-login; 10-minute HS256 access JWT in an HttpOnly cookie; opaque refresh-token hash persistence and transactional rotation; refresh-family replay response; account auth-version checks; CSRF double-submit plus exact origin allowlist for refresh/logout; logout; current-user endpoint; developer-controlled PlatformAdministrator bootstrap; and authenticated school-registration submission, withdrawal, status and PlatformAdministrator review/identifier-verification endpoints.
 
-Not yet implemented: account signup/invitation, email verification delivery, password reset, MFA/passkeys, rate limiting, brute-force protection, login alerting, platform-operator bootstrap tooling, complete role/permission guards, and school registration controllers. Do not expose this API to production users until these are completed and tested. The current implementation has not been penetration-tested.
+Not yet implemented: public account signup, email verification delivery, password reset, MFA/passkeys, distributed rate limiting, brute-force protection, login alerting, full Council/School/Organizer authorization policies, and database-backed integration tests. Do not expose this API to production users until these are completed and tested. The current implementation has not been penetration-tested.
 
 ## 10. Decisions still required before production
 
-- Canonical account login identifier policy (email, phone, or both) and duplicate handling.
-- Whether one account can hold multiple people/persona relationships and the identity verification process.
-- Exact complete permission catalogue and route/action matrix.
-- School administrator replacement approval and recovery workflow.
-- Password reset and email-verification expiry/retention values.
-- Cookie hostnames and deployment topology for Vercel/Render.
-- Support-access policy and whether it is needed.
-- Authentication audit retention and privacy schedule.
+- Email is the first supported login identifier. Phone login is deferred until phone verification, recovery and SIM-swap controls are implemented.
+- One account maps to one Person; a Person may have multiple scoped memberships.
+- Remaining role/action policy details are governed by `docs/security/authorization-policy-contract.md` and the adopted ADRs.
+- School administrator replacement and recovery follow ADR-008; production identity-proofing procedures still require institutional validation.
+- Password reset and email-verification expiry/retention values must be configured and reviewed before launch.
+- Cookie hostnames and deployment topology for Vercel/Render must be fixed before production.
+- Support access is denied by default; a time-limited, purpose-bound break-glass workflow is required before support can inspect identifiable learner data.
+- Authentication audit retention and privacy schedule require legal/controller approval.
 
-The Prisma schema includes UserAccount, LoginIdentifier, PlatformOperator and RefreshToken persistence. No database migration has been generated or applied. Production credential setup is not authorized by this design note. Use synthetic test identities only.
+The Prisma schema includes Person, UserAccount, LoginIdentifier, PlatformOperator, RefreshToken, Council, scoped memberships, CouncilSchoolRegistration, geography and AuditEvent. The initial migration is not yet generated or applied. Production credential setup is not authorized by this design note. Use synthetic test identities only.

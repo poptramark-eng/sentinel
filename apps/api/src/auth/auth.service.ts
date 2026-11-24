@@ -4,7 +4,7 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, needsPasswordRehash, verifyPassword } from "./password";
 import {
   createCsrfToken,
   createRefreshToken,
@@ -48,6 +48,14 @@ export class AuthService {
 
     if (!valid || account.status !== "ACTIVE") {
       throw new UnauthorizedException("Invalid email or password.");
+    }
+
+    if (account.passwordHash && needsPasswordRehash(account.passwordHash)) {
+      const upgradedHash = await hashPassword(password);
+      await this.prisma.client.userAccount.updateMany({
+        where: { id: account.id, passwordHash: account.passwordHash },
+        data: { passwordHash: upgradedHash },
+      });
     }
 
     const refreshToken = createRefreshToken();
@@ -180,22 +188,40 @@ export class AuthService {
   }
 
   async logout(accountId: string, rawToken?: string | null): Promise<void> {
-    const now = new Date();
     const token = rawToken
       ? await this.prisma.client.refreshToken.findUnique({
           where: { tokenHash: hashRefreshToken(rawToken) },
+          select: { accountId: true, familyId: true },
         })
       : null;
 
+    const operations = [];
+    if (token?.accountId === accountId) {
+      operations.push(
+        this.prisma.client.refreshToken.updateMany({
+          where: { accountId, familyId: token.familyId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        }),
+      );
+    }
+    operations.push(
+      this.prisma.client.auditEvent.create({
+        data: {
+          actorAccountId: accountId,
+          action: "AUTH_LOGOUT",
+          resourceType: "UserAccount",
+          resourceId: accountId,
+          decision: "ALLOW",
+        },
+      }),
+    );
+
+    await this.prisma.client.$transaction(operations);
+  }
+
+  async logoutAll(accountId: string): Promise<void> {
+    const now = new Date();
     await this.prisma.client.$transaction([
-      ...(token
-        ? [
-            this.prisma.client.refreshToken.updateMany({
-              where: { familyId: token.familyId, revokedAt: null },
-              data: { revokedAt: now },
-            }),
-          ]
-        : []),
       this.prisma.client.refreshToken.updateMany({
         where: { accountId, revokedAt: null },
         data: { revokedAt: now },
@@ -207,7 +233,7 @@ export class AuthService {
       this.prisma.client.auditEvent.create({
         data: {
           actorAccountId: accountId,
-          action: "AUTH_LOGOUT",
+          action: "AUTH_LOGOUT_ALL",
           resourceType: "UserAccount",
           resourceId: accountId,
           decision: "ALLOW",

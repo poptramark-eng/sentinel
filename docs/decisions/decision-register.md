@@ -229,3 +229,21 @@ These are not product ideation questions; they are evidence/compliance tasks to 
 5. Confirm contractual result-release and correction rules with participating Councils.
 
 These gates do not block synthetic-data development, domain tests, physical schema prototyping or non-production vertical slices. They do block real learner-data onboarding and production launch.
+
+
+## ADR-012 — Password hashing and credential migration
+
+**Decision**
+
+- New account passwords are hashed with Argon2id using the maintained `@node-rs/argon2` binding and PHC-encoded hashes.
+- Initial parameters are 19 MiB memory, two iterations and parallelism one. These are a baseline, not a permanent ceiling; benchmark login latency and concurrent memory pressure in the target runtime before production.
+- The previous Sentinel prototype used Node.js scrypt. The authentication service retains a narrow legacy verifier and upgrades a valid legacy hash to Argon2id after successful login using a compare-and-set update. New hashes are never scrypt.
+- Password hashes and credentials never enter logs, audit metadata or API responses.
+
+**Consequences**
+
+- New accounts use Argon2id. Legacy scrypt support can be removed after the migration window and account inventory confirm no remaining legacy hashes.
+- Authentication tests cover Argon2id verification, invalid passwords, legacy verification/rehash, refresh rotation and refresh replay response.
+- Distributed login throttling remains a production blocker; password hashing alone does not prevent credential-stuffing or resource-exhaustion attacks.
+
+**Confidence:** High for algorithm selection; production cost tuning remains deployment-specific.

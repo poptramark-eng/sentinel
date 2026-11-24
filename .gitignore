@@ -13,3 +13,6 @@ coverage
 .idea
 
 *.tsbuildinfo
+
+# Generated Prisma client
+packages/database/src/generated/

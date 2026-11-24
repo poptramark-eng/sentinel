@@ -1,8 +1,8 @@
 # Data Dictionary and Integrity Constraints — Draft 0.1
 
-**Status:** Logical data dictionary proposal; not an approved physical schema.  
-**Source baseline:** Sentinel domain model, tenant ownership matrix, workflow state machines, and the current CBE requirements recorded in the engineering workspace.  
-**Migration gate:** Do not translate this document into Prisma models or migrations until the unresolved ownership, identity, authorization, uniqueness, correction, and retention decisions in Section 8 are approved.
+**Status:** Logical data dictionary baseline; selected design decisions are now adopted in `docs/decisions/decision-register.md` (ADR-001 through ADR-012).
+**Source baseline:** Sentinel domain model, tenant ownership matrix, workflow state machines, authorization policy contract, and current CBE requirements.
+**Migration gate:** The first physical migration is limited to the foundation slice documented in `docs/architecture/physical-data-model-foundation.md`. Assessment/candidate/marks/results models remain separate implementation slices. External legal and registry validation gates still apply.
 
 ## 1. Design conventions
 
@@ -103,23 +103,33 @@ These are logical invariants to preserve in the eventual schema and service laye
 13. Audit integrity: actor, tenant, and resource references must be mutually consistent; event records cannot be updated by ordinary application operations.
 14. Identity safety: teacher matching requires verified issuer identifiers or controlled review; learner IDs are never authentication credentials.
 
-## 8. Decisions required before physical schema
+## 8. Decisions adopted since draft 0.1
 
-| Decision | Why it changes schema or constraints | Current status |
+The earlier open items have been resolved as working engineering defaults by the decision register. These are implementation baselines, not claims that statutory, Council-contract or registry validation has been completed.
+
+| Topic | Adopted decision | Source |
 |---|---|---|
-| Canonical School identity authority and identifiers | Determines School natural keys, source-of-truth and merge policy | **Open** |
-| School re-registration, suspension/reactivation and history | Determines registration episode model, unique constraints and historical participation | **Open** |
-| Person and TeacherIdentity issuer identifiers / duplicate resolution | Determines global uniqueness and identity-link constraints | **Open** |
-| Whether one account may represent multiple Person/persona relationships | Changes UserAccount–Person cardinality and access resolution | **Open** |
-| Learner identifier issuer and namespace | Determines global uniqueness and correction/transfer policy | **Open** |
-| Candidate uniqueness across papers, sessions, repeats and transfers | Determines AssessmentCandidate composite unique key | **Open** |
-| Canonical versus Council-owned LearningArea | Determines ownership key and curriculum foreign keys | **Open** |
-| Full role/action matrix and data visibility | Determines membership, permission, and field-access structures | **Open** |
-| School Administrator replacement and Council governance recovery | Determines request/approval records, constraints and lifecycle | **Open** |
-| Mark correction authority and post-release correction | Determines revision, approval and release version relationships | **Open** |
-| Exact internal/external workflow transitions and reopening | Determines state machine persistence and transition guards | **Open** |
-| Consolidated-report authorization and privacy thresholds | Determines authorization records, report outputs and data minimization | **Open** |
-| Retention, archival, deletion and legal holds | Determines lifecycle fields, purge jobs and audit retention | **Open** |
+| Canonical School identity and registration history | Global School identity; issuer-scoped identifiers; separate Council registration episodes; only one active episode per Council/School | ADR-001 |
+| Person, account and teacher identity | One account per Person; one global teacher identity; scoped school memberships/assignments; no name-only auto-merge | ADR-002 |
+| Learner identity and candidate uniqueness | Issuer-scoped learner identifier; candidate unique per AssessmentSitting; governed transfer after registration close | ADR-003 |
+| Learning areas and curriculum | Canonical platform-managed learning-area catalogue; Council curriculum configuration and version snapshots; configurable rubric boundaries | ADR-004 |
+| Mark correction and submission | Teachers correct own draft marks before final submission; SchoolAdministrator finalizes school submission; later corrections use governed requests and new release versions | ADR-005 |
+| Council and Platform data visibility | Aggregate oversight by default; identifiable learner/mark access requires purpose-limited review grant; exports inherit same scope | ADR-006 |
+| Organizer validation and release | Organizer may validate/return, not directly edit school marks; RELEASE_RESULTS requires independent CouncilApprover approval | ADR-007 |
+| Governance lifecycle | Separate Council governance and release approver roles; two-person SchoolAdministrator replacement with audited recovery | ADR-008 |
+| Export and retention | Allowlisted fields, async reauthorization, aggregate-only cross-Council reporting by default; retention durations await legal review | ADR-009 |
+| Tenant enforcement | Application scope plus tenant IDs/composite constraints; RLS deferred until connection/transaction context is proven | ADR-010 |
+
+## 9. External validation gates
+
+1. Verify accepted school and teacher identifier issuers against authoritative education/registry sources.
+2. Validate the canonical CBE learning-area catalogue and grade applicability against authoritative curriculum documents before seeding production reference data.
+3. Obtain legal/privacy review of child data, lawful basis, retention, access rights, cross-Council sharing and incident obligations.
+4. Validate SchoolAdministrator recovery identity-proofing procedures with participating institutions.
+5. Confirm contractual result-release, correction and appeal rules with participating Councils.
+6. Configure and verify production data retention schedules before any real learner data is onboarded.
+
+These gates do not block synthetic-data development, unit tests, physical schema prototyping or non-production vertical slices. They do block real learner-data onboarding and production launch.
 
 ## 9. Recommended next review sequence
 
