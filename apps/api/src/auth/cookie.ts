@@ -36,7 +36,7 @@ export function setAuthCookies(
   csrfToken: string,
 ): void {
   reply.header("Set-Cookie", [
-    `${ACCESS_COOKIE}=${encodeURIComponent(accessToken)}; ${cookieOptions(true, "/api", 900)}`,
+    `${ACCESS_COOKIE}=${encodeURIComponent(accessToken)}; ${cookieOptions(true, "/api", 600)}`,
     `${REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; ${cookieOptions(true, "/api/auth", 60 * 60 * 24 * 30)}`,
     `${CSRF_COOKIE}=${encodeURIComponent(csrfToken)}; ${cookieOptions(false, "/api", 60 * 60 * 24 * 30)}`,
   ]);
@@ -55,6 +55,21 @@ export function hasValidCsrf(request: FastifyRequest): boolean {
   const cookie = readCookie(request, CSRF_COOKIE);
   const header = request.headers["x-csrf-token"];
   if (!cookie || typeof header !== "string") return false;
+
+  const allowedOrigins = (process.env.WEB_ORIGIN ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const origin = request.headers.origin;
+  const referer = request.headers.referer;
+  const requestOrigin =
+    typeof origin === "string"
+      ? origin
+      : typeof referer === "string"
+        ? new URL(referer).origin
+        : null;
+
+  if (!requestOrigin || !allowedOrigins.includes(requestOrigin)) return false;
 
   const left = Buffer.from(cookie);
   const right = Buffer.from(header);
