@@ -8,7 +8,8 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "bootstrap:platform-admin": "node dist/scripts/bootstrap-platform-administrator.js"
+    "bootstrap:platform-admin": "node dist/scripts/bootstrap-platform-administrator.js",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "12.0.3",
