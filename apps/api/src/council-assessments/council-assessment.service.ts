@@ -724,11 +724,13 @@ export class CouncilAssessmentService {
         if (candidates.length === 0) throw new ConflictException("This class has no active candidates in the assessment.");
 
         const candidateIds = candidates.map((candidate) => candidate.id);
+        const learningAreaCount = await tx.assessmentLearningArea.count({ where: { assessmentId } });
+        if (learningAreaCount === 0) throw new ConflictException("The assessment has no snapshotted learning areas.");
         const marks = await tx.assessmentMark.findMany({
           where: { assessmentId, candidateId: { in: candidateIds } },
           select: { id: true, marks: true, status: true },
         });
-        if (marks.length === 0 || marks.some((mark) => mark.status !== "SUBMITTED" || mark.marks === null)) {
+        if (marks.length !== candidates.length * learningAreaCount || marks.some((mark) => mark.status !== "SUBMITTED" || mark.marks === null)) {
           throw new ConflictException("A class can be returned only when every mark has been submitted.");
         }
 
