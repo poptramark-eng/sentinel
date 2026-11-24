@@ -284,12 +284,12 @@ export default function CouncilCurriculumPage() {
                                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${source.reviewStatus === "REVIEWED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{source.reviewStatus === "REVIEWED" ? "Source reviewed" : "Review required"}</span>
                               </div>
                               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                <label className="flex items-center gap-2 text-xs font-medium text-[var(--muted)]">
-                                  <input type="checkbox" checked={draft.enabled} onChange={(event) => updateDraft(area, { enabled: event.target.checked })} className="size-4 accent-[var(--brand)]" />
+                                <label className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-medium text-[var(--muted)]">
+                                  <input type="checkbox" checked={draft.enabled} onChange={(event) => updateDraft(area, { enabled: event.target.checked })} className="size-5 shrink-0 accent-[var(--brand)]" />
                                   Enabled for this Council
                                 </label>
-                                <label className={`flex items-center gap-2 text-xs font-medium ${!draft.enabled || source.reviewStatus !== "REVIEWED" || source.optionality === "UNKNOWN" ? "text-[var(--subtle)]" : "text-[var(--muted)]"}`}>
-                                  <input type="checkbox" checked={draft.assessmentEligible} disabled={!draft.enabled || source.reviewStatus !== "REVIEWED" || source.optionality === "UNKNOWN"} onChange={(event) => updateDraft(area, { assessmentEligible: event.target.checked })} className="size-4 accent-[#16734b]" />
+                                <label className={`flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-medium ${!draft.enabled || source.reviewStatus !== "REVIEWED" || source.optionality === "UNKNOWN" ? "text-[var(--subtle)]" : "text-[var(--muted)]"}`}>
+                                  <input type="checkbox" checked={draft.assessmentEligible} disabled={!draft.enabled || source.reviewStatus !== "REVIEWED" || source.optionality === "UNKNOWN"} onChange={(event) => updateDraft(area, { assessmentEligible: event.target.checked })} className="size-5 shrink-0 accent-[#16734b]" />
                                   Eligible for assessment
                                 </label>
                               </div>
@@ -306,7 +306,7 @@ export default function CouncilCurriculumPage() {
                               </label>
                               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                                 <p className="text-[10px] text-[var(--subtle)]">Source classification: {source.optionality === "UNKNOWN" ? "Unresolved" : source.optionality}</p>
-                                <button type="button" disabled={busy || !changed} aria-busy={busy} onClick={() => void saveArea(area)} className="rounded-lg border border-[var(--line-strong)] bg-white px-3 py-2 text-[11px] font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)] disabled:cursor-not-allowed disabled:opacity-40">Save configuration</button>
+                                <button type="button" disabled={busy || !changed} aria-busy={busy} onClick={() => void saveArea(area)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-4 py-2 text-[11px] font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)] disabled:cursor-not-allowed disabled:opacity-40">Save configuration</button>
                               </div>
                             </article>
                           );
