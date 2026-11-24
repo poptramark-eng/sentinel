@@ -210,9 +210,12 @@ export class CouncilAssessmentService {
     return this.prisma.client.$transaction(async (tx) => {
       const version = await tx.gradingRubricVersion.findFirst({
         where: { id: versionId, councilId, status: "DRAFT" },
-        select: { id: true, scaleType: true, minScore: true, maxScore: true, bands: { select: { code: true, sortOrder: true } } },
+        select: { id: true, createdByAccountId: true, scaleType: true, minScore: true, maxScore: true, bands: { select: { code: true, sortOrder: true } } },
       });
       if (!version) throw new NotFoundException("A draft rubric version was not found in this Council.");
+      if (version.createdByAccountId !== actor.accountId) {
+        throw new ConflictException("Only the rubric author may edit bands in this draft version.");
+      }
       const code = input.code.trim().toUpperCase();
       if (version.bands.some((band) => band.code === code)) throw new ConflictException("A rubric band with this code already exists.");
       if (version.bands.some((band) => band.sortOrder === input.sortOrder)) throw new ConflictException("A rubric band already uses this ordering value.");
