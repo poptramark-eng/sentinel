@@ -48,6 +48,7 @@ export class LearnerEnrollmentController {
       registrationId,
       enrollmentId,
       body.status,
+      body.reason.trim(),
     );
   }
 
