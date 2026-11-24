@@ -54,7 +54,7 @@ export function setAuthCookies(
   ]);
 }
 
-export function clearAuthCookies(reply: FastifyReply): void {
+export function clearAuthCookies(reply: CookieReply): void {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   reply.header("Set-Cookie", [
     `${ACCESS_COOKIE}=; Path=/api; Max-Age=0; SameSite=Lax; HttpOnly${secure}`,
@@ -63,7 +63,7 @@ export function clearAuthCookies(reply: FastifyReply): void {
   ]);
 }
 
-export function hasValidCsrf(request: FastifyRequest): boolean {
+export function hasValidCsrf(request: CookieRequest): boolean {
   const cookie = readCookie(request, CSRF_COOKIE);
   const header = request.headers["x-csrf-token"];
   if (!cookie || typeof header !== "string") return false;
@@ -93,10 +93,10 @@ export function hasValidCsrf(request: FastifyRequest): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-export function getAccessCookie(request: FastifyRequest): string | null {
+export function getAccessCookie(request: CookieRequest): string | null {
   return readCookie(request, ACCESS_COOKIE);
 }
 
-export function getRefreshCookie(request: FastifyRequest): string | null {
+export function getRefreshCookie(request: CookieRequest): string | null {
   return readCookie(request, REFRESH_COOKIE);
 }
