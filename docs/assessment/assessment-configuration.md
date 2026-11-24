@@ -41,6 +41,7 @@ All routes are nested under `/api/councils/:councilId` and require an authentica
 | Method | Route | Purpose |
 | --- | --- | --- |
 | GET | `/rubrics` | List Council rubrics and versions |
+| GET | `/rubrics/review-queue` | List rubric versions awaiting independent approval (Governance Approver) |
 | POST | `/rubrics` | Create a rubric and its initial draft version |
 | POST | `/rubrics/:rubricId/versions` | Create a later draft version |
 | POST | `/rubrics/versions/:versionId/bands` | Add a band to a draft version |
