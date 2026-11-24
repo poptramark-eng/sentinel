@@ -31,7 +31,7 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 
 ## Mark entry and submission
 
-- Only the active Class Teacher assigned to a candidate's class can access that class's open assessment mark sheet.
+- The active Class Teacher assigned to a candidate's class can access the complete open assessment mark sheet. An active Subject Teacher can access only the learning area assigned to them for that class.
 - Marks are validated against the assessment's snapshotted maximum and decimal precision.
 - Marks may be saved only while the assessment is OPEN.
 - A class submission requires every candidate/learning-area cell to contain a mark.
@@ -47,13 +47,13 @@ Late enrolments or class changes do not silently alter a scheduled assessment ro
 | POST | `/school/registrations/:registrationId/classes/:classId/learners` | School Administrator; create/reuse learner identity and enrol |
 | PATCH | `/school/registrations/:registrationId/learners/:enrollmentId/end` | School Administrator; end an enrolment with a reasoned lifecycle state |
 | GET | `/school/teaching/classes` | Teacher; list active assigned classes and their open assessments |
-| GET | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Class Teacher; read open class mark sheet |
-| PUT | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Class Teacher; save one mark |
-| POST | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks/submit` | Assigned Class Teacher; submit all class marks |
+| GET | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Class Teacher; read the full mark sheet, or assigned Subject Teacher with `?learningAreaId=`; read one learning area |
+| PUT | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks` | Assigned Class Teacher or assigned Subject Teacher for the mark's learning area; save one mark |
+| POST | `/school/registrations/:registrationId/classes/:classId/assessments/:assessmentId/marks/submit` | Class Teacher; submit all class marks, or Subject Teacher with `?learningAreaId=`; submit one learning area |
 
 ## Not yet implemented
 
-This milestone does not yet provide bulk Excel import, learner transfer wizard, subject-teacher assignment, mark moderation/return/correction, assessment reopening, result aggregation, ranking, result publication, or report exports. Result computation must use the immutable assessment candidate and learning-area snapshots, not the current live class roster.
+The implemented workflow does not yet provide bulk Excel import, a guided learner-transfer wizard, analytics dashboards, comprehensive report exports, or controlled post-publication correction and supersession. Result computation must use the immutable assessment candidate and learning-area snapshots, not the current live class roster.
 
 ## Subject Teacher mark access
 

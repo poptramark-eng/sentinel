@@ -32,7 +32,7 @@ The selected membership must be an active `TEACHER` membership in the same regis
 
 ## Capability boundary
 
-This first assignment slice supports `CLASS_TEACHER` only. It coordinates class readiness; it does not grant marks entry, learner-record access, assessment visibility or result access. `SUBJECT_TEACHER` assignments will be added only when the versioned curriculum mapping and Council learning-area configuration are published. No learner enrollment or learner personal data is created by these endpoints.
+Class Teacher assignment is class-scoped and grants access to the assigned class roster and complete open assessment mark sheet. It does not grant school administration, access to other classes or result-governance permissions. Subject Teacher assignment is a separate learning-area-scoped capability described below. No learner enrollment or learner personal data is created by these assignment endpoints.
 
 ## Subject Teacher assignments
 

@@ -4,7 +4,7 @@ A multi-council platform for configuring and administering assessments, managing
 
 ## Project status
 
-The monorepo foundation, educator UX prototype, initial tenant/identity Prisma schema, and first-party Argon2id account registration/email verification/login/refresh/logout/current-user API and the school-registration review vertical slice are in place. The platform is not production-ready: password recovery, complete authorization, assessment/candidate/marks/results modules, remaining onboarding workflows and production operations remain incomplete. Account registration/email verification and the foundation migrations are implemented and CI-tested; production email and Upstash credentials still need owner configuration. Use synthetic learner and assessment data only. See `docs/research/kenya-child-data-privacy-review.md`; real learner-data onboarding is blocked until the documented privacy/legal release gates are evidenced.
+The monorepo foundation, first-party Argon2id authentication, school-registration review, Council curriculum configuration, school classes and learner enrollment, Class Teacher and curriculum-scoped Subject Teacher assignments, assessment configuration/scheduling, marks entry/submission/moderation, and immutable result preview/publication vertical slices are implemented. The platform is not production-ready: password recovery, completion of the authorization matrix, bulk data workflows, comprehensive analytics/report exports, post-publication correction workflows and production operations remain incomplete. Account registration/email verification and foundation migrations are CI-tested; production email and Upstash credentials still need owner configuration. Use synthetic learner and assessment data only. See `docs/research/kenya-child-data-privacy-review.md`; real learner-data onboarding is blocked until the documented privacy/legal release gates are evidenced.
 
 ## Architecture
 
@@ -77,16 +77,16 @@ pnpm dev:api
 - Platform Council/geography setup and CSV import: http://localhost:3000/platform/councils
 - Platform school-registration review: http://localhost:3000/platform/school-registrations
 - School teacher roster: open a school membership in the workspace and choose **Manage teachers**
-- School classes and Class Teacher assignments: open an approved school membership and choose **Manage classes**
+- School classes and staff assignments: open an approved school membership and choose **Manage classes**, then **Subject Teachers** for class-level learning-area assignments
 - Educator UX prototype: http://localhost:3000/prototype/marks-entry
 
 The marks-entry prototype uses synthetic data and local page state only. It does not call the API or persist marks.
 
 Platform Council setup supports manual hierarchy entry and a validated, preview-first CSV import (2,000 rows / 1 MB, atomic commit). No real Kenyan geography dataset has been loaded; validate the authoritative source before production import.
 
-School Administrators can link an existing verified Sentinel account to an approved school. Linking reuses the global Person and creates only a school-specific membership. Teacher invitation/provisioning is not implemented yet. School classes and Class Teacher coordination are implemented; subject-teacher assignments remain gated on the published curriculum mapping.
+School Administrators can link an existing verified Sentinel account to an approved school. Linking reuses the global Person and creates only a school-specific membership. Teacher invitation/provisioning is not implemented yet. School classes, Class Teacher coordination and curriculum-scoped Subject Teacher assignments are implemented. Subject Teacher assignments are tied to the effective published Council curriculum and grant only learning-area-specific marks access.
 
-The API provides school-scoped teacher roster/linking endpoints under `/api/school/registrations/:registrationId/teachers` and class management under `/api/school/registrations/:registrationId/classes`. Linking reuses a global Person with an active account and verified email; it never creates a duplicate identity. Class Teacher assignment is scoped to one active teacher membership and grants coordination only, not learner or marks access.
+The API provides school-scoped teacher roster/linking endpoints under `/api/school/registrations/:registrationId/teachers` and class management under `/api/school/registrations/:registrationId/classes`. Linking reuses a global Person with an active account and verified email; it never creates a duplicate identity. Class Teacher assignment grants access to the assigned class roster and full class mark sheet. Subject Teacher assignment is scoped to one enabled curriculum learning area and grants marks access only for that area.
 
 The KICD regular curriculum source review and a 120-row Grades 1–9 directory extraction are available under `docs/research/` and `data/curriculum/`. These are review artifacts only: optionality and assessment eligibility remain unapproved, and no production curriculum seed is published.
 
