@@ -230,6 +230,30 @@ export class AssessmentResultsService {
     };
   }
 
+  async published(councilId: string, assessmentId: string) {
+    const publication = await this.prisma.client.assessmentResultPublication.findFirst({
+      where: { assessmentId, councilId, status: "PUBLISHED" },
+      orderBy: { version: "desc" },
+      include: {
+        results: {
+          orderBy: [{ rank: "asc" }],
+          include: { learningAreas: { orderBy: [{ sortOrder: "asc" }] } },
+        },
+      },
+    });
+    if (!publication) return null;
+    return {
+      publication: {
+        id: publication.id,
+        version: publication.version,
+        publishedAt: publication.publishedAt,
+        candidateCount: publication.candidateCount,
+        schoolCount: publication.schoolCount,
+      },
+      results: publication.results,
+    };
+  }
+
   async publish(actor: ResultActor, councilId: string, assessmentId: string) {
     try {
       return await this.prisma.client.$transaction(async (tx) => {
