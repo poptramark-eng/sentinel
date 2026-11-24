@@ -230,7 +230,7 @@ export default function CouncilCurriculumPage() {
                   {catalogue.length === 0 ? <option value="">No published curriculum versions available</option> : null}
                   {catalogue.map((version) => <option key={version.id} value={version.id}>{version.curriculum.name} · {version.versionLabel} · {version._count.gradeLearningAreas} grade mappings</option>)}
                 </select></label>
-                <button onClick={() => void selectCurriculum()} disabled={busy || !selectedVersionId || selectedVersionId === activeVersionId} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Saving…" : activeVersionId ? "Switch curriculum" : "Select curriculum"}</button>
+                <button type="button" onClick={() => void selectCurriculum()} disabled={busy || !selectedVersionId || selectedVersionId === activeVersionId} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Saving…" : activeVersionId ? "Switch curriculum" : "Select curriculum"}</button>
               </div>
               {catalogue.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--surface-subtle)] px-4 py-3 text-xs leading-5 text-[var(--muted)]">There are no published curriculum versions available to this Council yet. A curriculum must complete review and publication before it can be selected here.</p> : null}
               {current?.selection ? (
