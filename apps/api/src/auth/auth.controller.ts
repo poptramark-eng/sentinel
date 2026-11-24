@@ -20,6 +20,7 @@ import {
   setCsrfCookie,
 } from "./cookie";
 import { AccessTokenGuard, AuthenticatedRequest } from "./access-token.guard";
+import { createCsrfToken } from "./token";
 
 @Controller("auth")
 export class AuthController {
@@ -33,9 +34,7 @@ export class AuthController {
     if (!hasTrustedOrigin(request)) {
       throw new UnauthorizedException("Request origin is not trusted.");
     }
-    const token = require("./token") as never;
-    void token;
-    const csrfToken = this.authService.issueCsrfToken();
+    const csrfToken = createCsrfToken();
     setCsrfCookie(reply, csrfToken);
     return { csrfToken };
   }
