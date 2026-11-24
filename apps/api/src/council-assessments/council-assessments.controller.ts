@@ -16,6 +16,7 @@ import { CsrfGuard } from "../auth/csrf.guard";
 import { CreateAssessmentDto } from "./dto/create-assessment.dto";
 import { CreateRubricDto, CreateRubricVersionDto, CreateRubricBandDto } from "./dto/create-rubric.dto";
 import { ScheduleAssessmentDto } from "./dto/schedule-assessment.dto";
+import { ReturnRubricForChangesDto } from "./dto/return-rubric-for-changes.dto";
 import { CouncilAssessmentService } from "./council-assessment.service";
 
 @Controller("councils/:councilId")
@@ -69,6 +70,22 @@ export class CouncilAssessmentsController {
     @Param("versionId", new ParseUUIDPipe()) versionId: string,
   ) {
     return this.assessments.submitRubricForReview({ accountId: request.auth!.accountId }, councilId, versionId);
+  }
+
+  @Post("rubrics/versions/:versionId/return-for-changes")
+  @UseGuards(CouncilGovernanceApproverGuard)
+  returnRubricForChanges(
+    @Req() request: AuthenticatedRequest,
+    @Param("councilId", new ParseUUIDPipe()) councilId: string,
+    @Param("versionId", new ParseUUIDPipe()) versionId: string,
+    @Body() body: ReturnRubricForChangesDto,
+  ) {
+    return this.assessments.returnRubricForChanges(
+      { accountId: request.auth!.accountId },
+      councilId,
+      versionId,
+      body.reason.trim(),
+    );
   }
 
   @Post("rubrics/versions/:versionId/publish")
