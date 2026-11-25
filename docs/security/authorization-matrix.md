@@ -102,13 +102,13 @@ Additional constraints:
 | Create/link teacher identity | Allowed for own approved school | Denied | Denied | Link existing global identity; do not duplicate teacher. |
 | Create/manage SchoolMembership | Allowed for own school | Denied | Denied | Exact membership lifecycle/approval policy remains TBD. |
 | Assign grade/class/learning area duties | Allowed for own school | Denied | Denied | StaffAssignment is school-specific and time-bounded. |
-| View assigned candidates | Scoped to own school and permitted assessment | Scoped to assigned work | Scoped to assigned class/coordination | Field-level learner privacy policy remains to be finalized. |
-| Enter/correct marks | School oversight and correction authority TBD | Scoped to assigned learning area and candidates | Only if separately assigned subject duties | Mark correction authority, deadlines and approval rules remain open. |
-| Coordinate assessment completeness | Allowed for own school | View own work status | Scoped to assigned class/assessment | Class-teacher coordination is explicit. |
-| Final school submission | Allowed for own approved registration and participating assessment | Denied | Denied | Active School Administrator membership only; class/subject assignments do not grant final submission.
-| Release internal assessment results | Allowed only after required PlatformAdministrator approval | Denied | Denied | School Administrator release is explicit. |
+| View assigned candidates | Scoped to own approved school and permitted assessment | Scoped to assigned class and learning area for mark-entry work only | Denied | Class Teacher assignment does not grant learner roster or candidate-record access. |
+| Enter/correct marks | Denied as ordinary mark entry; may participate only in a separately governed correction workflow | Scoped to assigned learning area and candidates while entry/correction is open | Denied unless the person also holds an active Subject Teacher assignment for that learning area | School Administrator status and Class Teacher assignment do not bypass Subject Teacher assignment rules. |
+| Coordinate assessment completeness | School-wide progress and submission readiness for own school | View own assigned work status | Coordination responsibility only; no learner roster, assessment-record or marks access through the system | A non-identifying class-readiness view would require a separately approved policy and implementation. |
+| Final school submission | Allowed for own approved registration and participating assessment | Denied | Denied | Active School Administrator membership only; class/subject assignments do not grant final submission. |
+| Release internal assessment results | Denied | Denied | Denied | Result publication is a Council Governance Approver action after independent governance checks. |
 | Release external/inter-school results | Denied unless separately authorized as organizer staff | Denied | Denied | Organizer releases under active authority. |
-| View released school results | Scoped to own school | Scoped to assigned role; exact field policy TBD | Scoped to assigned class; exact field policy TBD | Result visibility before release is restricted. |
+| View released school results | Scoped to own approved school | Denied by default; no teacher result route is currently authorized | Denied by default; no Class Teacher result route is currently authorized | Individual results are available to authorized School Administrators only in the school workspace. |
 
 ## 6. Assessment, candidate, marks and results access
 
@@ -138,6 +138,7 @@ The following decisions remain open or require implementation/verification; they
 8. Report/export field-level permissions, consolidated report controls and retention.
 9. Implementation and integration tests for the adopted correction workflows, including post-publication correction cases and versioned result republication.
 10. Complete positive and negative authorization tests for cross-Council ID substitution, inactive memberships, expired assignments and revoked authority.
+11. Minimum group size and small-cell suppression rules for Council aggregate reporting, to prevent aggregates from revealing individual learner outcomes.
 
 ## 8. Authorization implementation rules
 
