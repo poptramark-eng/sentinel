@@ -259,12 +259,14 @@ These gates do not block synthetic-data development, domain tests, physical sche
 - Login limits: 30 requests per source IP and 5 per normalized email per 15 minutes. Refresh limit: 60 per source IP per 5 minutes. Registration limits: 5 per source IP and 3 per normalized email per hour. Email verification: 20 per source IP per 15 minutes. Resend: 5 per source IP and 3 per normalized email per hour. Use sliding-window policies.
 - HMAC normalized email values before using them as Redis identifiers. Do not store raw email addresses in rate-limit keys.
 - Disable analytics initially to reduce command volume and avoid collecting additional identifier telemetry. Use the SDK's bounded ephemeral cache to reject repeated blocked requests without a Redis round trip.
-- Development may run without Redis credentials. Production must fail closed with 503 when credentials are absent, Redis fails, or the SDK reports a timeout. Requests exceeding policy return 429 with `Retry-After`.
+- Upstash is the preferred distributed backend when both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured. If neither is configured, the current implementation uses the PostgreSQL `AuthRateLimitEvent` store; this fallback is available in production as well as development.
+- A partial Upstash configuration (only one credential), limiter initialization error, Upstash timeout/outage, missing/short `REFRESH_TOKEN_PEPPER`, or unavailable PostgreSQL fallback fails closed with 503. Requests exceeding policy return 429 with `Retry-After`.
+- The PostgreSQL fallback is transactional and uses advisory locks plus HMAC-derived identifiers. It preserves enforcement across API instances sharing the same database, but adds database write/query load; Upstash remains the preferred distributed rate-limit service.
 - Do not create or activate a Redis database automatically. Provisioning and secret configuration require explicit owner authorization.
 
 **Consequences**
 
-- Production requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` in the API runtime secret store.
+- Production may omit both Upstash credentials and use the PostgreSQL fallback. To use Upstash, configure both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; configure neither partially. The `REFRESH_TOKEN_PEPPER` remains required in either mode.
 - `TRUST_PROXY` stays false unless the API is behind a known reverse proxy; then configure an explicit trusted proxy IP/CIDR allowlist. Wildcard trust is rejected. Production also requires a 32-byte `REFRESH_TOKEN_PEPPER`, which keys HMACed email identifiers.
 - Extend rate limits to password reset, invitations, OTP and expensive exports before those features launch.
 - Sliding windows cost more than fixed windows; analytics are off and blocked-identifier caching is enabled to control request volume. Revisit thresholds with real traffic and abuse telemetry.
