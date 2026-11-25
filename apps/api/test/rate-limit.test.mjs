@@ -91,6 +91,8 @@ test("auth endpoints declare explicit rate-limit policies", () => {
   assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.register), "REGISTER");
   assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.verifyEmail), "VERIFY_EMAIL");
   assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.resendVerification), "RESEND_VERIFICATION");
+  assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.requestPasswordReset), "PASSWORD_RESET_REQUEST");
+  assert.equal(Reflect.getMetadata("sentinel:auth-rate-limit-policy", AuthController.prototype.completePasswordReset), "PASSWORD_RESET_COMPLETE");
 });
 
 
