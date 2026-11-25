@@ -192,7 +192,7 @@ export class EmailService {
       invitationUrl,
       "",
       "The invitation expires in 7 days. If you do not recognize this school, ignore this email and contact the school administration.",
-    ].join("\\n");
+    ].join("\n");
     const html = `<!doctype html><html><body style="margin:0;background:#f5f7fb;font-family:Arial,sans-serif;color:#172b4d"><main style="max-width:560px;margin:40px auto;padding:36px;background:#fff;border:1px solid #e2e8f0;border-radius:18px"><p style="font-size:12px;font-weight:700;letter-spacing:2px;color:#2457c5">SENTINEL</p><h1 style="font-size:24px">Teacher invitation</h1><p>Hello ${safeName},</p><p>A School Administrator invited you to join <strong>${safeSchool}</strong> under ${safeCouncil} as a Teacher in Sentinel.</p><p style="margin:28px 0"><a href="${invitationUrl}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:#2457c5;color:#fff;text-decoration:none;font-weight:700">Accept invitation</a></p><p style="font-size:13px;color:#64748b">The invitation expires in 7 days. If you do not recognize this school, ignore this email and contact the school administration.</p><p style="font-size:12px;color:#94a3b8;word-break:break-all">${invitationUrl}</p></main></body></html>`;
 
     try {
