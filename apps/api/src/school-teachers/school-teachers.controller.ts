@@ -35,10 +35,10 @@ export class SchoolTeachersController {
     @Param("registrationId", new ParseUUIDPipe()) registrationId: string,
     @Body() body: LinkTeacherDto,
   ) {
-    return this.teachers.link(
+    return this.teachers.invite(
       { accountId: request.auth!.accountId, personId: request.auth!.personId },
       registrationId,
-      body.email,
+      { email: body.email, givenName: body.givenName, familyName: body.familyName },
     );
   }
 }
