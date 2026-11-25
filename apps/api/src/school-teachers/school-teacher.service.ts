@@ -386,6 +386,20 @@ export class SchoolTeacherService {
           loginIdentifierId = createdIdentifier.id;
         }
 
+        const existingSchoolAdministrator = await tx.schoolMembership.findFirst({
+          where: {
+            registrationId: scope.registrationId,
+            personId: person.id,
+            role: "SCHOOL_ADMINISTRATOR",
+            status: "ACTIVE",
+            endsAt: null,
+          },
+          select: { id: true },
+        });
+        if (existingSchoolAdministrator) {
+          throw new ConflictException("This person already holds the School Administrator membership for this school.");
+        }
+
         const existingMembership = await tx.schoolMembership.findUnique({
           where: {
             registrationId_personId_role: {
