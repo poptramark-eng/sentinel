@@ -84,27 +84,18 @@ export class LearnerEnrollmentService {
     });
     if (!schoolClass) throw new NotFoundException("The class was not found in an approved school.");
 
-    const [administrator, teacher] = await Promise.all([
-      this.prisma.client.schoolMembership.findFirst({
-        where: {
-          registrationId, councilId: schoolClass.councilId, personId: actor.personId,
-          role: "SCHOOL_ADMINISTRATOR", status: "ACTIVE", endsAt: null,
-          OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-        },
-        select: { id: true },
-      }),
-      this.prisma.client.schoolMembership.findFirst({
-        where: {
-          registrationId, councilId: schoolClass.councilId, personId: actor.personId,
-          role: "TEACHER", status: "ACTIVE", endsAt: null,
-          OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-          staffAssignments: { some: { schoolClassId: classId, type: "CLASS_TEACHER", status: "ACTIVE", endsAt: null, startsAt: { lte: now } } },
-        },
-        select: { id: true },
-      }),
-    ]);
-    if (!administrator && !teacher) throw new ForbiddenException("An active School Administrator or assigned Class Teacher membership is required.");
-    return { schoolClass, accessRole: administrator ? "SCHOOL_ADMINISTRATOR" as const : "TEACHER" as const };
+    const administrator = await this.prisma.client.schoolMembership.findFirst({
+      where: {
+        registrationId, councilId: schoolClass.councilId, personId: actor.personId,
+        role: "SCHOOL_ADMINISTRATOR", status: "ACTIVE", endsAt: null,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+      },
+      select: { id: true },
+    });
+    if (!administrator) {
+      throw new ForbiddenException("An active School Administrator membership is required to access learner rosters.");
+    }
+    return { schoolClass, accessRole: "SCHOOL_ADMINISTRATOR" as const };
   }
 
   async searchExisting(actor: SchoolActor, registrationId: string, query: string) {
