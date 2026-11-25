@@ -11,7 +11,7 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
-import { LoginDto, PasswordResetCompleteDto, PasswordResetRequestDto, RegisterDto, ResendVerificationDto, VerifyEmailDto } from "./auth.dto";
+import { LoginDto, PasswordResetCompleteDto, PasswordResetRequestDto, RegisterDto, ResendVerificationDto, TeacherInvitationAcceptDto, VerifyEmailDto } from "./auth.dto";
 import {
   CookieReply,
   clearAuthCookies,
@@ -48,6 +48,13 @@ export class AuthController {
   @HttpCode(HttpStatus.ACCEPTED)
   resendVerification(@Body() body: ResendVerificationDto) {
     return this.authService.resendVerification(body.email);
+  }
+
+  @AuthRateLimit("TEACHER_INVITATION_ACCEPT")
+  @Post("teacher-invitations/accept")
+  @HttpCode(HttpStatus.OK)
+  acceptTeacherInvitation(@Body() body: TeacherInvitationAcceptDto) {
+    return this.authService.acceptTeacherInvitation(body.token, body.password);
   }
 
   @AuthRateLimit("PASSWORD_RESET_REQUEST")
