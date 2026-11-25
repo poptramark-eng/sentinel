@@ -120,6 +120,20 @@ export function hashEmailVerificationToken(token: string): string {
     .digest("hex");
 }
 
+export function createTeacherInvitationToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function hashTeacherInvitationToken(token: string): string {
+  const pepper = process.env.REFRESH_TOKEN_PEPPER;
+  if (!pepper || Buffer.byteLength(pepper) < 32) {
+    throw new Error("REFRESH_TOKEN_PEPPER must contain at least 32 bytes.");
+  }
+  return createHmac("sha256", pepper)
+    .update(`teacher-invitation:${token}`)
+    .digest("hex");
+}
+
 export function createPasswordResetToken(): string {
   return randomBytes(32).toString("base64url");
 }
