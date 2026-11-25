@@ -414,7 +414,6 @@ export class CouncilAssessmentService {
         candidates: {
           where: { status: "ACTIVE" },
           select: {
-            id: true,
             registrationId: true,
             schoolClassId: true,
             schoolClass: {
