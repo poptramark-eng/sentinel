@@ -20,13 +20,13 @@ export class SchoolAssessmentMarkService {
         personId: actor.personId, role: "TEACHER", status: "ACTIVE", endsAt: null,
         OR: [{ startsAt: null }, { startsAt: { lte: now } }],
         registration: { is: { status: "APPROVED", school: { is: { status: "ACTIVE" } }, council: { is: { status: "ACTIVE" } } } },
-        staffAssignments: { some: { type: { in: ["CLASS_TEACHER", "SUBJECT_TEACHER"] }, status: "ACTIVE", endsAt: null, startsAt: { lte: now }, schoolClass: { is: { status: "ACTIVE" } } } },
+        staffAssignments: { some: { type: "SUBJECT_TEACHER", status: "ACTIVE", endsAt: null, startsAt: { lte: now }, schoolClass: { is: { status: "ACTIVE" } } } },
       },
       select: {
         id: true, registrationId: true, councilId: true,
         registration: { select: { school: { select: { name: true } }, council: { select: { name: true } } } },
         staffAssignments: {
-          where: { type: { in: ["CLASS_TEACHER", "SUBJECT_TEACHER"] }, status: "ACTIVE", endsAt: null, startsAt: { lte: now }, schoolClass: { is: { status: "ACTIVE" } } },
+          where: { type: "SUBJECT_TEACHER", status: "ACTIVE", endsAt: null, startsAt: { lte: now }, schoolClass: { is: { status: "ACTIVE" } } },
           select: {
             id: true, type: true,
             schoolClass: { select: { id: true, grade: true, academicYear: true, streamCode: true, displayName: true } },
