@@ -99,7 +99,7 @@ export class LearnerEnrollmentService {
   }
 
   async searchExisting(actor: SchoolActor, registrationId: string, query: string) {
-    await this.resolveAdminScope(this.prisma.client, actor, registrationId);
+    const scope = await this.resolveAdminScope(this.prisma.client, actor, registrationId);
     const normalized = query.trim();
     if (normalized.length < 2) throw new BadRequestException("Search with at least two characters.");
     const learners = await this.prisma.client.learner.findMany({
@@ -124,13 +124,25 @@ export class LearnerEnrollmentService {
       orderBy: [{ familyName: "asc" }, { givenName: "asc" }],
       select: { id: true, learnerNumber: true, givenName: true, otherNames: true, familyName: true, displayName: true, enrollments: { where: { status: "ACTIVE", endedAt: null }, select: { registrationId: true } } },
     });
-    return learners.map((learner) => ({
+    const results = learners.map((learner) => ({
       id: learner.id,
       learnerNumber: learner.learnerNumber,
       name: displayName(learner),
       alreadyEnrolledAtThisSchool: learner.enrollments.some((enrollment) => enrollment.registrationId === registrationId),
       hasActiveEnrollment: learner.enrollments.length > 0,
     }));
+    await this.prisma.client.auditEvent.create({
+      data: {
+        actorAccountId: actor.accountId,
+        councilId: scope.councilId,
+        action: "LEARNER_IDENTITY_SEARCHED",
+        resourceType: "CouncilSchoolRegistration",
+        resourceId: registrationId,
+        decision: "ALLOW",
+        metadata: { registrationId, resultCount: results.length, queryLength: normalized.length },
+      },
+    });
+    return results;
   }
 
   async listClassLearners(actor: SchoolActor, registrationId: string, classId: string) {
@@ -143,18 +155,30 @@ export class LearnerEnrollmentService {
         learner: { select: { id: true, learnerNumber: true, givenName: true, otherNames: true, familyName: true, displayName: true } },
       },
     });
+    const learners = enrollments.map((enrollment) => ({
+      enrollmentId: enrollment.id,
+      learnerId: enrollment.learner.id,
+      learnerNumber: enrollment.learner.learnerNumber,
+      name: displayName(enrollment.learner),
+      admissionNumber: enrollment.admissionNumber,
+      enrolledAt: enrollment.enrolledAt,
+    }));
+    await this.prisma.client.auditEvent.create({
+      data: {
+        actorAccountId: actor.accountId,
+        councilId: schoolClass.councilId,
+        action: "LEARNER_ROSTER_VIEWED",
+        resourceType: "SchoolClass",
+        resourceId: classId,
+        decision: "ALLOW",
+        metadata: { registrationId, classId, learnerCount: learners.length },
+      },
+    });
     return {
       school: schoolClass.registration.school,
       class: { id: schoolClass.id, grade: schoolClass.grade, academicYear: schoolClass.academicYear, streamCode: schoolClass.streamCode, displayName: schoolClass.displayName },
       accessRole,
-      learners: enrollments.map((enrollment) => ({
-        enrollmentId: enrollment.id,
-        learnerId: enrollment.learner.id,
-        learnerNumber: enrollment.learner.learnerNumber,
-        name: displayName(enrollment.learner),
-        admissionNumber: enrollment.admissionNumber,
-        enrolledAt: enrollment.enrolledAt,
-      })),
+      learners,
     };
   }
 
