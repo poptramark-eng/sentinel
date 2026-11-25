@@ -65,6 +65,14 @@ Legend:
 - Once every required learning area is submitted for every active candidate, the School Administrator reviews completeness and performs the final school-wide submission. Class Teachers coordinate readiness and exceptions but do not perform final school submission.
 - School Administrator access to learner enrollment does not grant mark-entry access. Council Administrator access to assessment configuration does not grant access to school learner records or mark capture.
 
+### Identifiable learner-data read auditing
+
+- School-side learner identity searches and learner roster reads create `LEARNER_IDENTITY_SEARCHED` and `LEARNER_ROSTER_VIEWED` audit events.
+- Subject Teacher mark-sheet reads create `ASSESSMENT_MARK_SHEET_VIEWED` audit events.
+- School Administrator reads of released individual school results create `SCHOOL_PUBLISHED_RESULTS_VIEWED` audit events.
+- Council aggregate result previews create `ASSESSMENT_RESULTS_AGGREGATE_PREVIEWED` audit events. The preview response contains only aggregate school, class and learning-area performance.
+- Read-event metadata records the actor, resource scope and record counts; it does not store raw learner search terms or copy learner names/numbers into the audit metadata.
+- Audit-write failure prevents the protected read response from being returned.
 ### Implemented assessment and rubric permissions
 
 - An active `COUNCIL_ADMINISTRATOR` membership may create and manage rubric drafts and Council assessment configuration only within the Council in the route scope.
