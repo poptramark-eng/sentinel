@@ -254,8 +254,23 @@ export class AssessmentResultsService {
     };
   }
 
-  async preview(councilId: string, assessmentId: string) {
+  async preview(actor: ResultActor, councilId: string, assessmentId: string) {
     const prepared = await this.prepare(this.prisma.client, councilId, assessmentId);
+    await this.prisma.client.auditEvent.create({
+      data: {
+        actorAccountId: actor.accountId,
+        councilId,
+        action: "ASSESSMENT_RESULTS_AGGREGATE_PREVIEWED",
+        resourceType: "Assessment",
+        resourceId: assessmentId,
+        decision: "ALLOW",
+        metadata: {
+          candidateCount: prepared.summary.candidateCount,
+          schoolCount: prepared.summary.schoolCount,
+          classificationMode: prepared.classificationMode,
+        },
+      },
+    });
     return {
       assessment: {
         id: prepared.assessment.id,
