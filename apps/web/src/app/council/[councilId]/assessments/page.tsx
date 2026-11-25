@@ -45,11 +45,14 @@ interface Assessment {
   learningAreas: { id: string; sourceLabel: string; displayLabel: string | null; maxMarks: string; decimalPlaces: number; sortOrder: number }[];
   rubricBands: { id: string; code: string; label: string; lowerBound: string | null; upperBound: string | null }[];
   rubricVersion: { id: string; versionLabel: string; scaleType: string; rubric: { code: string; name: string } };
-  candidates: {
-    id: string;
-    registrationId: string;
+  candidateCount: number;
+  schoolCount: number;
+  classes: {
     schoolClassId: string;
-    schoolClass: { displayName: string | null; streamCode: string; registration: { school: { name: string } } };
+    schoolName: string;
+    displayName: string | null;
+    streamCode: string;
+    candidateCount: number;
   }[];
 }
 interface CurriculumResponse {
@@ -298,15 +301,14 @@ export default function CouncilAssessmentsPage() {
                 {assessment.status === "OPEN" ? <div className="mt-4 flex justify-end border-t border-[var(--line)] pt-4"><button type="button" disabled={busy} onClick={() => void transition(assessment, "close")} className="min-h-11 rounded-xl border border-[var(--line-strong)] px-4 py-2.5 text-xs font-semibold text-[var(--muted)] hover:bg-[var(--surface-subtle)] disabled:opacity-40">Close assessment</button></div> : null}
                 {assessment.status === "CLOSED" && permissions.canModerate ? <div className="mt-4 border-t border-[var(--line)] pt-4">
                   <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-[var(--ink-strong)]">Mark moderation</p><p className="text-[11px] text-[var(--muted)]">Return an entire class sheet with a reason; submitted marks remain locked otherwise.</p></div>
-                  {assessment.candidates.filter((candidate, index, all) => all.findIndex((item) => item.schoolClassId === candidate.schoolClassId) === index).length === 0
+                  {assessment.classes.length === 0
                     ? <p className="mt-3 text-xs text-[var(--muted)]">No active class candidates remain in this assessment.</p>
-                    : <div className="mt-3 space-y-3">{assessment.candidates.filter((candidate, index, all) => all.findIndex((item) => item.schoolClassId === candidate.schoolClassId) === index).map((candidate) => {
-                      const key = `${assessment.id}:${candidate.schoolClassId}`;
-                      const candidateCount = assessment.candidates.filter((item) => item.schoolClassId === candidate.schoolClassId).length;
-                      const className = candidate.schoolClass.displayName || `${assessment.grade.replace("_", " ")} · ${candidate.schoolClass.streamCode}`;
-                      return <div key={candidate.schoolClassId} className="rounded-xl border border-[var(--line)] bg-[var(--surface-subtle)] p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold text-[var(--ink-strong)]">{candidate.schoolClass.registration.school.name} · {className}</p><p className="mt-1 text-[11px] text-[var(--muted)]">{candidateCount} active candidates</p></div></div>
-                        <div className="mt-3 flex flex-col gap-2 sm:flex-row"><label className="min-w-0 flex-1"><span className="sr-only">Moderation reason for {className}</span><input value={moderationReasons[key] ?? ""} onChange={(event) => setModerationReasons((previous) => ({ ...previous, [key]: event.target.value }))} minLength={10} maxLength={2000} placeholder="Explain what needs to be checked or corrected (minimum 10 characters)" className="w-full rounded-lg border border-[var(--line-strong)] bg-white px-3 py-2 text-xs text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[#eaf1ff]" /></label><button type="button" disabled={busy || (moderationReasons[key]?.trim().length ?? 0) < 10} onClick={() => void returnClassMarks(assessment, candidate.schoolClassId)} className="min-h-11 shrink-0 rounded-lg border border-[#d7a58d] px-3 py-2 text-xs font-semibold text-[#8b4b2b] hover:bg-amber-50 disabled:opacity-40">Return class marks</button></div>
+                    : <div className="mt-3 space-y-3">{assessment.classes.map((classSummary) => {
+                      const key = assessment.id + ":" + classSummary.schoolClassId;
+                      const className = classSummary.displayName || assessment.grade.replace("_", " ") + " · " + classSummary.streamCode;
+                      return <div key={classSummary.schoolClassId} className="rounded-xl border border-[var(--line)] bg-[var(--surface-subtle)] p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold text-[var(--ink-strong)]">{classSummary.schoolName} · {className}</p><p className="mt-1 text-[11px] text-[var(--muted)]">{classSummary.candidateCount} active candidates</p></div></div>
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row"><label className="min-w-0 flex-1"><span className="sr-only">Moderation reason for {className}</span><input value={moderationReasons[key] ?? ""} onChange={(event) => setModerationReasons((previous) => ({ ...previous, [key]: event.target.value }))} minLength={10} maxLength={2000} placeholder="Explain what needs to be checked or corrected (minimum 10 characters)" className="w-full rounded-lg border border-[var(--line-strong)] bg-white px-3 py-2 text-xs text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[#eaf1ff]" /></label><button type="button" disabled={busy || (moderationReasons[key]?.trim().length ?? 0) < 10} onClick={() => void returnClassMarks(assessment, classSummary.schoolClassId)} className="min-h-11 shrink-0 rounded-lg border border-[#d7a58d] px-3 py-2 text-xs font-semibold text-[#8b4b2b] hover:bg-amber-50 disabled:opacity-40">Return class marks</button></div>
                       </div>;
                     })}</div>}
                   <p className="mt-3 text-[11px] text-[var(--muted)]">Returning a class reopens correction entry for this assessment. Other submitted class sheets stay locked.</p>
