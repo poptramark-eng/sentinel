@@ -11,7 +11,7 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
-import { LoginDto, RegisterDto, ResendVerificationDto, VerifyEmailDto } from "./auth.dto";
+import { LoginDto, PasswordResetCompleteDto, PasswordResetRequestDto, RegisterDto, ResendVerificationDto, VerifyEmailDto } from "./auth.dto";
 import {
   CookieReply,
   clearAuthCookies,
@@ -48,6 +48,20 @@ export class AuthController {
   @HttpCode(HttpStatus.ACCEPTED)
   resendVerification(@Body() body: ResendVerificationDto) {
     return this.authService.resendVerification(body.email);
+  }
+
+  @AuthRateLimit("PASSWORD_RESET_REQUEST")
+  @Post("password-reset/request")
+  @HttpCode(HttpStatus.ACCEPTED)
+  requestPasswordReset(@Body() body: PasswordResetRequestDto) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @AuthRateLimit("PASSWORD_RESET_COMPLETE")
+  @Post("password-reset/complete")
+  @HttpCode(HttpStatus.OK)
+  completePasswordReset(@Body() body: PasswordResetCompleteDto) {
+    return this.authService.resetPassword(body.token, body.password);
   }
 
   @Get("csrf")
