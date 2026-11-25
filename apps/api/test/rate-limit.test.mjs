@@ -36,6 +36,8 @@ test("development permits local auth when Upstash credentials are absent", async
     assert.deepEqual(await service.checkRegister("127.0.0.1", "person@example.test"), { allowed: true });
     assert.deepEqual(await service.checkVerifyEmail("127.0.0.1"), { allowed: true });
     assert.deepEqual(await service.checkResendVerification("127.0.0.1", "person@example.test"), { allowed: true });
+    assert.deepEqual(await service.checkPasswordResetRequest("127.0.0.1", "person@example.test"), { allowed: true });
+    assert.deepEqual(await service.checkPasswordResetComplete("127.0.0.1"), { allowed: true });
   });
 });
 
@@ -51,6 +53,8 @@ test("production fails closed when Upstash rate-limit credentials are absent", a
     await assert.rejects(service.checkRegister("127.0.0.1", "person@example.test"), (error) => error.getStatus() === 503);
     await assert.rejects(service.checkVerifyEmail("127.0.0.1"), (error) => error.getStatus() === 503);
     await assert.rejects(service.checkResendVerification("127.0.0.1", "person@example.test"), (error) => error.getStatus() === 503);
+    await assert.rejects(service.checkPasswordResetRequest("127.0.0.1", "person@example.test"), (error) => error.getStatus() === 503);
+    await assert.rejects(service.checkPasswordResetComplete("127.0.0.1"), (error) => error.getStatus() === 503);
   });
 });
 
@@ -78,6 +82,29 @@ test("rate-limit guard returns 429 and Retry-After when a policy is exceeded", a
   assert.ok(Number(headers[0][1]) >= 1);
 });
 
+
+test("password reset guard routes requests through dedicated IP and email policies", async () => {
+  const calls = [];
+  const service = {
+    checkPasswordResetRequest: async (ip, email) => { calls.push(["request", ip, email]); return { allowed: true }; },
+    checkPasswordResetComplete: async (ip) => { calls.push(["complete", ip]); return { allowed: true }; },
+  };
+  for (const policy of ["PASSWORD_RESET_REQUEST", "PASSWORD_RESET_COMPLETE"]) {
+    const guard = new AuthRateLimitGuard({ get: () => policy }, service);
+    const context = {
+      getHandler: () => ({}),
+      switchToHttp: () => ({
+        getRequest: () => ({ ip: "192.0.2.20", body: { email: "person@example.test" }, headers: { origin: "http://localhost:3000" } }),
+        getResponse: () => ({ header: () => undefined }),
+      }),
+    };
+    assert.equal(await guard.canActivate(context), true);
+  }
+  assert.deepEqual(calls, [
+    ["request", "192.0.2.20", "person@example.test"],
+    ["complete", "192.0.2.20"],
+  ]);
+});
 
 test("auth endpoints declare explicit rate-limit policies", () => {
   assert.equal(
