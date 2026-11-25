@@ -70,6 +70,66 @@ test("a learner with an active enrollment cannot be enrolled at a second school"
   );
 });
 
+test("learner identity searches are audited without recording the search term", async () => {
+  const records = {};
+  const tx = {
+    schoolMembership: { findFirst: async () => adminScope() },
+    learner: {
+      findMany: async ({ where }) => {
+        records.where = where;
+        return [{
+          id: learnerId, learnerNumber: "LRN-SEARCH-001",
+          givenName: "Amina", otherNames: null, familyName: "Otieno",
+          displayName: null, enrollments: [],
+        }];
+      },
+    },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const result = await new LearnerEnrollmentService({ client: tx }).searchExisting(
+    { accountId, personId }, registrationId, "LRN-SEARCH-001",
+  );
+  assert.equal(result.length, 1);
+  assert.equal(records.audit.action, "LEARNER_IDENTITY_SEARCHED");
+  assert.equal(records.audit.metadata.resultCount, 1);
+  assert.equal(records.audit.metadata.queryLength, "LRN-SEARCH-001".length);
+  assert.equal(JSON.stringify(records.audit).includes("LRN-SEARCH-001"), false);
+});
+
+test("School Administrator learner roster reads are audited", async () => {
+  const records = {};
+  const tx = {
+    schoolClass: {
+      findFirst: async () => ({
+        id: classId, registrationId, councilId, grade: "GRADE_4", academicYear: 2026,
+        streamCode: "A", displayName: "Grade 4 A",
+        registration: { school: { id: "22222222-2222-4222-8222-222222222222", name: "Example School" } },
+      }),
+    },
+    schoolMembership: { findFirst: async ({ where }) => where.role === "SCHOOL_ADMINISTRATOR" ? { id: "17171717-1717-4717-8717-171717171717" } : null },
+    schoolLearnerEnrollment: {
+      findMany: async ({ where }) => {
+        assert.equal(where.registrationId, registrationId);
+        assert.equal(where.schoolClassId, classId);
+        return [{
+          id: "18181818-1818-4818-8818-181818181818",
+          admissionNumber: "A-01", enrolledAt: new Date(),
+          learner: { id: learnerId, learnerNumber: "LRN-001", givenName: "Amina", otherNames: null, familyName: "Otieno", displayName: null },
+        }];
+      },
+    },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const result = await new LearnerEnrollmentService({ client: tx }).listClassLearners(
+    { accountId, personId }, registrationId, classId,
+  );
+  assert.equal(result.learners.length, 1);
+  assert.equal(result.accessRole, "SCHOOL_ADMINISTRATOR");
+  assert.equal(records.audit.action, "LEARNER_ROSTER_VIEWED");
+  assert.equal(records.audit.metadata.learnerCount, 1);
+  assert.equal(records.audit.resourceId, classId);
+});
+
 test("Class Teacher assignment alone cannot read learner rosters", async () => {
   const membershipQueries = [];
   let rosterRead = false;
