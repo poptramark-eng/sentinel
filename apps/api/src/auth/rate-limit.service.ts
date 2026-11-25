@@ -49,6 +49,9 @@ export class RateLimitService {
   private readonly verifyEmailIpLimiter?: Ratelimit;
   private readonly resendIpLimiter?: Ratelimit;
   private readonly resendEmailLimiter?: Ratelimit;
+  private readonly passwordResetRequestIpLimiter?: Ratelimit;
+  private readonly passwordResetRequestEmailLimiter?: Ratelimit;
+  private readonly passwordResetCompleteIpLimiter?: Ratelimit;
   private readonly initializationError?: unknown;
 
   constructor(@Optional() private readonly prisma?: PrismaService) {
@@ -114,6 +117,21 @@ export class RateLimitService {
         limiter: Ratelimit.slidingWindow(3, "1 h"),
         prefix: `sentinel:${namespace}:auth:resend-verification:email`,
       });
+      this.passwordResetRequestIpLimiter = new Ratelimit({
+        ...shared,
+        limiter: Ratelimit.slidingWindow(5, "1 h"),
+        prefix: `sentinel:${namespace}:auth:password-reset-request:ip`,
+      });
+      this.passwordResetRequestEmailLimiter = new Ratelimit({
+        ...shared,
+        limiter: Ratelimit.slidingWindow(3, "1 h"),
+        prefix: `sentinel:${namespace}:auth:password-reset-request:email`,
+      });
+      this.passwordResetCompleteIpLimiter = new Ratelimit({
+        ...shared,
+        limiter: Ratelimit.slidingWindow(10, "1 h"),
+        prefix: `sentinel:${namespace}:auth:password-reset-complete:ip`,
+      });
     } catch (error) {
       this.initializationError = error;
     }
@@ -170,6 +188,34 @@ export class RateLimitService {
     ]);
   }
 
+  async checkPasswordResetRequest(
+    ipAddress: string,
+    email?: string,
+  ): Promise<RateLimitDecision> {
+    return this.checkEmailAndIp(
+      ipAddress,
+      email,
+      this.passwordResetRequestIpLimiter,
+      this.passwordResetRequestEmailLimiter,
+      "password-reset-request",
+    );
+  }
+
+  async checkPasswordResetComplete(ipAddress: string): Promise<RateLimitDecision> {
+    if (this.upstashConfigured) {
+      this.ensureUpstashConfigured();
+      return this.runChecks([
+        this.passwordResetCompleteIpLimiter!.limit(this.normalizeIp(ipAddress)),
+      ]);
+    }
+    return this.checkDatabase([{
+      scope: "auth:password-reset-complete:ip",
+      identifier: this.normalizeIp(ipAddress),
+      limit: 10,
+      windowMs: 60 * 60 * 1_000,
+    }]);
+  }
+
   async checkRefresh(ipAddress: string): Promise<RateLimitDecision> {
     if (this.upstashConfigured) {
       this.ensureUpstashConfigured();
@@ -193,7 +239,7 @@ export class RateLimitService {
     email: string | undefined,
     ipLimiter: Ratelimit | undefined,
     emailLimiter: Ratelimit | undefined,
-    policy: "login" | "register" | "resend-verification",
+    policy: "login" | "register" | "resend-verification" | "password-reset-request",
   ): Promise<RateLimitDecision> {
     const normalizedIp = this.normalizeIp(ipAddress);
     const normalizedEmail =
@@ -215,9 +261,7 @@ export class RateLimitService {
     const limits =
       policy === "login"
         ? { ip: 30, email: 5, windowMs: 15 * 60 * 1_000 }
-        : policy === "register"
-          ? { ip: 5, email: 3, windowMs: 60 * 60 * 1_000 }
-          : { ip: 5, email: 3, windowMs: 60 * 60 * 1_000 };
+        : { ip: 5, email: 3, windowMs: 60 * 60 * 1_000 };
 
     const checks: DatabaseRateLimitCheck[] = [
       {
@@ -341,6 +385,9 @@ export class RateLimitService {
       !this.verifyEmailIpLimiter ||
       !this.resendIpLimiter ||
       !this.resendEmailLimiter
+      || !this.passwordResetRequestIpLimiter
+      || !this.passwordResetRequestEmailLimiter
+      || !this.passwordResetCompleteIpLimiter
     ) {
       throw new ServiceUnavailableException(
         "Authentication protection is temporarily unavailable.",
