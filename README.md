@@ -11,7 +11,7 @@ The monorepo foundation, first-party Argon2id authentication, school-registratio
 - Web: Next.js App Router + TypeScript
 - API: NestJS with Fastify
 - Data: PostgreSQL + Prisma
-- Cache and rate limiting: Upstash Redis
+- Distributed rate limiting: Upstash Redis when configured; PostgreSQL fallback otherwise
 - Background delivery/workflows: Upstash QStash and Workflow, introduced only where needed
 - Email: Resend
 - Payments: Paystack, Safaricom Daraja (M-PESA), and independently verified USDC wallet payments
@@ -28,7 +28,7 @@ PostgreSQL is the system of record. Redis is not a permanent ledger or source of
 - Core identity, tenant, geography and school-registration foundation models are implemented in Prisma. The foundation and email-verification migrations are generated and applied in ephemeral PostgreSQL CI; no persistent database has been migrated.
 - Core identity and authorization decisions are recorded in docs/decisions/decision-register.md; legal/privacy and external identifier validation gates remain open.
 - The initial foundation migration is generated and CI applies it to an ephemeral PostgreSQL 18 database, then checks cross-Council foreign keys and active-registration uniqueness.
-- Registration, verification, login, resend and refresh use distributed Upstash rate limits; production requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` and fails closed if they are missing or unavailable.
+- Registration, verification, login, resend and refresh are rate-limited. Upstash is preferred when both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured; when both are absent, the API uses the PostgreSQL `AuthRateLimitEvent` fallback. Partial Upstash configuration or failure of the configured backend fails closed with HTTP 503. `REFRESH_TOKEN_PEPPER` is required in either mode.
 - Email verification uses the Resend API; production requires a sending-only `RESEND_API_KEY`, verified `EMAIL_FROM` domain and `WEB_APP_URL`. Local preview links require `DEV_EMAIL_PREVIEW=true` outside production.
 
 Read:
