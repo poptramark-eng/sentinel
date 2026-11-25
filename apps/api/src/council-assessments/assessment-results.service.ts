@@ -77,7 +77,7 @@ export class AssessmentResultsService {
           return !mark || mark.status !== "SUBMITTED" || mark.marks === null;
         })) {
         throw new ConflictException(
-          `Results cannot be calculated: ${candidate.learnerNumberSnapshot} has missing or unsubmitted learning-area marks.`,
+          "Results cannot be calculated because one or more active candidates have missing or unsubmitted learning-area marks.",
         );
       }
       const learningAreas = assessment.learningAreas.map((area) => {
@@ -277,19 +277,125 @@ export class AssessmentResultsService {
       learningAreas: prepared.learningAreaSummaries,
       classes: prepared.classSummaries,
       schoolLearningAreas: prepared.schoolLearningAreaSummaries,
-      candidates: prepared.rows.slice(0, 50).map((row) => ({
-        learnerNumber: row.learnerNumberSnapshot,
-        learnerName: row.learnerNameSnapshot,
-        schoolName: row.schoolNameSnapshot,
-        totalMarks: row.totalMarks,
-        maximumMarks: row.maximumMarks,
-        percentage: row.percentage,
-        rank: row.rank,
-        overallBandCode: row.overallBandCode,
-        overallBandLabel: row.overallBandLabel,
-      })),
-      candidateRowsReturned: Math.min(prepared.rows.length, 50),
-      truncated: prepared.rows.length > 50,
+    };
+  }
+
+  private summarizePublicationResults(results: Array<{
+    registrationId: string;
+    schoolIdSnapshot: string;
+    schoolNameSnapshot: string;
+    schoolClassId: string;
+    schoolClassNameSnapshot: string;
+    totalMarks: unknown;
+    maximumMarks: unknown;
+    percentage: unknown;
+    rank: number;
+    learningAreas: Array<{
+      assessmentLearningAreaId: string;
+      learningAreaCode: string;
+      displayLabel: string;
+      marks: unknown;
+      maximumMarks: unknown;
+      percentage: unknown;
+      sortOrder: number;
+    }>;
+  }>) {
+    const schoolGroups = new Map<string, { schoolId: string; schoolName: string; candidateCount: number; totalPercentage: number; topRank: number }>();
+    const classGroups = new Map<string, { schoolId: string; schoolName: string; className: string; candidateCount: number; totalPercentage: number; topRank: number }>();
+    const areaGroups = new Map<string, { id: string; code: string; displayLabel: string; maximumMarks: number; candidateCount: number; totalMarks: number; totalPercentage: number; highestPercentage: number; lowestPercentage: number }>();
+    const schoolAreaGroups = new Map<string, { schoolId: string; schoolName: string; areaId: string; areaLabel: string; candidateCount: number; totalPercentage: number }>();
+
+    for (const row of results) {
+      const school = schoolGroups.get(row.registrationId) ?? {
+        schoolId: row.schoolIdSnapshot, schoolName: row.schoolNameSnapshot,
+        candidateCount: 0, totalPercentage: 0, topRank: Number.MAX_SAFE_INTEGER,
+      };
+      school.candidateCount += 1;
+      school.totalPercentage += Number(row.percentage);
+      school.topRank = Math.min(school.topRank, row.rank);
+      schoolGroups.set(row.registrationId, school);
+
+      const classKey = row.registrationId + ":" + row.schoolClassId;
+      const classSummary = classGroups.get(classKey) ?? {
+        schoolId: row.schoolIdSnapshot, schoolName: row.schoolNameSnapshot,
+        className: row.schoolClassNameSnapshot, candidateCount: 0,
+        totalPercentage: 0, topRank: Number.MAX_SAFE_INTEGER,
+      };
+      classSummary.candidateCount += 1;
+      classSummary.totalPercentage += Number(row.percentage);
+      classSummary.topRank = Math.min(classSummary.topRank, row.rank);
+      classGroups.set(classKey, classSummary);
+
+      for (const area of row.learningAreas) {
+        const areaSummary = areaGroups.get(area.assessmentLearningAreaId) ?? {
+          id: area.assessmentLearningAreaId, code: area.learningAreaCode,
+          displayLabel: area.displayLabel, maximumMarks: Number(area.maximumMarks),
+          candidateCount: 0, totalMarks: 0, totalPercentage: 0,
+          highestPercentage: 0, lowestPercentage: 100,
+        };
+        const marks = Number(area.marks);
+        const percentage = Number(area.percentage);
+        areaSummary.candidateCount += 1;
+        areaSummary.totalMarks += marks;
+        areaSummary.totalPercentage += percentage;
+        areaSummary.highestPercentage = Math.max(areaSummary.highestPercentage, percentage);
+        areaSummary.lowestPercentage = Math.min(areaSummary.lowestPercentage, percentage);
+        areaGroups.set(area.assessmentLearningAreaId, areaSummary);
+
+        const schoolAreaKey = row.registrationId + ":" + area.assessmentLearningAreaId;
+        const schoolArea = schoolAreaGroups.get(schoolAreaKey) ?? {
+          schoolId: row.schoolIdSnapshot, schoolName: row.schoolNameSnapshot,
+          areaId: area.assessmentLearningAreaId, areaLabel: area.displayLabel,
+          candidateCount: 0, totalPercentage: 0,
+        };
+        schoolArea.candidateCount += 1;
+        schoolArea.totalPercentage += percentage;
+        schoolAreaGroups.set(schoolAreaKey, schoolArea);
+      }
+    }
+
+    const schoolSummaries = [...schoolGroups.values()].map((school) => ({
+      schoolId: school.schoolId,
+      schoolName: school.schoolName,
+      candidateCount: school.candidateCount,
+      averagePercentage: round4(school.totalPercentage / school.candidateCount),
+      topRank: school.topRank,
+    })).sort((a, b) => b.averagePercentage - a.averagePercentage || a.schoolName.localeCompare(b.schoolName));
+
+    const classSummaries = [...classGroups.values()].map((item) => ({
+      ...item, averagePercentage: round4(item.totalPercentage / item.candidateCount),
+    })).sort((a, b) => b.averagePercentage - a.averagePercentage || a.className.localeCompare(b.className));
+
+    const learningAreaSummaries = [...areaGroups.values()].map((area) => ({
+      assessmentLearningAreaId: area.id,
+      code: area.code,
+      displayLabel: area.displayLabel,
+      maximumMarks: area.maximumMarks,
+      candidateCount: area.candidateCount,
+      averageMarks: round4(area.totalMarks / area.candidateCount),
+      averagePercentage: round4(area.totalPercentage / area.candidateCount),
+      highestPercentage: area.highestPercentage,
+      lowestPercentage: area.lowestPercentage,
+    })).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel));
+
+    const schoolLearningAreaSummaries = [...schoolAreaGroups.values()].map((item) => ({
+      ...item, averagePercentage: round4(item.totalPercentage / item.candidateCount),
+    })).sort((a, b) => a.schoolName.localeCompare(b.schoolName) || a.areaLabel.localeCompare(b.areaLabel));
+
+    const percentages = results.map((row) => Number(row.percentage));
+    return {
+      summary: {
+        candidateCount: results.length,
+        schoolCount: schoolGroups.size,
+        averagePercentage: results.length ? round4(percentages.reduce((sum, value) => sum + value, 0) / results.length) : 0,
+        highestPercentage: results.length ? Math.max(...percentages) : 0,
+        lowestPercentage: results.length ? Math.min(...percentages) : 0,
+        maximumMarks: results.length ? Number(results[0]!.maximumMarks) : 0,
+      },
+      schools: schoolSummaries,
+      classes: classSummaries,
+      learningAreas: learningAreaSummaries,
+      schoolLearningAreas: schoolLearningAreaSummaries,
     };
   }
 
@@ -300,7 +406,19 @@ export class AssessmentResultsService {
       include: {
         results: {
           orderBy: [{ rank: "asc" }],
-          include: { learningAreas: { orderBy: [{ sortOrder: "asc" }] } },
+          select: {
+            registrationId: true, schoolIdSnapshot: true, schoolNameSnapshot: true,
+            schoolClassId: true, schoolClassNameSnapshot: true,
+            totalMarks: true, maximumMarks: true, percentage: true, rank: true,
+            learningAreas: {
+              orderBy: [{ sortOrder: "asc" }],
+              select: {
+                assessmentLearningAreaId: true, learningAreaCode: true,
+                displayLabel: true, marks: true, maximumMarks: true,
+                percentage: true, sortOrder: true,
+              },
+            },
+          },
         },
       },
     });
@@ -314,7 +432,7 @@ export class AssessmentResultsService {
         candidateCount: publication.candidateCount,
         schoolCount: publication.schoolCount,
       },
-      results: publication.results,
+      ...this.summarizePublicationResults(publication.results),
     };
   }
 
@@ -346,7 +464,19 @@ export class AssessmentResultsService {
       include: {
         results: {
           orderBy: [{ rank: "asc" }],
-          include: { learningAreas: { orderBy: [{ sortOrder: "asc" }] } },
+          select: {
+            registrationId: true, schoolIdSnapshot: true, schoolNameSnapshot: true,
+            schoolClassId: true, schoolClassNameSnapshot: true,
+            totalMarks: true, maximumMarks: true, percentage: true, rank: true,
+            learningAreas: {
+              orderBy: [{ sortOrder: "asc" }],
+              select: {
+                assessmentLearningAreaId: true, learningAreaCode: true,
+                displayLabel: true, marks: true, maximumMarks: true,
+                percentage: true, sortOrder: true,
+              },
+            },
+          },
         },
       },
     });
@@ -360,7 +490,7 @@ export class AssessmentResultsService {
         candidateCount: publication.candidateCount,
         schoolCount: publication.schoolCount,
       },
-      results: publication.results,
+      ...this.summarizePublicationResults(publication.results),
     };
   }
 
