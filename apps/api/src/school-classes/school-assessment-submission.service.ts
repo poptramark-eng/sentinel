@@ -234,6 +234,22 @@ export class SchoolAssessmentSubmissionService {
         areaGroups.set(area.assessmentLearningAreaId, group);
       }
     }
+    await this.prisma.client.auditEvent.create({
+      data: {
+        actorAccountId: actor.accountId,
+        councilId: scope.councilId,
+        action: "SCHOOL_PUBLISHED_RESULTS_VIEWED",
+        resourceType: "AssessmentResultPublication",
+        resourceId: publication.id,
+        decision: "ALLOW",
+        metadata: {
+          assessmentId,
+          registrationId: scope.registrationId,
+          publicationVersion: publication.version,
+          resultCount: results.length,
+        },
+      },
+    });
     return {
       assessment,
       school: { name: scope.registration.school.name },
