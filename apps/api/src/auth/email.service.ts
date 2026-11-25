@@ -125,7 +125,7 @@ export class EmailService {
       resetUrl,
       "",
       "This link expires in 30 minutes. If you did not request a reset, you can ignore this email; your current password will remain unchanged.",
-    ].join("\\n");
+    ].join("\n");
     const html = `<!doctype html><html><body style="margin:0;background:#f5f7fb;font-family:Arial,sans-serif;color:#172b4d"><main style="max-width:560px;margin:40px auto;padding:36px;background:#fff;border:1px solid #e2e8f0;border-radius:18px"><p style="font-size:12px;font-weight:700;letter-spacing:2px;color:#2457c5">SENTINEL</p><h1 style="font-size:24px">Reset your password</h1><p>Hello ${safeName},</p><p>A password reset was requested for your Sentinel account. Use this one-time link to choose a new password.</p><p style="margin:28px 0"><a href="${resetUrl}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:#2457c5;color:#fff;text-decoration:none;font-weight:700">Choose a new password</a></p><p style="font-size:13px;color:#64748b">This link expires in 30 minutes. If you did not request a reset, ignore this email; your current password remains unchanged.</p><p style="font-size:12px;color:#94a3b8;word-break:break-all">${resetUrl}</p></main></body></html>`;
 
     try {
