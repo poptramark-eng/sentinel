@@ -64,8 +64,8 @@ test("a historical publication version returns aggregate oversight only, never c
   const row = publicationRow();
   const client = {
     assessmentResultPublication: {
-      findFirst: async ({ where, select }) => {
-        records.query = { where, select };
+      findFirst: async ({ where, include }) => {
+        records.query = { where, include };
         return {
           id: "publication-v1", version: 1, status: "SUPERSEDED",
           publishedAt: new Date("2026-11-23T15:00:00Z"),
@@ -76,9 +76,9 @@ test("a historical publication version returns aggregate oversight only, never c
   };
   const result = await new AssessmentResultsService({ client }).version(councilId, assessmentId, 1);
   assert.deepEqual(records.query.where, { assessmentId, councilId, version: 1 });
-  assert.equal(records.query.select.results.select.learnerNameSnapshot, undefined);
-  assert.equal(records.query.select.results.select.learnerNumberSnapshot, undefined);
-  assert.equal(records.query.select.results.select.candidateId, undefined);
+  assert.equal(records.query.include.results.select.learnerNameSnapshot, undefined);
+  assert.equal(records.query.include.results.select.learnerNumberSnapshot, undefined);
+  assert.equal(records.query.include.results.select.candidateId, undefined);
   assert.equal(result.publication.status, "SUPERSEDED");
   assert.equal(result.summary.candidateCount, 1);
   assert.equal(result.schools[0].averagePercentage, 80);
@@ -92,8 +92,8 @@ test("current published Council result view returns only school, class and learn
   const records = {};
   const client = {
     assessmentResultPublication: {
-      findFirst: async ({ where, select }) => {
-        records.query = { where, select };
+      findFirst: async ({ where, include }) => {
+        records.query = { where, include };
         return {
           id: "publication-v2", version: 2, status: "PUBLISHED",
           publishedAt: new Date("2026-11-24T15:00:00Z"),
@@ -112,7 +112,7 @@ test("current published Council result view returns only school, class and learn
   };
   const result = await new AssessmentResultsService({ client }).published(councilId, assessmentId);
   assert.deepEqual(records.query.where, { assessmentId, councilId, status: "PUBLISHED" });
-  assert.equal(records.query.select.results.select.learnerNameSnapshot, undefined);
+  assert.equal(records.query.include.results.select.learnerNameSnapshot, undefined);
   assert.equal(result.summary.candidateCount, 2);
   assert.equal(result.summary.averagePercentage, 70);
   assert.equal(result.schools[0].candidateCount, 2);
