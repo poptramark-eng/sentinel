@@ -149,3 +149,14 @@ Extended the Astryx shared workspace into the core school administration and ass
 The change is presentation and navigation only. It does not change school roles, class access, learner identity, teacher membership, subject assignment rules, mark validation, submission locking, publication, ranking or result calculations. No API routes, schema migrations or UI dependencies were added.
 
 Active navigation items now resolve to their actual route destinations. CI runs 413, 414 and 415 passed on earlier increments; run 420 is validating the latest cumulative PR #5 head. Browser/device/print QA remains pending; Vercel preview deployments are blocked by the account's daily deployment quota.
+
+
+## 14. Main-branch integration and validation — 25 November 2026
+
+The Astryx school-operations workspace increment is now present on `main` through the merged integration PR #7. The merge commit is `d0173785715a6e2eef61e0c62a05ea2b0f0a42b6`. PR #5 remains a separate open, unmerged feature PR; do not describe it as the source of the merged main-branch integration or as merged.
+
+- Main CI run #424 passed: [GitHub Actions run 424](https://github.com/poptramark-eng/sentinel/actions/runs/45614955452).
+- The passing pipeline covered frozen pnpm installation, Prisma validation, PostgreSQL migration deployment and tenant-integrity constraints, TypeScript, ESLint, production application builds and API unit tests.
+- Astryx changes on main retain existing routes, authentication, authorization, API contracts, assessment behavior and data lifecycle; this is a UI/workspace integration, not a domain rewrite.
+- Browser interaction, authenticated end-to-end, responsive-device and print QA remain outstanding. A successful CI build is not evidence that those manual/browser checks passed.
+- The previously reported Vercel daily deployment quota block was not revalidated as part of this documentation update; no new deployment or preview is claimed.
