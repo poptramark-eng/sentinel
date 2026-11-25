@@ -128,6 +128,7 @@ test("current published Council result view returns only school, class and learn
 test("result preview exposes aggregates only and does not include candidate identifiers or names", async () => {
   const records = {};
   const client = {
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
     assessment: {
       findFirst: async ({ where }) => {
         records.where = where;
@@ -156,9 +157,12 @@ test("result preview exposes aggregates only and does not include candidate iden
       },
     },
   };
-  const result = await new AssessmentResultsService({ client }).preview(councilId, assessmentId);
+  const result = await new AssessmentResultsService({ client }).preview({ accountId: "actor-account" }, councilId, assessmentId);
   assert.deepEqual(records.where, { id: assessmentId, councilId, status: "CLOSED" });
   assert.equal(result.summary.candidateCount, 1);
+  assert.equal(records.audit.actorAccountId, "actor-account");
+  assert.equal(records.audit.action, "ASSESSMENT_RESULTS_AGGREGATE_PREVIEWED");
+  assert.equal(records.audit.metadata.candidateCount, 1);
   assert.equal(result.schools[0].averagePercentage, 75);
   assert.equal("candidates" in result, false);
   const serialized = JSON.stringify(result);
