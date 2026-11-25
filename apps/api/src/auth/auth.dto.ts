@@ -55,3 +55,21 @@ export class ResendVerificationDto {
   @MaxLength(254)
   email!: string;
 }
+
+export class PasswordResetRequestDto {
+  @Transform(({ value }) => typeof value === "string" ? value.trim() : value)
+  @IsEmail()
+  @MaxLength(254)
+  email!: string;
+}
+
+export class PasswordResetCompleteDto {
+  @IsString()
+  @Length(43, 43)
+  token!: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  password!: string;
+}
