@@ -161,6 +161,24 @@ export class SchoolAssessmentMarkService {
         },
       }),
     ]);
+    await this.prisma.client.auditEvent.create({
+      data: {
+        actorAccountId: actor.accountId,
+        councilId: schoolClass.councilId,
+        action: "ASSESSMENT_MARK_SHEET_VIEWED",
+        resourceType: "Assessment",
+        resourceId: assessmentId,
+        decision: "ALLOW",
+        metadata: {
+          registrationId,
+          classId,
+          assessmentId,
+          learningAreaId,
+          candidateCount: candidates.length,
+          learningAreaCount: areas.length,
+        },
+      },
+    });
     return {
       assessment,
       class: schoolClass,
