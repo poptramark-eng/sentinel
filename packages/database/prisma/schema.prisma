@@ -277,6 +277,7 @@ model LoginIdentifier {
 
   account                 UserAccount              @relation(fields: [accountId], references: [id], onDelete: Restrict)
   emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
 
   @@unique([id, accountId])
   @@unique([type, normalizedValue])
