@@ -428,10 +428,43 @@ export class CouncilAssessmentService {
         },
       },
     })]);
+    const safeAssessments = assessments.map(({ candidates, ...assessment }) => {
+      const classes = new Map<string, {
+        schoolClassId: string;
+        schoolName: string;
+        displayName: string | null;
+        streamCode: string;
+        candidateCount: number;
+      }>();
+      const schools = new Set<string>();
+      for (const candidate of candidates) {
+        const schoolName = candidate.schoolClass.registration.school.name;
+        const key = candidate.registrationId + ":" + candidate.schoolClassId;
+        const current = classes.get(key) ?? {
+          schoolClassId: candidate.schoolClassId,
+          schoolName,
+          displayName: candidate.schoolClass.displayName,
+          streamCode: candidate.schoolClass.streamCode,
+          candidateCount: 0,
+        };
+        current.candidateCount += 1;
+        classes.set(key, current);
+        schools.add(candidate.registrationId);
+      }
+      return {
+        ...assessment,
+        candidateCount: candidates.length,
+        schoolCount: schools.size,
+        classes: [...classes.values()].sort((a, b) =>
+          a.schoolName.localeCompare(b.schoolName) ||
+          (a.displayName ?? a.streamCode).localeCompare(b.displayName ?? b.streamCode),
+        ),
+      };
+    });
     return {
       canManage: memberships.some((membership) => membership.role === "COUNCIL_ADMINISTRATOR"),
       canModerate: memberships.some((membership) => membership.role === "COUNCIL_GOVERNANCE_APPROVER"),
-      assessments,
+      assessments: safeAssessments,
     };
   }
 
