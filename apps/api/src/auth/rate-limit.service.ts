@@ -384,10 +384,10 @@ export class RateLimitService {
       !this.registerEmailLimiter ||
       !this.verifyEmailIpLimiter ||
       !this.resendIpLimiter ||
-      !this.resendEmailLimiter
-      || !this.passwordResetRequestIpLimiter
-      || !this.passwordResetRequestEmailLimiter
-      || !this.passwordResetCompleteIpLimiter
+      !this.resendEmailLimiter ||
+      !this.passwordResetRequestIpLimiter ||
+      !this.passwordResetRequestEmailLimiter ||
+      !this.passwordResetCompleteIpLimiter
     ) {
       throw new ServiceUnavailableException(
         "Authentication protection is temporarily unavailable.",
