@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { AuthService } from "../dist/auth/auth.service.js";
 import { createLegacyScryptHashForTest } from "./legacy-password-helper.mjs";
-import { hashEmailVerificationToken, hashRefreshToken } from "../dist/auth/token.js";
+import { hashEmailVerificationToken, hashPasswordResetToken, hashRefreshToken } from "../dist/auth/token.js";
 
 process.env.ACCESS_TOKEN_SECRET =
   "test-access-token-secret-should-be-at-least-32-bytes-long";
@@ -331,4 +331,125 @@ test("resending verification invalidates older tokens before issuing a new one",
   assert.equal(operations[0].data.consumedAt instanceof Date, true);
   assert.equal(sent[0][0], "amina@example.org");
   assert.equal(operations[1].data.tokenHash, hashEmailVerificationToken(sent[0][2]));
+});
+
+
+test("password reset requests use generic responses and persist only a keyed one-time token", async () => {
+  const identifier = {
+    id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    accountId: account.id,
+    type: "EMAIL",
+    verifiedAt: new Date(),
+    account: { ...account, status: "ACTIVE", person: { givenName: "Amina" } },
+  };
+  const operations = [];
+  const tx = {
+    loginIdentifier: { findUnique: async () => identifier },
+    passwordResetToken: {
+      updateMany: async (input) => { operations.push({ update: input }); return { count: 1 }; },
+      create: async (input) => { operations.push({ create: input }); return input; },
+    },
+    auditEvent: { create: async (input) => { operations.push({ audit: input }); return input; } },
+  };
+  const client = {
+    loginIdentifier: { findUnique: async () => identifier },
+    $transaction: async (callback) => callback(tx),
+  };
+  const sent = [];
+  const emailService = {
+    sendPasswordResetEmail: async (...args) => { sent.push(args); return {}; },
+  };
+  const result = await new AuthService({ client }, emailService).requestPasswordReset(" AMINA@EXAMPLE.ORG ");
+
+  assert.equal(result.status, "RESET_REQUESTED");
+  assert.equal(result.passwordResetPreviewUrl, undefined);
+  assert.equal(sent[0][0], "amina@example.org");
+  assert.equal(operations[0].update.where.loginIdentifierId, identifier.id);
+  assert.equal(operations[1].create.data.tokenHash, hashPasswordResetToken(sent[0][2]));
+  assert.equal(operations[1].create.data.expiresAt.getTime() - Date.now() <= 30 * 60 * 1000, true);
+  assert.equal(operations[2].audit.data.action, "AUTH_PASSWORD_RESET_REQUESTED");
+});
+
+test("password reset request does not disclose unknown or unverified accounts", async () => {
+  let sent = false;
+  const client = {
+    loginIdentifier: { findUnique: async () => null },
+  };
+  const result = await new AuthService(
+    { client },
+    { sendPasswordResetEmail: async () => { sent = true; return {}; } },
+  ).requestPasswordReset("unknown@example.org");
+  assert.deepEqual(result, {
+    status: "RESET_REQUESTED",
+    message: "If an active verified account exists for this email address, a password reset link will be sent.",
+  });
+  assert.equal(sent, false);
+});
+
+test("password reset consumes the token, changes the password and revokes every session", async () => {
+  const rawToken = "r".repeat(43);
+  const record = {
+    id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    accountId: account.id,
+    loginIdentifierId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    consumedAt: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    account: { ...account, status: "ACTIVE", authVersion: 4 },
+    loginIdentifier: { type: "EMAIL", verifiedAt: new Date() },
+  };
+  const calls = [];
+  const tx = {
+    passwordResetToken: {
+      updateMany: async (input) => { calls.push({ resetToken: input }); return { count: 1 }; },
+    },
+    userAccount: {
+      updateMany: async (input) => { calls.push({ account: input }); return { count: 1 }; },
+    },
+    refreshToken: {
+      updateMany: async (input) => { calls.push({ refresh: input }); return { count: 2 }; },
+    },
+    auditEvent: {
+      create: async (input) => { calls.push({ audit: input }); return input; },
+    },
+  };
+  const client = {
+    passwordResetToken: { findUnique: async ({ where }) => {
+      assert.equal(where.tokenHash, hashPasswordResetToken(rawToken));
+      return record;
+    } },
+    $transaction: async (callback) => callback(tx),
+  };
+
+  const result = await new AuthService({ client }, {}).resetPassword(rawToken, "new-strong-password-2026");
+  assert.deepEqual(result, { status: "PASSWORD_RESET" });
+  assert.equal(calls[0].resetToken.where.id, record.id);
+  assert.equal(calls[1].account.where.authVersion, 4);
+  assert.equal(calls[1].account.data.authVersion.increment, 1);
+  assert.match(calls[1].account.data.passwordHash, /^\\$argon2id\\$/);
+  assert.equal(calls[2].refresh.where.accountId, account.id);
+  assert.equal(calls[3].audit.data.action, "AUTH_PASSWORD_RESET_COMPLETED");
+});
+
+test("expired, consumed and replayed password reset tokens are rejected", async () => {
+  const rawToken = "x".repeat(43);
+  const base = {
+    id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    accountId: account.id,
+    consumedAt: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    account: { ...account, status: "ACTIVE" },
+    loginIdentifier: { type: "EMAIL", verifiedAt: new Date() },
+  };
+  for (const token of [
+    { ...base, consumedAt: new Date() },
+    { ...base, expiresAt: new Date(Date.now() - 1) },
+    { ...base, account: { ...account, status: "INACTIVE" } },
+    { ...base, loginIdentifier: { type: "EMAIL", verifiedAt: null } },
+  ]) {
+    const client = { passwordResetToken: { findUnique: async () => token } };
+    await assert.rejects(
+      new AuthService({ client }, {}).resetPassword(rawToken, "new-strong-password-2026"),
+      (error) => error.getStatus() === 400,
+    );
+  }
 });
