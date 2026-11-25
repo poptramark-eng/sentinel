@@ -1,6 +1,6 @@
 # Authorization Matrix — Working Baseline
 
-**Status:** Partial matrix. Explicitly accepted permissions are distinguished from unresolved permissions.  
+**Status:** Adopted authorization baseline with implementation gaps. Accepted policy decisions are recorded in ADRs; unresolved decisions and unimplemented enforcement are listed separately below.  
 **Enforcement point:** NestJS API policy layer + domain services + database constraints. UI navigation is never a security boundary.
 
 Legend:
@@ -132,8 +132,12 @@ These must be decided before database migrations and before protected feature im
 1. Full action catalogue for PlatformAdministrator and CouncilAdministrator, including exact read scopes for candidates, marks, results, audit and reports.
 2. School Administrator replacement workflow: initiation is accepted; independent approval, verification, timing and recovery rules need definition.
 3. Whether Council roles can view all school/candidate/mark records in their Council or only operational metadata and approved aggregates.
-4. Whether School Administrators can enter/correct marks or only oversee and assign teachers.
-5. Class Teacher authority is limited to assigned-class roster visibility and assessment-completeness coordination; final school submission belongs to the active School Administrator. Reassignment and exceptional recovery controls remain subject to the documented assignment and audit rules.
+4. School Administrator replacement workflow: initiation is accepted; independent approval, verification, timing and recovery rules need definition.
+5. Teacher access to learner demographics, identifiers and historical results.
+6. Exact organizer validation, candidate correction and result-release action set.
+7. Support access, break-glass access and platform data access policy.
+8. Payment/billing administration permissions and separation from educational data access.
+9. Report/export field-level permissions, consolidated report controls and retention.
 6. Teacher access to learner demographics, identifiers and historical results.
 7. Exact organizer validation, candidate correction and result-release action set.
 8. Support access, break-glass access and platform data access policy.
