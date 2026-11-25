@@ -61,8 +61,9 @@ Legend:
 - An active School Administrator may search for existing learner identities, create/reuse identities, enrol learners into classes and end enrolments for an approved school registration.
 - An active assigned Class Teacher may read only the learner roster and assessment marks for the class covered by their active assignment.
 - Assessment roster snapshots are created at scheduling from active enrollments matching the assessment grade and academic year. A global active-enrolment constraint prevents one learner from being simultaneously enrolled in multiple schools.
-- Only the assigned Class Teacher may save and submit marks for their class. The assessment must be OPEN; marks must respect the snapshotted maximum and precision.
-- Class submission requires all mark cells to be complete. Submitted marks are immutable through normal entry routes and every change/submission is recorded in append-only revision history.
+- An active Subject Teacher may save and submit marks only for the learning area and class covered by their active assignment. Class Teacher coordination does not grant marks-entry or marks-submission access; a teacher holding both duties still needs an explicit Subject Teacher assignment for the learning area.
+- A Subject Teacher learning-area submission requires all active candidates in the class to have marks for that learning area. Submitted marks are immutable through normal entry routes and every change/submission is recorded in append-only revision history.
+- Once every required learning area is submitted for every active candidate, the School Administrator reviews completeness and performs the final school-wide submission. Class Teachers coordinate readiness and exceptions but do not perform final school submission.
 - School Administrator access to learner enrollment does not grant mark-entry access. Council Administrator access to assessment configuration does not grant access to school learner records or mark capture.
 
 ### Implemented assessment and rubric permissions
@@ -132,7 +133,7 @@ These must be decided before database migrations and before protected feature im
 2. School Administrator replacement workflow: initiation is accepted; independent approval, verification, timing and recovery rules need definition.
 3. Whether Council roles can view all school/candidate/mark records in their Council or only operational metadata and approved aggregates.
 4. Whether School Administrators can enter/correct marks or only oversee and assign teachers.
-5. Exact class-teacher final submission authority, scope and reassignment policy.
+5. Class Teacher authority is limited to assigned-class roster visibility and assessment-completeness coordination; final school submission belongs to the active School Administrator. Reassignment and exceptional recovery controls remain subject to the documented assignment and audit rules.
 6. Teacher access to learner demographics, identifiers and historical results.
 7. Exact organizer validation, candidate correction and result-release action set.
 8. Support access, break-glass access and platform data access policy.

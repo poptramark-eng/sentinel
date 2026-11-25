@@ -29,7 +29,7 @@ For public production access, attach the intended custom domain in Settings → 
 
 Provision:
 - A managed PostgreSQL database (Neon is the current production provider).
-- Optional: an Upstash Redis database for distributed authentication rate limits. When Upstash REST credentials are absent, Sentinel uses the PostgreSQL-backed rate-limit event store in Neon.
+- Optional but preferred: an Upstash Redis database for distributed authentication rate limits. If both Upstash REST credentials are absent, Sentinel uses the PostgreSQL-backed `AuthRateLimitEvent` store in Neon. If only one credential is set or configured Upstash is unavailable, authentication protection fails closed with HTTP 503.
 - A Resend account with a verified sending domain.
 
 The API is deployed as a Vercel Function; a separate Railway or Render API host is not required.
@@ -90,7 +90,7 @@ Do not run prisma migrate dev against production. Do not run the bootstrap scrip
 - Open the public frontend and confirm /api/health is reachable through the same-origin proxy.
 - Register an account, receive the verification email, and verify the account.
 - Sign in and confirm cookies are set as Secure/HttpOnly where appropriate.
-- Confirm rate limiting works with the Neon PostgreSQL fallback or Upstash when configured.
+- Confirm rate limiting works with the Neon PostgreSQL fallback when both Upstash variables are absent, or with Upstash when both are configured. Verify that partial credentials and backend failures fail closed with HTTP 503.
 - Bootstrap and sign in as the Platform Administrator; approve a test school registration.
 - Test school administrator provisioning, teacher membership, class/learner workflows, assessment scheduling, mark submission, results publication, and the notification centre.
 - Confirm Resend delivery and inspect audit records.
