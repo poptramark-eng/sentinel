@@ -689,3 +689,56 @@ test("additional returns for the same school preserve its existing returned subm
   assert.equal(records.audit.action, "ASSESSMENT_LEARNING_AREA_MARKS_RETURNED_FOR_CORRECTION");
   assert.equal(result.status, "OPEN");
 });
+
+
+test("Council assessment directory exposes class-level progress, never candidate records", async () => {
+  const records = {};
+  const service = new CouncilAssessmentService({
+    client: {
+      userAccount: { findUnique: async () => ({ personId: "person-1" }) },
+      councilMembership: { findMany: async () => [{ role: "COUNCIL_ADMINISTRATOR" }] },
+      assessment: {
+        findMany: async ({ include }) => {
+          records.candidateSelect = include.candidates.select;
+          return [{
+            id: "assessment-1", name: "Term 2", code: "T2", status: "CLOSED",
+            candidates: [
+              {
+                registrationId: "registration-1", schoolClassId: "class-1",
+                schoolClass: {
+                  displayName: "Grade 4 East", streamCode: "E",
+                  registration: { school: { name: "Example School" } },
+                },
+              },
+              {
+                registrationId: "registration-1", schoolClassId: "class-1",
+                schoolClass: {
+                  displayName: "Grade 4 East", streamCode: "E",
+                  registration: { school: { name: "Example School" } },
+                },
+              },
+              {
+                registrationId: "registration-2", schoolClassId: "class-2",
+                schoolClass: {
+                  displayName: null, streamCode: "MAIN",
+                  registration: { school: { name: "Second School" } },
+                },
+              },
+            ],
+          }];
+        },
+      },
+    },
+  });
+  const result = await service.listAssessments("council-1", "account-1");
+  const assessment = result.assessments[0];
+  assert.equal(records.candidateSelect.id, undefined);
+  assert.equal(assessment.candidateCount, 3);
+  assert.equal(assessment.schoolCount, 2);
+  assert.equal(assessment.classes.length, 2);
+  assert.equal(assessment.classes[0].candidateCount, 2);
+  assert.equal(assessment.classes[0].schoolName, "Example School");
+  assert.equal("candidates" in assessment, false);
+  assert.equal(JSON.stringify(result).includes("learnerName"), false);
+  assert.equal(JSON.stringify(result).includes("learnerNumber"), false);
+});
