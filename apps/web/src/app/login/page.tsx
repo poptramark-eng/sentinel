@@ -3,10 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { storeCsrfToken } from "../../lib/api";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api";
+import { API_BASE, storeCsrfToken } from "../../lib/api";
 
 interface CurrentUser {
   platformOperator?: { status: string; role: string } | null;
