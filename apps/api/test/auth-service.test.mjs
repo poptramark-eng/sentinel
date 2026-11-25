@@ -426,8 +426,8 @@ test("password reset consumes the token, changes the password and revokes every 
   assert.equal(calls[1].account.where.authVersion, 4);
   assert.equal(calls[1].account.data.authVersion.increment, 1);
   assert.match(calls[1].account.data.passwordHash, /^\$argon2id\$/);
-  assert.equal(calls[2].refresh.where.accountId, account.id);
-  assert.equal(calls[3].audit.data.action, "AUTH_PASSWORD_RESET_COMPLETED");
+  assert.equal(calls[3].refresh.where.accountId, account.id);
+  assert.equal(calls[4].audit.data.action, "AUTH_PASSWORD_RESET_COMPLETED");
 });
 
 test("expired, consumed and replayed password reset tokens are rejected", async () => {
