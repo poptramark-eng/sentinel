@@ -52,6 +52,7 @@ export class RateLimitService {
   private readonly passwordResetRequestIpLimiter?: Ratelimit;
   private readonly passwordResetRequestEmailLimiter?: Ratelimit;
   private readonly passwordResetCompleteIpLimiter?: Ratelimit;
+  private readonly teacherInvitationAcceptIpLimiter?: Ratelimit;
   private readonly initializationError?: unknown;
 
   constructor(@Optional() private readonly prisma?: PrismaService) {
@@ -132,6 +133,11 @@ export class RateLimitService {
         limiter: Ratelimit.slidingWindow(10, "1 h"),
         prefix: `sentinel:${namespace}:auth:password-reset-complete:ip`,
       });
+      this.teacherInvitationAcceptIpLimiter = new Ratelimit({
+        ...shared,
+        limiter: Ratelimit.slidingWindow(10, "1 h"),
+        prefix: `sentinel:${namespace}:auth:teacher-invitation-accept:ip`,
+      });
     } catch (error) {
       this.initializationError = error;
     }
@@ -199,6 +205,21 @@ export class RateLimitService {
       this.passwordResetRequestEmailLimiter,
       "password-reset-request",
     );
+  }
+
+  async checkTeacherInvitationAccept(ipAddress: string): Promise<RateLimitDecision> {
+    if (this.upstashConfigured) {
+      this.ensureUpstashConfigured();
+      return this.runChecks([
+        this.teacherInvitationAcceptIpLimiter!.limit(this.normalizeIp(ipAddress)),
+      ]);
+    }
+    return this.checkDatabase([{
+      scope: "auth:teacher-invitation-accept:ip",
+      identifier: this.normalizeIp(ipAddress),
+      limit: 10,
+      windowMs: 60 * 60 * 1_000,
+    }]);
   }
 
   async checkPasswordResetComplete(ipAddress: string): Promise<RateLimitDecision> {
@@ -388,6 +409,7 @@ export class RateLimitService {
       !this.passwordResetRequestIpLimiter ||
       !this.passwordResetRequestEmailLimiter ||
       !this.passwordResetCompleteIpLimiter
+      || !this.teacherInvitationAcceptIpLimiter
     ) {
       throw new ServiceUnavailableException(
         "Authentication protection is temporarily unavailable.",
