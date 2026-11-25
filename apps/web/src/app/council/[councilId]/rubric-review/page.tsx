@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "../../../../lib/api";
+import { CouncilWorkspaceShell } from "../../../../components/council-workspace-shell";
 
 interface ReviewVersion {
   id: string;
@@ -32,6 +32,7 @@ export default function CouncilRubricReviewPage() {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [queueQuery, setQueueQuery] = useState("");
 
   const load = useCallback(async () => {
     const response = await apiRequest(`/councils/${councilId}/rubrics/review-queue`);
@@ -49,6 +50,15 @@ export default function CouncilRubricReviewPage() {
     });
     return () => { active = false; };
   }, [load]);
+
+  const filteredQueue = useMemo(() => {
+    const query = queueQuery.trim().toLocaleLowerCase();
+    if (!query) return queue;
+    return queue.filter((version) => [
+      version.rubric.name, version.rubric.code, version.versionLabel, version.scaleType,
+      ...version.bands.flatMap((band) => [band.code, band.label]),
+    ].some((value) => value.toLocaleLowerCase().includes(query)));
+  }, [queue, queueQuery]);
 
   async function returnForChanges(version: ReviewVersion) {
     const reason = reasons[version.id]?.trim() ?? "";
@@ -77,23 +87,22 @@ export default function CouncilRubricReviewPage() {
     finally { setBusyId(""); }
   }
 
-  return <main className="min-h-screen bg-[#f6f8fb]">
-    <header className="border-b border-[#e5eaf1] bg-white"><div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-      <Link href="/workspace" className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span><span className="text-sm font-semibold text-[#172b4d]">Council workspace</span></Link>
-      <Link href="/workspace" className="text-xs font-semibold text-[#52647d] hover:text-[#2457c5]">Back to workspace</Link>
-    </div></header>
-    <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Independent governance</p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d] sm:text-3xl">Rubric review queue</h1>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-[#64748b]">Review the Council-authored descriptors and numeric intervals. Publishing is a privileged, irreversible action; verify the supporting Council decision before approval.</p>
+  return <CouncilWorkspaceShell councilId={councilId} active="rubric-review">
+    <div className="w-full py-0">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Independent governance</p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink-strong)] sm:text-3xl">Rubric review queue</h1>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">Review the Council-authored descriptors and numeric intervals. Publishing is a privileged, irreversible action; verify the supporting Council decision before approval.</p>
       {error ? <div role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
       {notice ? <div role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div> : null}
-      {loading ? <div className="mt-8 rounded-2xl border border-[#e5eaf1] bg-white p-8 text-sm text-[#64748b]">Loading review queue…</div> : queue.length === 0 ? <div className="mt-8 rounded-2xl border border-dashed border-[#ccd8e8] bg-white p-8 text-center text-sm text-[#64748b]">There are no rubric versions awaiting review.</div> :
-        <div className="mt-8 space-y-4">{queue.map((version) => <article key={version.id} className="rounded-2xl border border-[#e5eaf1] bg-white p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-semibold text-[#172b4d]">{version.rubric.name} · {version.versionLabel}</h2><p className="mt-1 text-xs text-[#64748b]">{version.rubric.code} · {version.scaleType.replaceAll("_", " ").toLowerCase()}</p><p className="mt-1 text-[11px] text-[#94a3b8]">Submitted {new Intl.DateTimeFormat("en-KE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(version.createdAt))}</p></div><span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-semibold text-amber-800">IN REVIEW</span></div>
-          <div className="mt-4 overflow-hidden rounded-xl border border-[#edf0f5]"><div className="grid grid-cols-[minmax(5rem,0.5fr)_1fr_1fr] gap-3 bg-[#f8faff] px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]"><span>Code</span><span>Descriptor</span><span>Bounds</span></div>{version.bands.map((band) => <div key={band.id} className="grid grid-cols-[minmax(5rem,0.5fr)_1fr_1fr] gap-3 border-t border-[#edf0f5] px-4 py-3 text-xs text-[#52647d]"><span className="font-semibold text-[#172b4d]">{band.code}</span><span>{band.label}</span><span>{band.lowerBound === null ? "No numeric boundary" : `[${band.lowerBound}, ${band.upperBound})`}</span></div>)}</div>
-          <div className="mt-5 space-y-3 border-t border-[#edf0f5] pt-4"><p className="text-[11px] text-[#64748b]">The author cannot approve their own rubric version. Return it with a reason if changes are needed.</p><textarea value={reasons[version.id] ?? ""} onChange={(event) => setReasons((previous) => ({ ...previous, [version.id]: event.target.value }))} maxLength={2000} rows={2} placeholder="Explain what needs to change (minimum 10 characters)…" className="w-full rounded-xl border border-[#dbe3ee] px-3 py-2.5 text-xs text-[#172b4d]" /><div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={Boolean(busyId)} onClick={() => void returnForChanges(version)} className="rounded-xl border border-[#dbe3ee] px-4 py-2.5 text-xs font-semibold text-[#52647d] disabled:opacity-50">Return for changes</button><button type="button" disabled={Boolean(busyId)} onClick={() => void publish(version)} className="rounded-xl bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busyId === version.id ? "Processing…" : "Approve and publish"}</button></div></div>
+      {loading ? <div className="mt-8 rounded-2xl border border-[var(--line)] bg-white p-8 text-sm text-[var(--muted)]">Loading review queue…</div> : queue.length === 0 ? <div className="mt-8 rounded-2xl border border-dashed border-[#ccd8e8] bg-white p-8 text-center"><p className="text-sm font-semibold text-[var(--ink-strong)]">Review queue is clear</p><p className="mt-1 text-xs text-[var(--muted)]">Rubric versions submitted for independent review will appear here.</p></div> : <>
+        <div className="mt-7 flex flex-wrap items-end justify-between gap-3"><label className="min-w-0 flex-1 text-xs font-semibold text-[var(--muted)]">Search review queue<input type="search" value={queueQuery} onChange={(event) => setQueueQuery(event.target.value)} placeholder="Rubric, version, band code or descriptor" className="mt-1.5 min-h-11 w-full min-w-0 rounded-xl border border-[var(--line-strong)] bg-white px-3 py-2.5 text-sm font-normal text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[#eaf1ff]" /></label><span aria-live="polite" className="text-xs tabular-nums text-[var(--muted)]">{filteredQueue.length} of {queue.length} awaiting review</span></div>
+        {filteredQueue.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-[#ccd8e8] bg-white p-8 text-center"><p className="text-sm font-semibold text-[var(--ink-strong)]">No matching review items</p><p className="mt-1 text-xs text-[var(--muted)]">Try another search term.</p><button type="button" onClick={() => setQueueQuery("")} className="mt-3 min-h-11 rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)]">Clear search</button></div> :
+        <div className="mt-4 space-y-4">{filteredQueue.map((version) => <article key={version.id} className="rounded-2xl border border-[var(--line)] bg-white p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-semibold text-[var(--ink-strong)]">{version.rubric.name} · {version.versionLabel}</h2><p className="mt-1 text-xs text-[var(--muted)]">{version.rubric.code} · {version.scaleType.replaceAll("_", " ").toLowerCase()}</p><p className="mt-1 text-[11px] text-[var(--subtle)]">Submitted {new Intl.DateTimeFormat("en-KE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(version.createdAt))}</p></div><span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-semibold text-amber-800">IN REVIEW</span></div>
+          <div role="region" aria-label={`Grading band comparison for ${version.rubric.name} ${version.versionLabel}`} tabIndex={0} className="mt-4 overflow-x-auto rounded-xl border border-[var(--line)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"><div className="min-w-[34rem]"><div className="grid grid-cols-[minmax(5rem,0.5fr)_1fr_1fr] gap-3 bg-[var(--brand-soft)] px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]"><span>Code</span><span>Descriptor</span><span>Bounds</span></div>{version.bands.map((band) => <div key={band.id} className="grid grid-cols-[minmax(5rem,0.5fr)_1fr_1fr] gap-3 border-t border-[var(--line)] px-4 py-3 text-xs text-[var(--muted)]"><span className="font-semibold text-[var(--ink-strong)]">{band.code}</span><span className="break-words">{band.label}</span><span className="tabular-nums">{band.lowerBound === null ? "No numeric boundary" : `[${band.lowerBound}, ${band.upperBound})`}</span></div>)}</div></div>
+          <div className="mt-5 space-y-3 border-t border-[var(--line)] pt-4"><p className="text-[11px] text-[var(--muted)]">The author cannot approve their own rubric version. Return it with a reason if changes are needed.</p><textarea aria-label={`Reason for returning ${version.rubric.name} ${version.versionLabel} for changes`} value={reasons[version.id] ?? ""} onChange={(event) => setReasons((previous) => ({ ...previous, [version.id]: event.target.value }))} maxLength={2000} rows={2} placeholder="Explain what needs to change (minimum 10 characters)…" className="min-h-20 w-full rounded-xl border border-[var(--line-strong)] px-3 py-2.5 text-xs text-[var(--ink-strong)] outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" /><div className="flex flex-wrap justify-end gap-2"><button type="button" aria-busy={busyId === version.id} disabled={Boolean(busyId)} onClick={() => void returnForChanges(version)} className="min-h-11 rounded-xl border border-[var(--line-strong)] px-4 py-2.5 text-xs font-semibold text-[var(--muted)] hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)] disabled:opacity-50">Return for changes</button><button type="button" aria-busy={busyId === version.id} disabled={Boolean(busyId)} onClick={() => void publish(version)} className="min-h-11 rounded-xl bg-[var(--brand)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)] disabled:opacity-50">{busyId === version.id ? "Processing…" : "Approve and publish"}</button></div></div>
         </article>)}</div>}
+        </>}
     </div>
-  </main>;
+  </CouncilWorkspaceShell>;
 }
