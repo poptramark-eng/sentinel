@@ -125,6 +125,9 @@ test("published school results are scoped to the approved registration and rank 
   assert.deepEqual(result.candidates.map((row) => row.gradeRank), [1, 2, 4]);
   assert.equal(result.learningAreas[0].averagePercentage, 80.6667);
   assert.equal(result.classes[0].averagePercentage, 80.6667);
+  assert.equal(records.audit.action, "SCHOOL_PUBLISHED_RESULTS_VIEWED");
+  assert.equal(records.audit.metadata.resultCount, 3);
+  assert.equal(records.audit.metadata.publicationVersion, 1);
 });
 
 test("school results remain unavailable until the assessment is released", async () => {
