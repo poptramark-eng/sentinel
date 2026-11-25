@@ -14,7 +14,7 @@ import { RateLimitService } from "./rate-limit.service";
 import { CookieRequest, hasTrustedOrigin, hasValidCsrf } from "./cookie";
 
 const AUTH_RATE_LIMIT_POLICY = "sentinel:auth-rate-limit-policy";
-type AuthRateLimitPolicy = "LOGIN" | "REFRESH" | "REGISTER" | "VERIFY_EMAIL" | "RESEND_VERIFICATION" | "PASSWORD_RESET_REQUEST" | "PASSWORD_RESET_COMPLETE";
+type AuthRateLimitPolicy = "LOGIN" | "REFRESH" | "REGISTER" | "VERIFY_EMAIL" | "RESEND_VERIFICATION" | "PASSWORD_RESET_REQUEST" | "PASSWORD_RESET_COMPLETE" | "TEACHER_INVITATION_ACCEPT";
 interface RequestWithLoginBody extends CookieRequest {
   ip: string;
   body?: { email?: unknown };
@@ -70,7 +70,9 @@ export class AuthRateLimitGuard implements CanActivate {
               ? await this.rateLimitService.checkPasswordResetRequest(request.ip, email)
               : policy === "PASSWORD_RESET_COMPLETE"
                 ? await this.rateLimitService.checkPasswordResetComplete(request.ip)
-                : await this.rateLimitService.checkVerifyEmail(request.ip);
+                : policy === "TEACHER_INVITATION_ACCEPT"
+                  ? await this.rateLimitService.checkTeacherInvitationAccept(request.ip)
+                  : await this.rateLimitService.checkVerifyEmail(request.ip);
 
     if (!decision.allowed) {
       const retryAfter = Math.max(
