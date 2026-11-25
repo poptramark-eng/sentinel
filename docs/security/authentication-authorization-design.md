@@ -134,7 +134,7 @@ The policy decision uses:
 - Registration, verification, resend, login and refresh are rate-limited through Upstash Redis and `@upstash/ratelimit`: login 30/IP and 5/email per 15 minutes; refresh 60/IP per 5 minutes; registration 5/IP and 3/email per hour; verification 20/IP per 15 minutes; resend 5/IP and 3/email per hour. Sliding windows reduce fixed-window boundary bursts; analytics are disabled.
 - Email identifiers are HMACed before they become Redis keys. IP identity uses Fastify's resolved `request.ip`; `TRUST_PROXY` remains false unless the API is behind a known trusted proxy; configure an explicit proxy IP/CIDR allowlist, never wildcard trust.
 - In development, missing Upstash credentials allow local work. In production, missing/invalid credentials, Redis errors or rate-limit timeouts fail closed with 503; exceeded limits return 429 with `Retry-After`. Production deployment is blocked until a dedicated Upstash database and secrets are configured.
-- Extend the same controls to password reset, invitations, OTP and expensive exports before those endpoints are exposed.
+- Extend the same controls to invitations, OTP and expensive exports before those endpoints are exposed.
 - Add progressive delays and risk signals without permanently locking out legitimate school users.
 - Audit successful and failed privileged operations, account lifecycle events, membership/role changes, authority grants, approval decisions, marks corrections, submissions, releases, exports and support access.
 - Redact credentials, tokens, reset links, OTPs and unnecessary personal/learner data from logs.
@@ -156,9 +156,9 @@ The policy decision uses:
 
 ## 9. Current implementation boundary
 
-Implemented in the API foundation: public account registration without role assignment; one-time email verification and resend; Resend email adapter with development-only preview; Argon2id password hashing with legacy scrypt rehash-on-login; 10-minute HS256 access JWT in an HttpOnly cookie; opaque refresh-token hash persistence and transactional rotation; refresh-family replay response; account auth-version checks; CSRF double-submit plus exact origin allowlist; device logout and logout-all; distributed Upstash rate limits for registration/verification/resend/login/refresh; current-user endpoint; developer-controlled PlatformAdministrator bootstrap; and authenticated school-registration submission, withdrawal, status and PlatformAdministrator review/identifier-verification endpoints.
+Implemented in the API foundation: public account registration without role assignment; one-time email verification and resend; one-time password reset by verified email with a 30-minute token, keyed token hash, single-use transaction, Argon2id password update, auth-version increment and revocation of all refresh sessions; Resend email adapter with development-only preview; Argon2id password hashing with legacy scrypt rehash-on-login; 10-minute HS256 access JWT in an HttpOnly cookie; opaque refresh-token hash persistence and transactional rotation; refresh-family replay response; account auth-version checks; CSRF double-submit plus exact origin allowlist; device logout and logout-all; distributed Upstash rate limits for registration/verification/resend/login/refresh/password-reset request/password-reset completion; current-user endpoint; developer-controlled PlatformAdministrator bootstrap; and authenticated school-registration submission, withdrawal, status and PlatformAdministrator review/identifier-verification endpoints.
 
-Not yet implemented: password reset, MFA/passkeys, rate limits for future invitations/exports, login alerting, full Council/School/Organizer authorization enforcement, school-registration user interface, and full database-backed API integration tests. Production requires verified Resend sender configuration and Upstash credentials. Do not expose this API to production users until the remaining controls are completed and tested. The current implementation has not been penetration-tested.
+Not yet implemented: MFA/passkeys, rate limits for future invitations/exports, login alerting, full Council/School/Organizer authorization enforcement, school-registration user interface, and full database-backed API integration tests. Production requires verified Resend sender configuration and Upstash credentials. Do not expose this API to production users until the remaining controls are completed and tested. The current implementation has not been penetration-tested.
 
 ## 10. Decisions still required before production
 
@@ -166,9 +166,9 @@ Not yet implemented: password reset, MFA/passkeys, rate limits for future invita
 - One account maps to one Person; a Person may have multiple scoped memberships.
 - Remaining role/action policy details are governed by `docs/security/authorization-policy-contract.md` and the adopted ADRs.
 - School administrator replacement and recovery follow ADR-008; production identity-proofing procedures still require institutional validation.
-- Password-reset expiry/retention and email-verification token cleanup/retention must be configured and reviewed before launch.
+- Password-reset links expire after 30 minutes; reset-token and email-verification-token cleanup/retention schedules must be reviewed before launch.
 - Cookie hostnames and deployment topology for Vercel/Render must be fixed before production.
 - Support access is denied by default; a time-limited, purpose-bound break-glass workflow is required before support can inspect identifiable learner data.
 - Authentication audit retention and privacy schedule require legal/controller approval.
 
-The Prisma schema includes Person, UserAccount, LoginIdentifier, EmailVerificationToken, PlatformOperator, RefreshToken, Council, scoped memberships, CouncilSchoolRegistration, geography and AuditEvent. The foundation and email-verification migrations are generated and CI-applied to ephemeral PostgreSQL; no persistent database has been migrated. Production credential setup is not authorized by this design note. Use synthetic test identities only.
+The Prisma schema includes Person, UserAccount, LoginIdentifier, EmailVerificationToken, PasswordResetToken, PlatformOperator, RefreshToken, Council, scoped memberships, CouncilSchoolRegistration, geography and AuditEvent. The foundation and email-verification migrations are generated and CI-applied to ephemeral PostgreSQL; no persistent database has been migrated. Production credential setup is not authorized by this design note. Use synthetic test identities only.
