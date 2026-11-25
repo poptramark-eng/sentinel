@@ -59,10 +59,9 @@ Legend:
 
 - Learners are global identity records and do not have accounts or login credentials. Learner numbers are identifiers only.
 - An active School Administrator may search for existing learner identities, create/reuse identities, enrol learners into classes and end enrolments for an approved school registration.
-- An active assigned Class Teacher may read only the learner roster and assessment marks for the class covered by their active assignment.
+- An active Class Teacher assignment grants class coordination only. It does not grant learner roster, marks, subject, assessment or results access; a teacher needs a separate Subject Teacher assignment for marks access.
 - Assessment roster snapshots are created at scheduling from active enrollments matching the assessment grade and academic year. A global active-enrolment constraint prevents one learner from being simultaneously enrolled in multiple schools.
-- An active Subject Teacher may save and submit marks only for the learning area and class covered by their active assignment. Class Teacher coordination does not grant marks-entry or marks-submission access; a teacher holding both duties still needs an explicit Subject Teacher assignment for the learning area.
-- A Subject Teacher learning-area submission requires all active candidates in the class to have marks for that learning area. Submitted marks are immutable through normal entry routes and every change/submission is recorded in append-only revision history.
+- An active Subject Teacher may save and submit marks only for the learning area and class covered by their active assignment. Submitted marks are immutable through normal entry routes; post-submission changes require a formal correction request and governed review.
 - Once every required learning area is submitted for every active candidate, the School Administrator reviews completeness and performs the final school-wide submission. Class Teachers coordinate readiness and exceptions but do not perform final school submission.
 - School Administrator access to learner enrollment does not grant mark-entry access. Council Administrator access to assessment configuration does not grant access to school learner records or mark capture.
 
@@ -125,24 +124,20 @@ Additional constraints:
 | External result release | No | No by default | Explicit RELEASE_RESULTS authority | No |
 | Result snapshots | Own school's released results | Own Council reports as permitted | Authorized assessment results | Restricted audit/support only |
 
-## 7. Explicitly unresolved permission decisions
+## 7. Remaining permission decisions and release gaps
 
-These must be decided before database migrations and before protected feature implementation:
+The following decisions remain open or require implementation/verification; they are not permission grants:
 
-1. Full action catalogue for PlatformAdministrator and CouncilAdministrator, including exact read scopes for candidates, marks, results, audit and reports.
+1. Exact read scopes for PlatformAdministrator and CouncilAdministrator across candidates, marks, results, audit events and reports.
 2. School Administrator replacement workflow: initiation is accepted; independent approval, verification, timing and recovery rules need definition.
-3. Whether Council roles can view all school/candidate/mark records in their Council or only operational metadata and approved aggregates.
-4. School Administrator replacement workflow: initiation is accepted; independent approval, verification, timing and recovery rules need definition.
-5. Teacher access to learner demographics, identifiers and historical results.
-6. Exact organizer validation, candidate correction and result-release action set.
-7. Support access, break-glass access and platform data access policy.
-8. Payment/billing administration permissions and separation from educational data access.
-9. Report/export field-level permissions, consolidated report controls and retention.
-6. Teacher access to learner demographics, identifiers and historical results.
-7. Exact organizer validation, candidate correction and result-release action set.
-8. Support access, break-glass access and platform data access policy.
-9. Payment/billing administration permissions and separation from educational data access.
-10. Report/export field-level permissions, consolidated report controls and retention.
+3. Whether Council roles may view identifiable school/candidate/mark records or only operational metadata and approved aggregates.
+4. Teacher access to learner demographics, identifiers and historical results.
+5. Exact organizer validation, candidate correction and result-release action set.
+6. Support access, break-glass access and platform data access policy.
+7. Payment/billing administration permissions and separation from educational data access.
+8. Report/export field-level permissions, consolidated report controls and retention.
+9. Implementation and integration tests for the adopted correction workflows, including post-publication correction cases and versioned result republication.
+10. Complete positive and negative authorization tests for cross-Council ID substitution, inactive memberships, expired assignments and revoked authority.
 
 ## 8. Authorization implementation rules
 
