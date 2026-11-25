@@ -1,21 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "../../../../../../lib/api";
 import { CouncilWorkspaceShell } from "../../../../../../components/council-workspace-shell";
 
-type Candidate = {
-  learnerNumber: string;
-  learnerName: string;
-  schoolName: string;
-  totalMarks: number;
-  maximumMarks: number;
-  percentage: number;
-  rank: number;
-  overallBandCode: string | null;
-  overallBandLabel: string | null;
-};
 type Preview = {
   assessment: { id: string; name: string; code: string; academicYear: number; grade: string; rubric: { name: string; code: string }; rubricVersion: string };
   summary: { candidateCount: number; schoolCount: number; learningAreaCount: number; maximumMarks: number; averagePercentage: number; highestPercentage: number; lowestPercentage: number };
@@ -24,18 +13,14 @@ type Preview = {
   learningAreas: { assessmentLearningAreaId: string; displayLabel: string; candidateCount: number; averagePercentage: number; highestPercentage: number; lowestPercentage: number }[];
   classes: { schoolId: string; schoolName: string; className: string; candidateCount: number; averagePercentage: number; topRank: number }[];
   schoolLearningAreas: { schoolId: string; schoolName: string; areaId: string; areaLabel: string; candidateCount: number; averagePercentage: number }[];
-  candidates: Candidate[];
-  candidateRowsReturned: number;
-  truncated: boolean;
 };
 type Published = {
   publication: { id: string; version: number; status: "PUBLISHED" | "SUPERSEDED"; publishedAt: string; candidateCount: number; schoolCount: number };
-  results: {
-    id: string; rank: number; learnerNumberSnapshot: string; learnerNameSnapshot: string;
-    schoolNameSnapshot: string; schoolClassNameSnapshot: string; totalMarks: string; maximumMarks: string; percentage: string;
-    overallBandCode: string | null; overallBandLabel: string | null;
-    learningAreas: { id: string; assessmentLearningAreaId: string; displayLabel: string; marks: string; maximumMarks: string; percentage: string }[];
-  }[];
+  summary: { candidateCount: number; schoolCount: number; averagePercentage: number; highestPercentage: number; lowestPercentage: number; maximumMarks: number };
+  schools: { schoolId: string; schoolName: string; candidateCount: number; averagePercentage: number; topRank: number }[];
+  classes: { schoolId: string; schoolName: string; className: string; candidateCount: number; averagePercentage: number; topRank: number }[];
+  learningAreas: { assessmentLearningAreaId: string; code: string; displayLabel: string; maximumMarks: number; candidateCount: number; averageMarks: number; averagePercentage: number; highestPercentage: number; lowestPercentage: number }[];
+  schoolLearningAreas: { schoolId: string; schoolName: string; areaId: string; areaLabel: string; candidateCount: number; averagePercentage: number }[];
 };
 function messageOf(payload: unknown, fallback: string) {
   if (payload && typeof payload === "object" && "message" in payload) {
@@ -64,7 +49,6 @@ export default function AssessmentResultsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [candidateSearch, setCandidateSearch] = useState("");
 
   const load = useCallback(async () => {
     const [publicationResponse, assessmentResponse, historyResponse] = await Promise.all([
@@ -111,60 +95,26 @@ export default function AssessmentResultsPage() {
     return () => { active = false; };
   }, [load]);
 
-  const publishedAreas = useMemo(() => {
-    if (!published) return [];
-    const groups = new Map<string, { label: string; count: number; total: number; highest: number; lowest: number }>();
-    for (const result of published.results) for (const area of result.learningAreas) {
-      const group = groups.get(area.assessmentLearningAreaId) ?? { label: area.displayLabel, count: 0, total: 0, highest: 0, lowest: 100 };
-      const value = Number(area.percentage);
-      group.count += 1; group.total += value; group.highest = Math.max(group.highest, value); group.lowest = Math.min(group.lowest, value);
-      groups.set(area.assessmentLearningAreaId, group);
-    }
-    return [...groups.entries()].map(([id, value]) => ({ id, ...value, average: value.total / value.count })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [published]);
-
-  const publishedClasses = useMemo(() => {
-    if (!published) return [];
-    const groups = new Map<string, { school: string; name: string; count: number; total: number }>();
-    for (const result of published.results) {
-      const key = result.schoolNameSnapshot + "|" + result.schoolClassNameSnapshot;
-      const group = groups.get(key) ?? { school: result.schoolNameSnapshot, name: result.schoolClassNameSnapshot, count: 0, total: 0 };
-      group.count += 1; group.total += Number(result.percentage); groups.set(key, group);
-    }
-    return [...groups.values()].map((item) => ({ ...item, average: item.total / item.count })).sort((a, b) => b.average - a.average);
-  }, [published]);
-
-  const publishedSchoolAreas = useMemo(() => {
-    if (!published) return [];
-    const groups = new Map<string, { school: string; area: string; count: number; total: number }>();
-    for (const result of published.results) for (const area of result.learningAreas) {
-      const key = result.schoolNameSnapshot + "|" + area.assessmentLearningAreaId;
-      const group = groups.get(key) ?? { school: result.schoolNameSnapshot, area: area.displayLabel, count: 0, total: 0 };
-      group.count += 1; group.total += Number(area.percentage); groups.set(key, group);
-    }
-    return [...groups.values()].map((item) => ({ ...item, average: item.total / item.count })).sort((a, b) => a.school.localeCompare(b.school) || a.area.localeCompare(b.area));
-  }, [published]);
-
-  const visibleCandidates = useMemo(() => {
-    const rows = published?.results.map((row) => ({
-      id: row.id, rank: row.rank, number: row.learnerNumberSnapshot, name: row.learnerNameSnapshot,
-      school: row.schoolNameSnapshot, total: Number(row.totalMarks), maximum: Number(row.maximumMarks),
-      percentage: Number(row.percentage), band: row.overallBandLabel ?? "Not classified",
-    })) ?? preview?.candidates.map((row) => ({
-      id: row.learnerNumber, rank: row.rank, number: row.learnerNumber, name: row.learnerName,
-      school: row.schoolName, total: row.totalMarks, maximum: row.maximumMarks,
-      percentage: row.percentage, band: row.overallBandLabel ?? "Not classified",
-    })) ?? [];
-    const query = candidateSearch.trim().toLocaleLowerCase();
-    return query ? rows.filter((row) => [row.number, row.name, row.school].some((value) => value.toLocaleLowerCase().includes(query))) : rows;
-  }, [candidateSearch, preview, published]);
-
-  function exportCandidates() {
-    const quote = (value: string | number) => '"' + String(value).replaceAll('"', '""') + '"';
-    const lines = [["Rank", "Learner number", "Learner name", "School", "Total marks", "Maximum marks", "Percentage", "Classification"].map(quote).join(","), ...visibleCandidates.map((row) => [row.rank, row.number, row.name, row.school, row.total, row.maximum, row.percentage, row.band].map(quote).join(","))];
-    const url = URL.createObjectURL(new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a"); anchor.href = url; anchor.download = "cbe-assessment-results.csv"; anchor.click(); URL.revokeObjectURL(url);
-  }
+  const publishedAreas = (published?.learningAreas ?? []).map((area) => ({
+    id: area.assessmentLearningAreaId,
+    label: area.displayLabel,
+    count: area.candidateCount,
+    average: area.averagePercentage,
+    highest: area.highestPercentage,
+    lowest: area.lowestPercentage,
+  }));
+  const publishedClasses = (published?.classes ?? []).map((item) => ({
+    school: item.schoolName,
+    name: item.className,
+    count: item.candidateCount,
+    average: item.averagePercentage,
+  }));
+  const publishedSchoolAreas = (published?.schoolLearningAreas ?? []).map((item) => ({
+    school: item.schoolName,
+    area: item.areaLabel,
+    count: item.candidateCount,
+    average: item.averagePercentage,
+  }));
 
   async function viewPublicationVersion(version: number) {
     setBusy(true); setError(""); setNotice("");
@@ -243,9 +193,17 @@ export default function AssessmentResultsPage() {
           <div className="mt-4 divide-y divide-[#edf0f5]">{publicationHistory.map((item) => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-[var(--ink-strong)]">Publication v{item.version}</p><span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${item.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>{item.status === "PUBLISHED" ? "Current" : "Superseded"}</span></div><p className="mt-1 text-xs text-[var(--muted)]">{dateTime(item.publishedAt)} · {item.resultCount} learners · {item.schoolCount} schools</p></div><button type="button" disabled={busy || published?.publication.version === item.version} onClick={() => void viewPublicationVersion(item.version)} className="min-h-11 rounded-lg border border-[var(--line-strong)] px-3 py-2 text-xs font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)] disabled:opacity-50">{published?.publication.version === item.version ? "Viewing" : "View snapshot"}</button></div>)}</div>
         </section> : null}
         {!loading && !published && !preview && assessmentStatus === "OPEN" ? <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6"><h2 className="text-sm font-semibold text-amber-950">Results correction in progress</h2><p className="mt-2 text-xs leading-5 text-amber-900">The previous publication has been superseded because governance returned marks for correction. The historical version remains available above. A new official result set can be published after all corrections are resubmitted and the assessment is closed again.</p></section> : null}
-        {!loading ? <section className="report-card report-card-table mt-6 rounded-2xl border border-[var(--line)] bg-white p-5 sm:p-6">
-          <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div className="min-w-0"><h2 className="text-base font-semibold text-[var(--ink-strong)]">{published ? "Published candidate results" : "Candidate ranking"}</h2><p className="mt-1 text-xs text-[var(--muted)]">{published ? "The values below are read from the immutable publication snapshot." : `Showing the first ${preview?.candidateRowsReturned ?? 0} ranked candidates.`}</p></div><div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row"><label className="sr-only" htmlFor="candidate-results-search">Search candidate results by learner number, learner name, or school</label><input id="candidate-results-search" type="search" value={candidateSearch} onChange={(event) => setCandidateSearch(event.target.value)} placeholder="Search learner or school" className="min-h-11 w-full min-w-0 rounded-xl border border-[var(--line-strong)] px-3 py-2 text-xs outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15 sm:w-52" /><button type="button" onClick={exportCandidates} disabled={!visibleCandidates.length} className="min-h-11 rounded-xl border border-[var(--line-strong)] px-3 py-2 text-xs font-semibold text-[var(--brand)] hover:bg-[var(--brand-soft)] disabled:opacity-50">Export CSV ↓</button></div>{preview?.truncated ? <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-900">Preview limited to 50 rows. The full candidate list is not included in this preview.</span> : null}</div>
-          <p className="no-print mt-3 text-[11px] text-[var(--muted)]" aria-live="polite">Showing {visibleCandidates.length.toLocaleString("en-KE")} of {(published?.results.length ?? preview?.candidates.length ?? 0).toLocaleString("en-KE")} candidate rows{candidateSearch.trim() ? " matching your search" : ""}. Export downloads the currently visible rows.</p><div className="mt-4 overflow-x-auto rounded-xl focus-within:ring-2 focus-within:ring-[var(--brand)]/20" tabIndex={0} role="region" aria-label="Candidate results table; scroll horizontally to view all columns"><table className="report-table w-full min-w-[760px] text-left text-xs"><caption className="sr-only">Ranked candidate results including learner identity, school, total marks, percentage, and classification</caption><thead className="border-b border-[var(--line)] text-[10px] uppercase tracking-wide text-[var(--muted)]"><tr><th className="pb-3 pr-3">Rank</th><th className="pb-3 pr-3">Learner</th><th className="pb-3 pr-3">School</th><th className="pb-3 pr-3">Total</th><th className="pb-3 pr-3">Percentage</th><th className="pb-3">Classification</th></tr></thead><tbody>{visibleCandidates.map((row) => <tr key={row.id} className="border-b border-[var(--line)] last:border-0"><td className="py-3 pr-3 font-semibold tabular-nums text-[var(--brand)]">{row.rank}</td><td className="py-3 pr-3"><p className="font-semibold text-[var(--ink-strong)]">{row.name}</p><p className="mt-1 text-[10px] text-[var(--subtle)]">{row.number}</p></td><td className="py-3 pr-3 text-[var(--muted)]">{row.school}</td><td className="py-3 pr-3 tabular-nums text-[var(--ink-strong)]">{row.total.toFixed(2)} / {row.maximum.toFixed(2)}</td><td className="py-3 pr-3 font-semibold tabular-nums text-[var(--ink-strong)]">{pct(row.percentage)}</td><td className="py-3 text-[var(--muted)]">{row.band}</td></tr>)}{visibleCandidates.length === 0 ? <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--muted)]">{candidateSearch.trim() ? "No candidate results match this search." : "No candidate results are available in this report."}</td></tr> : null}</tbody></table></div>
+        {!loading ? <section className="report-card mt-6 rounded-2xl border border-[var(--line)] bg-white p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-[var(--ink-strong)]">Individual learner results are restricted</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">Council users receive aggregate oversight only. Learner names, learner numbers, individual marks and candidate-level rankings are available to authorized staff within each approved school workspace, not through the Council workspace.</p>
+          {published ? <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Candidates", published.summary.candidateCount.toLocaleString("en-KE")],
+              ["Schools", published.summary.schoolCount.toLocaleString("en-KE")],
+              ["Average", pct(published.summary.averagePercentage)],
+              ["Highest / lowest", pct(published.summary.highestPercentage) + " / " + pct(published.summary.lowestPercentage)],
+            ].map(([label, value]) => <div key={label} className="rounded-xl bg-[var(--surface-subtle)] p-4"><p className="text-[11px] font-medium text-[var(--muted)]">{label}</p><p className="mt-2 text-xl font-semibold tabular-nums text-[var(--ink-strong)]">{value}</p></div>)}
+          </div> : null}
           {!published && canPublish ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-5"><p className="max-w-2xl text-xs leading-5 text-[var(--muted)]">Publication is a governance action. It freezes the computed results and releases the assessment; corrections afterward require a separately controlled republication workflow.</p><button type="button" disabled={busy} aria-busy={busy} onClick={() => void publish()} className="rounded-xl bg-[var(--brand)] px-5 py-3 text-xs font-semibold text-white hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)] disabled:opacity-50">{busy ? "Publishing…" : "Publish results"}</button></div> : null}
         </section> : null}
       </div>
