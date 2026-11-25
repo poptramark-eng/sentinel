@@ -315,6 +315,28 @@ test("Class Teacher coordination alone does not grant marks entry", async () => 
 });
 
 
+test("Class Teacher coordination alone does not expose the assessment workspace", async () => {
+  let membershipQuery;
+  let assessmentRead = false;
+  const client = {
+    schoolMembership: {
+      findMany: async ({ where, select }) => {
+        membershipQuery = { where, select };
+        // A class-teacher-only membership does not satisfy the required Subject Teacher assignment filter.
+        return [];
+      },
+    },
+    assessment: {
+      findMany: async () => { assessmentRead = true; return []; },
+    },
+  };
+  const result = await new SchoolAssessmentMarkService({ client }).listAssignedClasses(actor);
+  assert.deepEqual(result, []);
+  assert.equal(membershipQuery.where.staffAssignments.some.type, "SUBJECT_TEACHER");
+  assert.equal(membershipQuery.select.staffAssignments.where.type, "SUBJECT_TEACHER");
+  assert.equal(assessmentRead, false);
+});
+
 test("teaching workspace resolves assigned curriculum mappings to assessment snapshot learning-area IDs", async () => {
   const snapshotAreaId = "77777777-7777-4777-8777-777777777777";
   const client = {
