@@ -152,6 +152,73 @@ export class EmailService {
     return {};
   }
 
+  async sendTeacherInvitationEmail(input: {
+    to: string;
+    teacherName: string;
+    schoolName: string;
+    councilName: string;
+    token: string;
+  }): Promise<VerificationEmailResult> {
+    const apiKey = process.env.RESEND_API_KEY?.trim();
+    const from = process.env.EMAIL_FROM?.trim();
+    const configuredWebUrl = process.env.WEB_APP_URL?.trim();
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    if (!apiKey || !from || !configuredWebUrl) {
+      if (isDevelopment && process.env.DEV_EMAIL_PREVIEW === "true") {
+        return { previewUrl: this.createTeacherInvitationUrl(configuredWebUrl || "http://localhost:3000", input.token) };
+      }
+      throw new ServiceUnavailableException("Email delivery is temporarily unavailable.");
+    }
+
+    let invitationUrl: string;
+    try {
+      invitationUrl = this.createTeacherInvitationUrl(configuredWebUrl, input.token);
+      if (!isDevelopment && new URL(configuredWebUrl).protocol !== "https:") {
+        throw new Error("Production invitation links must use HTTPS.");
+      }
+    } catch {
+      throw new ServiceUnavailableException("Email delivery is temporarily unavailable.");
+    }
+
+    const safeName = escapeHtml(input.teacherName);
+    const safeSchool = escapeHtml(input.schoolName);
+    const safeCouncil = escapeHtml(input.councilName);
+    const text = [
+      `Hello ${input.teacherName},`,
+      "",
+      `A School Administrator invited you to join ${input.schoolName} under ${input.councilName} as a Teacher in Sentinel.`,
+      "",
+      "Accept the invitation and set your password using this one-time link:",
+      invitationUrl,
+      "",
+      "The invitation expires in 7 days. If you do not recognize this school, ignore this email and contact the school administration.",
+    ].join("\\n");
+    const html = `<!doctype html><html><body style="margin:0;background:#f5f7fb;font-family:Arial,sans-serif;color:#172b4d"><main style="max-width:560px;margin:40px auto;padding:36px;background:#fff;border:1px solid #e2e8f0;border-radius:18px"><p style="font-size:12px;font-weight:700;letter-spacing:2px;color:#2457c5">SENTINEL</p><h1 style="font-size:24px">Teacher invitation</h1><p>Hello ${safeName},</p><p>A School Administrator invited you to join <strong>${safeSchool}</strong> under ${safeCouncil} as a Teacher in Sentinel.</p><p style="margin:28px 0"><a href="${invitationUrl}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:#2457c5;color:#fff;text-decoration:none;font-weight:700">Accept invitation</a></p><p style="font-size:13px;color:#64748b">The invitation expires in 7 days. If you do not recognize this school, ignore this email and contact the school administration.</p><p style="font-size:12px;color:#94a3b8;word-break:break-all">${invitationUrl}</p></main></body></html>`;
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [input.to],
+          subject: `Invitation to teach at ${input.schoolName} on Sentinel`,
+          text,
+          html,
+        }),
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!response.ok) throw new Error("Resend rejected the teacher invitation email.");
+    } catch {
+      throw new ServiceUnavailableException("Email delivery is temporarily unavailable.");
+    }
+
+    return {};
+  }
+
   async sendSchoolRegistrationDecisionEmail(
     email: string,
     givenName: string,
@@ -297,6 +364,12 @@ export class EmailService {
         "Email delivery is temporarily unavailable.",
       );
     }
+  }
+
+  private createTeacherInvitationUrl(baseUrl: string, token: string): string {
+    const url = new URL("/accept-teacher-invitation", baseUrl);
+    url.searchParams.set("token", token);
+    return url.toString();
   }
 
   private createPasswordResetUrl(baseUrl: string, token: string): string {
