@@ -76,6 +76,37 @@ test("mark entry rejects a score above the learning area maximum", async () => {
   );
 });
 
+test("assigned Subject Teacher mark-sheet reads are audited", async () => {
+  const records = {};
+  const client = {
+    schoolClass: { findFirst: async () => classAccess() },
+    assessment: { findFirst: async () => ({ id: assessmentId, name: "Term 2", status: "OPEN", grade: "GRADE_4", academicYear: 2026 }) },
+    assessmentLearningArea: {
+      findFirst: async () => ({ id: areaId, councilGradeLearningAreaId: mappingId }),
+      findMany: async () => [{ id: areaId, learningAreaCode: "MATH", canonicalName: "Mathematics", displayLabel: null, maxMarks: 100, decimalPlaces: 0, sortOrder: 1 }],
+    },
+    schoolMembership: {
+      findFirst: async ({ where }) => where.role === "TEACHER" && where.staffAssignments?.some?.type === "SUBJECT_TEACHER"
+        ? teacherMembership()
+        : null,
+    },
+    assessmentCandidate: {
+      findMany: async () => [{
+        id: candidateId, learnerNumberSnapshot: "LRN-001", learnerNameSnapshot: "Amina Otieno",
+        marks: [{ id: markId, assessmentLearningAreaId: areaId, marks: 80, status: "SUBMITTED", submittedAt: new Date(), returnedReason: null }],
+      }],
+    },
+    auditEvent: { create: async ({ data }) => { records.audit = data; return data; } },
+  };
+  const result = await new SchoolAssessmentMarkService({ client }).getMarkSheet(
+    actor, registrationId, classId, assessmentId, areaId,
+  );
+  assert.equal(result.candidates[0].learnerNumber, "LRN-001");
+  assert.equal(records.audit.action, "ASSESSMENT_MARK_SHEET_VIEWED");
+  assert.equal(records.audit.metadata.candidateCount, 1);
+  assert.equal(records.audit.metadata.learningAreaId, areaId);
+});
+
 test("unassigned teachers cannot access another class mark sheet", async () => {
   const client = {
     schoolClass: { findFirst: async () => classAccess() },
