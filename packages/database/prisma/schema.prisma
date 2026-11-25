@@ -235,6 +235,7 @@ model UserAccount {
   refreshTokens              RefreshToken[]
   loginIdentifiers           LoginIdentifier[]
   emailVerificationTokens    EmailVerificationToken[]
+  passwordResetTokens        PasswordResetToken[]
   reviewedRegistrations      CouncilSchoolRegistration[]   @relation("RegistrationReviewer")
   createdCurriculumVersions  CurriculumVersion[]           @relation("CurriculumVersionAuthor")
   reviewedCurriculumVersions CurriculumVersion[]           @relation("CurriculumVersionReviewer")
@@ -284,6 +285,23 @@ model LoginIdentifier {
 
 // The migration also adds a partial unique index for one unconsumed token per identifier.
 model EmailVerificationToken {
+  id                String    @id @default(uuid()) @db.Uuid
+  accountId         String    @db.Uuid
+  loginIdentifierId String    @db.Uuid
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  account         UserAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  loginIdentifier LoginIdentifier @relation(fields: [loginIdentifierId, accountId], references: [id, accountId], onDelete: Restrict)
+
+  @@index([accountId, expiresAt])
+  @@index([loginIdentifierId, consumedAt])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
   id                String    @id @default(uuid()) @db.Uuid
   accountId         String    @db.Uuid
   loginIdentifierId String    @db.Uuid
