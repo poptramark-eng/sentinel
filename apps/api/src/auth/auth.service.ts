@@ -14,7 +14,6 @@ import {
   createEmailVerificationToken,
   createPasswordResetToken,
   createRefreshToken,
-  createTeacherInvitationToken,
   hashEmailVerificationToken,
   hashPasswordResetToken,
   hashRefreshToken,
