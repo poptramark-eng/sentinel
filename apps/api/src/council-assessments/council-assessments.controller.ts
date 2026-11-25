@@ -219,10 +219,11 @@ export class CouncilAssessmentsController {
   @Get("assessments/:assessmentId/results/preview")
   @UseGuards(CouncilRubricReaderGuard)
   previewAssessmentResults(
+    @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
   ) {
-    return this.results.preview(councilId, assessmentId);
+    return this.results.preview({ accountId: request.auth!.accountId }, councilId, assessmentId);
   }
 
   @Post("assessments/:assessmentId/results/publish")
