@@ -12,14 +12,21 @@ import { RegisterDto } from "./auth.dto";
 import {
   createCsrfToken,
   createEmailVerificationToken,
+  createPasswordResetToken,
   createRefreshToken,
   hashEmailVerificationToken,
+  hashPasswordResetToken,
   hashRefreshToken,
   signAccessToken,
 } from "./token";
 
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
+const GENERIC_PASSWORD_RESET_RESPONSE = {
+  status: "RESET_REQUESTED",
+  message: "If an active verified account exists for this email address, a password reset link will be sent.",
+} as const;
 const GENERIC_VERIFICATION_RESPONSE = {
   status: "VERIFICATION_REQUIRED",
   message: "If this email address can be registered, a verification link will be sent.",
@@ -213,6 +220,169 @@ export class AuthService {
         ? { verificationPreviewUrl: delivery.previewUrl }
         : {}),
     };
+  }
+
+  async requestPasswordReset(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const identifier = await this.prisma.client.loginIdentifier.findUnique({
+      where: {
+        type_normalizedValue: {
+          type: "EMAIL",
+          normalizedValue: normalizedEmail,
+        },
+      },
+      include: { account: { include: { person: true } } },
+    });
+
+    if (
+      !identifier ||
+      !identifier.verifiedAt ||
+      identifier.account.status !== "ACTIVE"
+    ) {
+      return GENERIC_PASSWORD_RESET_RESPONSE;
+    }
+
+    const rawToken = createPasswordResetToken();
+    const tokenHash = hashPasswordResetToken(rawToken);
+    const now = new Date();
+    let requested: { accountId: string; givenName: string } | null;
+    try {
+      requested = await this.prisma.client.$transaction(async (tx) => {
+        const current = await tx.loginIdentifier.findUnique({
+          where: { id: identifier.id },
+          include: { account: { include: { person: true } } },
+        });
+        if (
+          !current ||
+          !current.verifiedAt ||
+          current.type !== "EMAIL" ||
+          current.account.status !== "ACTIVE"
+        ) {
+          return null;
+        }
+
+        await tx.passwordResetToken.updateMany({
+          where: { loginIdentifierId: current.id, consumedAt: null },
+          data: { consumedAt: now },
+        });
+        await tx.passwordResetToken.create({
+          data: {
+            accountId: current.accountId,
+            loginIdentifierId: current.id,
+            tokenHash,
+            expiresAt: new Date(now.getTime() + PASSWORD_RESET_TTL_MS),
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorAccountId: current.accountId,
+            action: "AUTH_PASSWORD_RESET_REQUESTED",
+            resourceType: "UserAccount",
+            resourceId: current.accountId,
+            decision: "ALLOW",
+          },
+        });
+        return {
+          accountId: current.accountId,
+          givenName: current.account.person.givenName,
+        };
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? error.code
+          : null;
+      if (code === "P2002" || code === "P2034") {
+        return GENERIC_PASSWORD_RESET_RESPONSE;
+      }
+      throw error;
+    }
+
+    if (!requested) return GENERIC_PASSWORD_RESET_RESPONSE;
+    try {
+      const delivery = await this.emailService.sendPasswordResetEmail(
+        normalizedEmail,
+        requested.givenName,
+        rawToken,
+      );
+      return {
+        ...GENERIC_PASSWORD_RESET_RESPONSE,
+        ...(delivery.previewUrl ? { passwordResetPreviewUrl: delivery.previewUrl } : {}),
+      };
+    } catch {
+      this.logger.warn("Password reset email delivery failed; the generic response is preserved.");
+      return GENERIC_PASSWORD_RESET_RESPONSE;
+    }
+  }
+
+  async resetPassword(rawToken: string, newPassword: string) {
+    const tokenHash = hashPasswordResetToken(rawToken);
+    const token = await this.prisma.client.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { account: true, loginIdentifier: true },
+    });
+    const now = new Date();
+    if (
+      !token ||
+      token.consumedAt ||
+      token.expiresAt <= now ||
+      token.loginIdentifier.type !== "EMAIL" ||
+      !token.loginIdentifier.verifiedAt ||
+      token.account.status !== "ACTIVE"
+    ) {
+      throw new BadRequestException("Password reset link is invalid or expired.");
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    try {
+      await this.prisma.client.$transaction(async (tx) => {
+        const consumed = await tx.passwordResetToken.updateMany({
+          where: { id: token.id, accountId: token.accountId, consumedAt: null, expiresAt: { gt: now } },
+          data: { consumedAt: now },
+        });
+        if (consumed.count !== 1) {
+          throw new BadRequestException("Password reset link is invalid or expired.");
+        }
+
+        const updated = await tx.userAccount.updateMany({
+          where: { id: token.accountId, status: "ACTIVE", authVersion: token.account.authVersion },
+          data: { passwordHash, authVersion: { increment: 1 } },
+        });
+        if (updated.count !== 1) {
+          throw new BadRequestException("Password reset link is invalid or expired.");
+        }
+
+        await tx.passwordResetToken.updateMany({
+          where: { accountId: token.accountId, consumedAt: null },
+          data: { consumedAt: now },
+        });
+        await tx.refreshToken.updateMany({
+          where: { accountId: token.accountId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorAccountId: token.accountId,
+            action: "AUTH_PASSWORD_RESET_COMPLETED",
+            resourceType: "UserAccount",
+            resourceId: token.accountId,
+            decision: "ALLOW",
+          },
+        });
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? error.code
+          : null;
+      if (code === "P2034" || code === "P2002") {
+        throw new BadRequestException("Password reset link is invalid or expired.");
+      }
+      throw error;
+    }
+
+    return { status: "PASSWORD_RESET" };
   }
 
   async verifyEmail(rawToken: string) {
