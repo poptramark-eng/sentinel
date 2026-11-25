@@ -70,7 +70,9 @@ test("a learner with an active enrollment cannot be enrolled at a second school"
   );
 });
 
-test("assigned class teacher can read only their class learner roster", async () => {
+test("Class Teacher assignment alone cannot read learner rosters", async () => {
+  const membershipQueries = [];
+  let rosterRead = false;
   const tx = {
     schoolClass: {
       findFirst: async () => ({
@@ -79,27 +81,24 @@ test("assigned class teacher can read only their class learner roster", async ()
       }),
     },
     schoolMembership: {
-      findFirst: async ({ where }) => where.role === "TEACHER" ? { id: "15151515-1515-4515-8515-151515151515" } : null,
-    },
-    schoolLearnerEnrollment: {
-      findMany: async ({ where }) => {
-        assert.equal(where.registrationId, registrationId);
-        assert.equal(where.schoolClassId, classId);
-        return [{
-          id: "16161616-1616-4616-8616-161616161616",
-          admissionNumber: "A-01",
-          enrolledAt: new Date(),
-          learner: { id: learnerId, learnerNumber: "LRN-001", givenName: "Amina", otherNames: null, familyName: "Otieno", displayName: null },
-        }];
+      findFirst: async ({ where }) => {
+        membershipQueries.push(where);
+        return where.role === "TEACHER" ? { id: "15151515-1515-4515-8515-151515151515" } : null;
       },
     },
+    schoolLearnerEnrollment: {
+      findMany: async () => { rosterRead = true; return []; },
+    },
   };
-  const result = await new LearnerEnrollmentService({ client: tx }).listClassLearners(
-    { accountId, personId }, registrationId, classId,
+  await assert.rejects(
+    new LearnerEnrollmentService({ client: tx }).listClassLearners(
+      { accountId, personId }, registrationId, classId,
+    ),
+    (error) => error.status === 403,
   );
-  assert.equal(result.accessRole, "TEACHER");
-  assert.equal(result.learners[0].learnerNumber, "LRN-001");
-  assert.equal(result.learners[0].name, "Amina Otieno");
+  assert.equal(membershipQueries.length, 1);
+  assert.equal(membershipQueries[0].role, "SCHOOL_ADMINISTRATOR");
+  assert.equal(rosterRead, false);
 });
 
 
