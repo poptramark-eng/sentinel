@@ -236,6 +236,8 @@ model UserAccount {
   loginIdentifiers           LoginIdentifier[]
   emailVerificationTokens    EmailVerificationToken[]
   passwordResetTokens        PasswordResetToken[]
+  teacherInvitationTokens    TeacherInvitationToken[] @relation("TeacherInvitationRecipient")
+  issuedTeacherInvitations   TeacherInvitationToken[] @relation("TeacherInvitationIssuer")
   reviewedRegistrations      CouncilSchoolRegistration[]   @relation("RegistrationReviewer")
   createdCurriculumVersions  CurriculumVersion[]           @relation("CurriculumVersionAuthor")
   reviewedCurriculumVersions CurriculumVersion[]           @relation("CurriculumVersionReviewer")
@@ -278,6 +280,7 @@ model LoginIdentifier {
   account                 UserAccount              @relation(fields: [accountId], references: [id], onDelete: Restrict)
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  teacherInvitationTokens TeacherInvitationToken[]
 
   @@unique([id, accountId])
   @@unique([type, normalizedValue])
@@ -315,6 +318,30 @@ model PasswordResetToken {
   loginIdentifier LoginIdentifier @relation(fields: [loginIdentifierId, accountId], references: [id, accountId], onDelete: Restrict)
 
   @@index([accountId, expiresAt])
+  @@index([loginIdentifierId, consumedAt])
+  @@index([expiresAt])
+}
+
+model TeacherInvitationToken {
+  id                String    @id @default(uuid()) @db.Uuid
+  accountId         String    @db.Uuid
+  loginIdentifierId String    @db.Uuid
+  membershipId      String    @db.Uuid
+  registrationId    String    @db.Uuid
+  councilId         String    @db.Uuid
+  invitedByAccountId String   @db.Uuid
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  account         UserAccount     @relation("TeacherInvitationRecipient", fields: [accountId], references: [id], onDelete: Restrict)
+  invitedBy       UserAccount     @relation("TeacherInvitationIssuer", fields: [invitedByAccountId], references: [id], onDelete: Restrict)
+  loginIdentifier LoginIdentifier @relation(fields: [loginIdentifierId, accountId], references: [id, accountId], onDelete: Restrict)
+  membership      SchoolMembership @relation(fields: [membershipId, registrationId, councilId], references: [id, registrationId, councilId], onDelete: Restrict)
+
+  @@index([accountId, expiresAt])
+  @@index([membershipId, expiresAt])
   @@index([loginIdentifierId, consumedAt])
   @@index([expiresAt])
 }
@@ -519,6 +546,7 @@ model SchoolMembership {
   registration     CouncilSchoolRegistration @relation(fields: [registrationId, councilId], references: [id, councilId], onDelete: Restrict)
   person           Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
   staffAssignments StaffAssignment[]
+  teacherInvitationTokens TeacherInvitationToken[]
 
   @@unique([id, registrationId, councilId])
   @@unique([registrationId, personId, role])
