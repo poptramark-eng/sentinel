@@ -1,5 +1,11 @@
 import { ResetPasswordForm } from "./reset-password-form";
 
+export const metadata = {
+  title: "Reset password | Sentinel",
+  robots: { index: false, follow: false },
+  referrer: "no-referrer",
+};
+
 export default async function ResetPasswordPage({
   searchParams,
 }: {
