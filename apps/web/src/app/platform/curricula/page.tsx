@@ -526,17 +526,17 @@ export default function PlatformCurriculaPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="border-b border-[#e5eaf1] bg-white">
+      <header className="border-b border-[var(--line)] bg-white">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 sm:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-xl bg-[#2457c5] text-xs font-bold text-white">CBE</span>
-            <span className="text-sm font-semibold text-[#172b4d]">Platform operations</span>
+            <span className="grid size-9 place-items-center rounded-xl bg-[var(--brand)] text-xs font-bold text-white">CBE</span>
+            <span className="text-sm font-semibold text-[var(--ink-strong)]">Platform operations</span>
           </Link>
           <nav className="flex items-center gap-4 text-xs font-semibold">
-            <Link href="/platform/councils" className="hidden text-[#52647d] hover:text-[#2457c5] sm:inline">Councils</Link>
-            <Link href="/platform/school-registrations" className="hidden text-[#52647d] hover:text-[#2457c5] sm:inline">School approvals</Link>
-            <span className="hidden text-[#94a3b8] md:inline">Curriculum governance</span>
-            <button onClick={signOut} className="rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Sign out</button>
+            <Link href="/platform/councils" className="hidden text-[#52647d] hover:text-[var(--brand)] sm:inline">Councils</Link>
+            <Link href="/platform/school-registrations" className="hidden text-[#52647d] hover:text-[var(--brand)] sm:inline">School approvals</Link>
+            <span className="hidden text-[var(--subtle)] md:inline">Curriculum governance</span>
+            <button onClick={signOut} className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[#52647d] hover:bg-[var(--surface-subtle)]">Sign out</button>
           </nav>
         </div>
       </header>
@@ -544,14 +544,14 @@ export default function PlatformCurriculaPage() {
       <div className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2457c5]">Platform administration / academic standards</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#172b4d]">Curriculum catalogue</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748b]">Review source-backed curriculum versions, inspect grade mappings and publish only after independent review.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand)]">Platform administration / academic standards</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--ink-strong)]">Curriculum catalogue</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Review source-backed curriculum versions, inspect grade mappings and publish only after independent review.</p>
           </div>
-          <button onClick={() => { setLoading(true); void loadCatalogue().catch((cause) => setError(cause instanceof Error ? cause.message : "Refresh failed.")).finally(() => setLoading(false)); }} className="rounded-xl border border-[#dbe3ee] bg-white px-4 py-3 text-sm font-semibold text-[#52647d] hover:bg-[#f6f8fb]">Refresh catalogue</button>
+          <button onClick={() => { setLoading(true); void loadCatalogue().catch((cause) => setError(cause instanceof Error ? cause.message : "Refresh failed.")).finally(() => setLoading(false)); }} className="rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-semibold text-[#52647d] hover:bg-[var(--surface-subtle)]">Refresh catalogue</button>
         </div>
 
-        {error ? <p role="alert" className="mt-5 rounded-xl border border-[#f3d0d0] bg-[#fff7f7] px-4 py-3 text-sm text-[#a33b3b]">{error}</p> : null}
+        {error ? <p role="alert" className="mt-5 rounded-xl border border-[#fecaca] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">{error}</p> : null}
         {notice ? <p role="status" className="mt-5 rounded-xl border border-[#cfe9dd] bg-[#f2fbf6] px-4 py-3 text-sm text-[#287653]">{notice}</p> : null}
 
         <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -561,65 +561,65 @@ export default function PlatformCurriculaPage() {
             { label: "Awaiting review", value: totals.review, hint: "Requires independent decision" },
             { label: "Drafts", value: totals.draft, hint: "Still being prepared" },
           ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-[#e5eaf1] bg-white p-4">
-              <p className="text-xs font-medium text-[#64748b]">{item.label}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-[#172b4d]">{loading ? "—" : item.value}</p>
-              <p className="mt-1 text-xs text-[#94a3b8]">{item.hint}</p>
+            <div key={item.label} className="rounded-2xl border border-[var(--line)] bg-white p-4">
+              <p className="text-xs font-medium text-[var(--muted)]">{item.label}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink-strong)]">{loading ? "—" : item.value}</p>
+              <p className="mt-1 text-xs text-[var(--subtle)]">{item.hint}</p>
             </div>
           ))}
         </section>
 
         <details className="mt-6 overflow-hidden rounded-2xl border border-[#dce6f5] bg-white">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
-            <span><span className="block text-sm font-semibold text-[#172b4d]">Import source-review CSV</span><span className="mt-1 block text-xs text-[#64748b]">Create a draft catalogue version with source fingerprints and unresolved review flags.</span></span>
-            <span className="rounded-lg bg-[#eef4ff] px-3 py-2 text-xs font-semibold text-[#2457c5]">New draft</span>
+            <span><span className="block text-sm font-semibold text-[var(--ink-strong)]">Import source-review CSV</span><span className="mt-1 block text-xs text-[var(--muted)]">Create a draft catalogue version with source fingerprints and unresolved review flags.</span></span>
+            <span className="rounded-lg bg-[#eef4ff] px-3 py-2 text-xs font-semibold text-[var(--brand)]">New draft</span>
           </summary>
-          <div className="border-t border-[#edf0f5] p-5">
-            <p className="max-w-3xl text-xs leading-5 text-[#64748b]">This import accepts the KICD source-review CSV. Rows are always created as <strong>REVIEW_REQUIRED</strong>. Values such as REVIEW_REQUIRED or SOURCE_DIRECTORY_REVIEWED_NOT_PUBLISHED are not interpreted as evidence that a learning area is core, optional or assessment-eligible.</p>
+          <div className="border-t border-[var(--line)] p-5">
+            <p className="max-w-3xl text-xs leading-5 text-[var(--muted)]">This import accepts the KICD source-review CSV. Rows are always created as <strong>REVIEW_REQUIRED</strong>. Values such as REVIEW_REQUIRED or SOURCE_DIRECTORY_REVIEWED_NOT_PUBLISHED are not interpreted as evidence that a learning area is core, optional or assessment-eligible.</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <label className="text-[11px] font-semibold text-[#52647d]">Curriculum name
-                <input value={draftCurriculumName} onChange={(event) => setDraftCurriculumName(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+                <input value={draftCurriculumName} onChange={(event) => setDraftCurriculumName(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2.5 text-xs font-normal" />
               </label>
               <label className="text-[11px] font-semibold text-[#52647d]">Version label
-                <input value={draftVersionLabel} onChange={(event) => setDraftVersionLabel(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+                <input value={draftVersionLabel} onChange={(event) => setDraftVersionLabel(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2.5 text-xs font-normal" />
               </label>
               <label className="text-[11px] font-semibold text-[#52647d]">Track
-                <input value="REGULAR" readOnly className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-[#f8fafc] px-3 py-2.5 text-xs font-normal text-[#64748b]" />
+                <input value="REGULAR" readOnly className="mt-1 w-full rounded-lg border border-[var(--line)] bg-[#f8fafc] px-3 py-2.5 text-xs font-normal text-[var(--muted)]" />
               </label>
               <label className="text-[11px] font-semibold text-[#52647d] sm:col-span-2 xl:col-span-3">Source title
-                <input value={draftSourceTitle} onChange={(event) => setDraftSourceTitle(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+                <input value={draftSourceTitle} onChange={(event) => setDraftSourceTitle(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2.5 text-xs font-normal" />
               </label>
               <label className="text-[11px] font-semibold text-[#52647d] sm:col-span-2 xl:col-span-2">Primary source URL
-                <input type="url" value={draftSourceUrl} onChange={(event) => setDraftSourceUrl(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+                <input type="url" value={draftSourceUrl} onChange={(event) => setDraftSourceUrl(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2.5 text-xs font-normal" />
               </label>
               <label className="text-[11px] font-semibold text-[#52647d]">Retrieved on
-                <input type="date" value={draftRetrievedAt} onChange={(event) => setDraftRetrievedAt(event.target.value)} className="mt-1 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-normal" />
+                <input type="date" value={draftRetrievedAt} onChange={(event) => setDraftRetrievedAt(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2.5 text-xs font-normal" />
               </label>
               <label className="text-[11px] font-semibold text-[#52647d] sm:col-span-2 xl:col-span-3">Source-review CSV
-                <input type="file" accept=".csv,text/csv" onChange={(event) => { setDraftFile(event.target.files?.[0] ?? null); setDraftPreview(null); setDraftPayload(null); setDraftFileName(""); setDraftImportError(""); }} className="mt-1 block w-full rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-xs font-normal file:mr-3 file:rounded-md file:border-0 file:bg-[#eef4ff] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[#2457c5]" />
+                <input type="file" accept=".csv,text/csv" onChange={(event) => { setDraftFile(event.target.files?.[0] ?? null); setDraftPreview(null); setDraftPayload(null); setDraftFileName(""); setDraftImportError(""); }} className="mt-1 block w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-xs font-normal file:mr-3 file:rounded-md file:border-0 file:bg-[#eef4ff] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--brand)]" />
               </label>
             </div>
-            {draftFile ? <p className="mt-2 text-[11px] text-[#64748b]">Selected: {draftFile.name} · {(draftFile.size / 1024).toFixed(1)} KB</p> : null}
-            {draftImportError ? <p role="alert" className="mt-4 rounded-lg border border-[#f3d0d0] bg-[#fff7f7] px-3 py-2 text-xs text-[#a33b3b]">{draftImportError}</p> : null}
+            {draftFile ? <p className="mt-2 text-[11px] text-[var(--muted)]">Selected: {draftFile.name} · {(draftFile.size / 1024).toFixed(1)} KB</p> : null}
+            {draftImportError ? <p role="alert" className="mt-4 rounded-lg border border-[#fecaca] bg-[var(--danger-soft)] px-3 py-2 text-xs text-[var(--danger)]">{draftImportError}</p> : null}
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button disabled={draftImportBusy || !draftFile} onClick={() => void previewDraftImport()} className="rounded-lg bg-[#2457c5] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1d49a7] disabled:opacity-50">{draftImportBusy ? "Validating…" : "Validate import"}</button>
-              {draftFileName ? <span className="text-[11px] text-[#64748b]">Preview for {draftFileName}</span> : null}
+              <button disabled={draftImportBusy || !draftFile} onClick={() => void previewDraftImport()} className="rounded-lg bg-[var(--brand)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1d49a7] disabled:opacity-50">{draftImportBusy ? "Validating…" : "Validate import"}</button>
+              {draftFileName ? <span className="text-[11px] text-[var(--muted)]">Preview for {draftFileName}</span> : null}
             </div>
             {draftPreview ? (
-              <div className="mt-5 rounded-xl border border-[#e5eaf1] bg-[#f8fafc] p-4">
+              <div className="mt-5 rounded-xl border border-[var(--line)] bg-[#f8fafc] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div><p className="text-xs font-semibold text-[#172b4d]">Import preview · {draftPreview.curriculumCode}</p><p className="mt-1 text-[11px] text-[#64748b]">Version {draftPreview.versionLabel}</p></div>
+                  <div><p className="text-xs font-semibold text-[var(--ink-strong)]">Import preview · {draftPreview.curriculumCode}</p><p className="mt-1 text-[11px] text-[var(--muted)]">Version {draftPreview.versionLabel}</p></div>
                   <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${draftPreview.valid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{draftPreview.valid ? "Ready to create draft" : "Resolve import errors"}</span>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div><p className="text-[10px] text-[#94a3b8]">Rows</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.rowsReceived}</p></div>
-                  <div><p className="text-[10px] text-[#94a3b8]">Unique learning areas</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.uniqueLearningAreas}</p></div>
-                  <div><p className="text-[10px] text-[#94a3b8]">Grades covered</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.gradesCovered.length} / 9</p></div>
-                  <div><p className="text-[10px] text-[#94a3b8]">Optionality unresolved</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{draftPreview.unresolvedOptionality}</p></div>
+                  <div><p className="text-[10px] text-[var(--subtle)]">Rows</p><p className="mt-1 text-lg font-semibold text-[var(--ink-strong)]">{draftPreview.rowsReceived}</p></div>
+                  <div><p className="text-[10px] text-[var(--subtle)]">Unique learning areas</p><p className="mt-1 text-lg font-semibold text-[var(--ink-strong)]">{draftPreview.uniqueLearningAreas}</p></div>
+                  <div><p className="text-[10px] text-[var(--subtle)]">Grades covered</p><p className="mt-1 text-lg font-semibold text-[var(--ink-strong)]">{draftPreview.gradesCovered.length} / 9</p></div>
+                  <div><p className="text-[10px] text-[var(--subtle)]">Optionality unresolved</p><p className="mt-1 text-lg font-semibold text-[var(--ink-strong)]">{draftPreview.unresolvedOptionality}</p></div>
                 </div>
-                {draftPreview.errors.length > 0 ? <ul className="mt-3 space-y-1 text-[11px] text-[#a33b3b]">{draftPreview.errors.map((item) => <li key={`${item.row}-${item.message}`}>Row {item.row}: {item.message}</li>)}</ul> : null}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#e5eaf1] pt-4">
-                  <p className="max-w-xl text-[11px] leading-5 text-[#64748b]">The imported version remains a draft. Independent review is still required before publication; the source file fingerprint is retained, while assessment eligibility remains unconfigured and cannot be activated by import.</p>
+                {draftPreview.errors.length > 0 ? <ul className="mt-3 space-y-1 text-[11px] text-[var(--danger)]">{draftPreview.errors.map((item) => <li key={`${item.row}-${item.message}`}>Row {item.row}: {item.message}</li>)}</ul> : null}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
+                  <p className="max-w-xl text-[11px] leading-5 text-[var(--muted)]">The imported version remains a draft. Independent review is still required before publication; the source file fingerprint is retained, while assessment eligibility remains unconfigured and cannot be activated by import.</p>
                   <button disabled={!draftPreview.valid || draftImportBusy} onClick={() => void commitDraftImport()} className="rounded-lg bg-[#16734b] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#115d3d] disabled:opacity-50">{draftImportBusy ? "Importing…" : "Create draft version"}</button>
                 </div>
               </div>
@@ -628,33 +628,33 @@ export default function PlatformCurriculaPage() {
         </details>
 
         <div className="mt-6 grid min-h-[680px] gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
-          <section className="overflow-hidden rounded-2xl border border-[#e5eaf1] bg-white">
-            <div className="border-b border-[#edf0f5] p-4">
+          <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
+            <div className="border-b border-[var(--line)] p-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-[#172b4d]">Version directory</h2>
-                <span className="text-xs text-[#94a3b8]">{visibleVersions.length} shown</span>
+                <h2 className="text-sm font-semibold text-[var(--ink-strong)]">Version directory</h2>
+                <span className="text-xs text-[var(--subtle)]">{visibleVersions.length} shown</span>
               </div>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search curriculum or version" className="mt-3 w-full rounded-xl border border-[#dbe3ee] px-3 py-2.5 text-xs outline-none focus:border-[#6d94e8] focus:ring-4 focus:ring-[#eaf1ff]" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search curriculum or version" className="mt-3 w-full rounded-xl border border-[var(--line)] px-3 py-2.5 text-xs outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]" />
             </div>
             <div className="max-h-[760px] overflow-y-auto">
-              {loading ? <p className="p-5 text-sm text-[#64748b]">Loading curriculum versions…</p> : null}
+              {loading ? <p className="p-5 text-sm text-[var(--muted)]">Loading curriculum versions…</p> : null}
               {!loading && visibleVersions.length === 0 ? (
                 <div className="p-6">
-                  <div className="grid size-10 place-items-center rounded-xl bg-[#eef4ff] text-[#2457c5]"><span className="text-lg">◎</span></div>
-                  <h3 className="mt-4 text-sm font-semibold text-[#172b4d]">No curriculum versions yet</h3>
-                  <p className="mt-2 text-xs leading-5 text-[#64748b]">The catalogue is intentionally not pre-populated with unverified learning-area data. Add a source-backed draft when the import workflow is available.</p>
+                  <div className="grid size-10 place-items-center rounded-xl bg-[#eef4ff] text-[var(--brand)]"><span className="text-lg">◎</span></div>
+                  <h3 className="mt-4 text-sm font-semibold text-[var(--ink-strong)]">No curriculum versions yet</h3>
+                  <p className="mt-2 text-xs leading-5 text-[var(--muted)]">The catalogue is intentionally not pre-populated with unverified learning-area data. Add a source-backed draft when the import workflow is available.</p>
                 </div>
               ) : null}
               {visibleVersions.map(({ curriculum, version }) => (
-                <button key={version.id} onClick={() => { setSelectedId(version.id); setError(""); setNotice(""); }} className={`block w-full border-b border-[#edf0f5] p-4 text-left transition hover:bg-[#f8faff] ${selectedId === version.id ? "bg-[#f1f5ff] shadow-[inset_3px_0_0_#2457c5]" : ""}`}>
+                <button key={version.id} onClick={() => { setSelectedId(version.id); setError(""); setNotice(""); }} className={`block w-full border-b border-[var(--line)] p-4 text-left transition hover:bg-[#f8faff] ${selectedId === version.id ? "bg-[#f1f5ff] shadow-[inset_3px_0_0_var(--brand)]" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#172b4d]">{curriculum.name}</p>
-                      <p className="mt-1 text-xs text-[#64748b]">{curriculum.code} · {version.versionLabel}</p>
+                      <p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{curriculum.name}</p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">{curriculum.code} · {version.versionLabel}</p>
                     </div>
                     <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusClass(version.status)}`}>{statusLabels[version.status]}</span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-[11px] text-[#94a3b8]">
+                  <div className="mt-3 flex items-center justify-between text-[11px] text-[var(--subtle)]">
                     <span>{version._count.gradeLearningAreas} grade mappings</span>
                     <span>{dateLabel(version.createdAt)}</span>
                   </div>
@@ -663,54 +663,54 @@ export default function PlatformCurriculaPage() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-[#e5eaf1] bg-white">
-            {detailLoading ? <div className="p-8 text-sm text-[#64748b]">Loading version details…</div> : null}
+          <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
+            {detailLoading ? <div className="p-8 text-sm text-[var(--muted)]">Loading version details…</div> : null}
             {!detailLoading && !detail ? (
               <div className="grid min-h-[500px] place-items-center p-8 text-center">
                 <div className="max-w-sm">
-                  <p className="text-sm font-semibold text-[#172b4d]">Select a curriculum version</p>
-                  <p className="mt-2 text-xs leading-5 text-[#64748b]">Its source evidence, grade coverage and review state will appear here.</p>
+                  <p className="text-sm font-semibold text-[var(--ink-strong)]">Select a curriculum version</p>
+                  <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Its source evidence, grade coverage and review state will appear here.</p>
                 </div>
               </div>
             ) : null}
             {!detailLoading && detail ? (
               <>
-                <div className="border-b border-[#edf0f5] p-5 sm:p-6">
+                <div className="border-b border-[var(--line)] p-5 sm:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2457c5]">{detail.curriculum.track} curriculum</p>
-                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-[#172b4d]">{detail.curriculum.name}</h2>
-                      <p className="mt-1 text-xs text-[#64748b]">{detail.curriculum.code} · Version {detail.versionLabel}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--brand)]">{detail.curriculum.track} curriculum</p>
+                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--ink-strong)]">{detail.curriculum.name}</h2>
+                      <p className="mt-1 text-xs text-[var(--muted)]">{detail.curriculum.code} · Version {detail.versionLabel}</p>
                     </div>
                     <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${statusClass(detail.status)}`}>{statusLabels[detail.status]}</span>
                   </div>
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl bg-[#f7f9fc] p-3"><p className="text-[11px] text-[#64748b]">Grade mappings</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{detail.gradeLearningAreas.length}</p></div>
-                    <div className="rounded-xl bg-[#f7f9fc] p-3"><p className="text-[11px] text-[#64748b]">Reviewed mappings</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{detail.gradeLearningAreas.filter((area) => area.reviewStatus === "REVIEWED" && area.optionality !== "UNKNOWN").length}</p></div>
-                    <div className="rounded-xl bg-[#f7f9fc] p-3"><p className="text-[11px] text-[#64748b]">Council selections</p><p className="mt-1 text-lg font-semibold text-[#172b4d]">{detail._count.councilCurricula}</p></div>
+                    <div className="rounded-xl bg-[#f7f9fc] p-3"><p className="text-[11px] text-[var(--muted)]">Grade mappings</p><p className="mt-1 text-lg font-semibold text-[var(--ink-strong)]">{detail.gradeLearningAreas.length}</p></div>
+                    <div className="rounded-xl bg-[#f7f9fc] p-3"><p className="text-[11px] text-[var(--muted)]">Reviewed mappings</p><p className="mt-1 text-lg font-semibold text-[var(--ink-strong)]">{detail.gradeLearningAreas.filter((area) => area.reviewStatus === "REVIEWED" && area.optionality !== "UNKNOWN").length}</p></div>
+                    <div className="rounded-xl bg-[#f7f9fc] p-3"><p className="text-[11px] text-[var(--muted)]">Council selections</p><p className="mt-1 text-lg font-semibold text-[var(--ink-strong)]">{detail._count.councilCurricula}</p></div>
                   </div>
                 </div>
 
                 <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
                   <div className="min-w-0">
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-sm font-semibold text-[#172b4d]">Grade-level learning areas</h3>
-                      <span className="text-[11px] text-[#94a3b8]">Grades 1–9</span>
+                      <h3 className="text-sm font-semibold text-[var(--ink-strong)]">Grade-level learning areas</h3>
+                      <span className="text-[11px] text-[var(--subtle)]">Grades 1–9</span>
                     </div>
-                    {groupedAreas.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-[#dbe3ee] p-5 text-xs text-[#64748b]">No grade mappings have been added to this version.</p> : null}
+                    {groupedAreas.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-[var(--line)] p-5 text-xs text-[var(--muted)]">No grade mappings have been added to this version.</p> : null}
                     <div className="mt-4 space-y-4">
                       {groupedAreas.map(([grade, areas]) => (
                         <div key={grade} className="overflow-hidden rounded-xl border border-[#e8edf4]">
                           <div className="flex items-center justify-between bg-[#f8faff] px-4 py-3">
-                            <h4 className="text-xs font-semibold text-[#172b4d]">{grade.replace("_", " ")}</h4>
-                            <span className="text-[11px] text-[#64748b]">{areas.length} learning areas</span>
+                            <h4 className="text-xs font-semibold text-[var(--ink-strong)]">{grade.replace("_", " ")}</h4>
+                            <span className="text-[11px] text-[var(--muted)]">{areas.length} learning areas</span>
                           </div>
-                          <div className="divide-y divide-[#edf0f5]">
+                          <div className="divide-y divide-[var(--line)]">
                             {areas.map((area) => (
                               <div key={area.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-[#172b4d]">{area.sourceLabel}</p>
-                                  <p className="mt-1 text-[11px] text-[#94a3b8]">{area.learningArea.canonicalName} · {area.learningArea.code}</p>
+                                  <p className="text-xs font-semibold text-[var(--ink-strong)]">{area.sourceLabel}</p>
+                                  <p className="mt-1 text-[11px] text-[var(--subtle)]">{area.learningArea.canonicalName} · {area.learningArea.code}</p>
                                 </div>
                                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                                   <span className={`rounded-full px-2 py-1 text-[10px] font-medium ${area.reviewStatus === "REVIEWED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{area.reviewStatus === "REVIEWED" ? "Reviewed" : "Needs review"}</span>
@@ -719,35 +719,35 @@ export default function PlatformCurriculaPage() {
                                 {detail.status === "DRAFT" ? (
                                   <div className="mt-3 grid gap-2 rounded-lg bg-[#f8fafc] p-3">
                                     <div className="grid gap-2 sm:grid-cols-2">
-                                      <label className="text-[10px] font-semibold text-[#64748b]">Source label
-                                        <input value={mappingEdits[area.id]?.sourceLabel ?? area.sourceLabel} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: event.target.value, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      <label className="text-[10px] font-semibold text-[var(--muted)]">Source label
+                                        <input value={mappingEdits[area.id]?.sourceLabel ?? area.sourceLabel} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: event.target.value, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-2 py-2 text-xs font-normal" />
                                       </label>
-                                      <label className="text-[10px] font-semibold text-[#64748b]">Source URL
-                                        <input value={mappingEdits[area.id]?.sourceUrl ?? area.sourceUrl} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: event.target.value, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      <label className="text-[10px] font-semibold text-[var(--muted)]">Source URL
+                                        <input value={mappingEdits[area.id]?.sourceUrl ?? area.sourceUrl} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: event.target.value, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-2 py-2 text-xs font-normal" />
                                       </label>
                                     </div>
                                     <div className="flex flex-col gap-2 sm:flex-row">
-                                      <label className="text-[10px] font-semibold text-[#64748b] sm:w-28">Sort order
-                                        <input type="number" min="0" max="10000" value={mappingEdits[area.id]?.sortOrder ?? area.sortOrder} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: Number(event.target.value), reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      <label className="text-[10px] font-semibold text-[var(--muted)] sm:w-28">Sort order
+                                        <input type="number" min="0" max="10000" value={mappingEdits[area.id]?.sortOrder ?? area.sortOrder} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: Number(event.target.value), reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-2 py-2 text-xs font-normal" />
                                       </label>
-                                      <label className="min-w-0 flex-1 text-[10px] font-semibold text-[#64748b]">Reason for change
-                                        <input value={mappingEdits[area.id]?.reason ?? ""} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: event.target.value } }))} placeholder="Required for the audit trail" className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs font-normal" />
+                                      <label className="min-w-0 flex-1 text-[10px] font-semibold text-[var(--muted)]">Reason for change
+                                        <input value={mappingEdits[area.id]?.reason ?? ""} onChange={(event) => setMappingEdits((current) => ({ ...current, [area.id]: { sourceLabel: current[area.id]?.sourceLabel ?? area.sourceLabel, sourceUrl: current[area.id]?.sourceUrl ?? area.sourceUrl, sortOrder: current[area.id]?.sortOrder ?? area.sortOrder, reason: event.target.value } }))} placeholder="Required for the audit trail" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-2 py-2 text-xs font-normal" />
                                       </label>
-                                      <button disabled={busy} onClick={() => void saveMappingEdit(area)} className="self-end rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-[11px] font-semibold text-[#2457c5] hover:bg-[#eef4ff] disabled:opacity-50">Save changes</button>
+                                      <button disabled={busy} onClick={() => void saveMappingEdit(area)} className="self-end rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[11px] font-semibold text-[var(--brand)] hover:bg-[#eef4ff] disabled:opacity-50">Save changes</button>
                                     </div>
                                   </div>
                                 ) : null}
                                 {detail.status === "IN_REVIEW" ? (
                                   <div className="mt-3 grid gap-2 rounded-lg bg-[#f8fafc] p-3 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-end">
-                                    <label className="text-[10px] font-semibold text-[#64748b]">Optionality
-                                      <select value={(mappingReviews[area.id]?.optionality ?? (area.optionality === "UNKNOWN" ? "" : area.optionality))} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: event.target.value as "CORE" | "OPTIONAL" | "", reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs">
+                                    <label className="text-[10px] font-semibold text-[var(--muted)]">Optionality
+                                      <select value={(mappingReviews[area.id]?.optionality ?? (area.optionality === "UNKNOWN" ? "" : area.optionality))} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: event.target.value as "CORE" | "OPTIONAL" | "", reason: current[area.id]?.reason ?? "" } }))} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-2 py-2 text-xs">
                                         <option value="">Select classification</option><option value="CORE">Core</option><option value="OPTIONAL">Optional</option>
                                       </select>
                                     </label>
-                                    <label className="text-[10px] font-semibold text-[#64748b]">Review note
-                                      <input value={mappingReviews[area.id]?.reason ?? area.reviewNote ?? ""} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: current[area.id]?.optionality ?? (area.optionality === "UNKNOWN" ? "" : area.optionality), reason: event.target.value } }))} placeholder="Evidence supporting this classification" className="mt-1 w-full rounded-lg border border-[#dbe3ee] bg-white px-2 py-2 text-xs outline-none focus:border-[#6d94e8]" />
+                                    <label className="text-[10px] font-semibold text-[var(--muted)]">Review note
+                                      <input value={mappingReviews[area.id]?.reason ?? area.reviewNote ?? ""} onChange={(event) => setMappingReviews((current) => ({ ...current, [area.id]: { optionality: current[area.id]?.optionality ?? (area.optionality === "UNKNOWN" ? "" : area.optionality), reason: event.target.value } }))} placeholder="Evidence supporting this classification" className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-2 py-2 text-xs outline-none focus:border-[var(--brand)]" />
                                     </label>
-                                    <button disabled={busy} onClick={() => void saveMappingReview(area)} className="rounded-lg border border-[#dbe3ee] bg-white px-3 py-2 text-[11px] font-semibold text-[#2457c5] hover:bg-[#eef4ff] disabled:opacity-50">Save review</button>
+                                    <button disabled={busy} onClick={() => void saveMappingReview(area)} className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[11px] font-semibold text-[var(--brand)] hover:bg-[#eef4ff] disabled:opacity-50">Save review</button>
                                   </div>
                                 ) : null}
                               </div>
@@ -760,26 +760,26 @@ export default function PlatformCurriculaPage() {
 
                   <aside className="space-y-4">
                     <div className="rounded-xl border border-[#e8edf4] p-4">
-                      <h3 className="text-xs font-semibold text-[#172b4d]">Source provenance</h3>
+                      <h3 className="text-xs font-semibold text-[var(--ink-strong)]">Source provenance</h3>
                       <p className="mt-3 text-xs font-medium text-[#52647d]">{detail.sourceTitle}</p>
-                      <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 block break-all text-[11px] text-[#2457c5] hover:underline">Open source document ↗</a>
+                      <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 block break-all text-[11px] text-[var(--brand)] hover:underline">Open source document ↗</a>
                       <dl className="mt-4 space-y-3 text-[11px]">
-                        <div><dt className="text-[#94a3b8]">Retrieved</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.sourceRetrievedAt)}</dd></div>
-                        <div><dt className="text-[#94a3b8]">SHA-256 fingerprint</dt><dd className="mt-1 break-all font-mono text-[10px] text-[#52647d]">{shortHash(detail.sourceSha256)}</dd></div>
-                        <div><dt className="text-[#94a3b8]">Created</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.createdAt)}</dd></div>
-                        <div><dt className="text-[#94a3b8]">Published</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.publishedAt)}</dd></div>
+                        <div><dt className="text-[var(--subtle)]">Retrieved</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.sourceRetrievedAt)}</dd></div>
+                        <div><dt className="text-[var(--subtle)]">SHA-256 fingerprint</dt><dd className="mt-1 break-all font-mono text-[10px] text-[#52647d]">{shortHash(detail.sourceSha256)}</dd></div>
+                        <div><dt className="text-[var(--subtle)]">Created</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.createdAt)}</dd></div>
+                        <div><dt className="text-[var(--subtle)]">Published</dt><dd className="mt-1 font-medium text-[#52647d]">{dateLabel(detail.publishedAt)}</dd></div>
                       </dl>
                     </div>
 
                     <div className="rounded-xl border border-[#e8edf4] p-4">
-                      <h3 className="text-xs font-semibold text-[#172b4d]">Review activity</h3>
-                      {detail.auditEvents.length === 0 ? <p className="mt-2 text-[11px] text-[#94a3b8]">No review activity recorded yet.</p> : (
+                      <h3 className="text-xs font-semibold text-[var(--ink-strong)]">Review activity</h3>
+                      {detail.auditEvents.length === 0 ? <p className="mt-2 text-[11px] text-[var(--subtle)]">No review activity recorded yet.</p> : (
                         <ol className="mt-3 space-y-3">
                           {detail.auditEvents.map((event, index) => (
-                            <li key={`${event.action}-${event.createdAt}-${index}`} className="border-l-2 border-[#dbe3ee] pl-3">
+                            <li key={`${event.action}-${event.createdAt}-${index}`} className="border-l-2 border-[var(--line)] pl-3">
                               <p className="text-[10px] font-semibold text-[#52647d]">{event.action.replaceAll("_", " ").toLowerCase()}</p>
-                              <p className="mt-1 text-[10px] text-[#94a3b8]">{dateLabel(event.createdAt)}</p>
-                              {event.reason ? <p className="mt-1 text-[11px] leading-5 text-[#64748b]">{event.reason}</p> : null}
+                              <p className="mt-1 text-[10px] text-[var(--subtle)]">{dateLabel(event.createdAt)}</p>
+                              {event.reason ? <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">{event.reason}</p> : null}
                             </li>
                           ))}
                         </ol>
@@ -790,27 +790,27 @@ export default function PlatformCurriculaPage() {
                       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
                         <h3 className="text-xs font-semibold text-[#1e3a70]">Ready for independent review?</h3>
                         <p className="mt-2 text-[11px] leading-5 text-[#52647d]">Submitting locks the editing workflow for this version until the reviewer returns it or publishes it.</p>
-                        <button disabled={busy} onClick={() => void performAction("submit-review")} className="mt-4 w-full rounded-lg bg-[#2457c5] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#1d49a7] disabled:opacity-50">{busy ? "Working…" : "Submit for review"}</button>
+                        <button disabled={busy} onClick={() => void performAction("submit-review")} className="mt-4 w-full rounded-lg bg-[var(--brand)] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#1d49a7] disabled:opacity-50">{busy ? "Working…" : "Submit for review"}</button>
                       </div>
                     ) : null}
 
                     {detail.status === "IN_REVIEW" ? (
                       <div className="rounded-xl border border-[#e8edf4] p-4">
-                        <h3 className="text-xs font-semibold text-[#172b4d]">Reviewer actions</h3>
-                        <p className="mt-2 text-[11px] leading-5 text-[#64748b]">Publication requires a reviewer other than the original author and fully reviewed mappings.</p>
+                        <h3 className="text-xs font-semibold text-[var(--ink-strong)]">Reviewer actions</h3>
+                        <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">Publication requires a reviewer other than the original author and fully reviewed mappings.</p>
                         <button disabled={busy} onClick={() => void performAction("publish")} className="mt-4 w-full rounded-lg bg-[#16734b] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#115d3d] disabled:opacity-50">{busy ? "Working…" : "Publish version"}</button>
-                        <div className="mt-4 border-t border-[#edf0f5] pt-4">
+                        <div className="mt-4 border-t border-[var(--line)] pt-4">
                           <label htmlFor="return-reason" className="text-[11px] font-semibold text-[#52647d]">Return with review notes</label>
-                          <textarea id="return-reason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} rows={3} placeholder="Explain what needs correction…" className="mt-2 w-full resize-y rounded-lg border border-[#dbe3ee] px-3 py-2 text-xs outline-none focus:border-[#6d94e8] focus:ring-4 focus:ring-[#eaf1ff]" />
-                          <button disabled={busy || returnReason.trim().length < 10} onClick={() => void performAction("return")} className="mt-2 w-full rounded-lg border border-[#dbe3ee] px-3 py-2.5 text-xs font-semibold text-[#52647d] hover:bg-[#f6f8fb] disabled:opacity-50">Return to draft</button>
+                          <textarea id="return-reason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} rows={3} placeholder="Explain what needs correction…" className="mt-2 w-full resize-y rounded-lg border border-[var(--line)] px-3 py-2 text-xs outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]" />
+                          <button disabled={busy || returnReason.trim().length < 10} onClick={() => void performAction("return")} className="mt-2 w-full rounded-lg border border-[var(--line)] px-3 py-2.5 text-xs font-semibold text-[#52647d] hover:bg-[var(--surface-subtle)] disabled:opacity-50">Return to draft</button>
                         </div>
                       </div>
                     ) : null}
 
                     {detail.status === "PUBLISHED" || detail.status === "RETIRED" ? (
                       <div className="rounded-xl border border-[#e8edf4] bg-[#f8fafc] p-4">
-                        <h3 className="text-xs font-semibold text-[#172b4d]">Immutable version</h3>
-                        <p className="mt-2 text-[11px] leading-5 text-[#64748b]">This version is locked. Corrections must be prepared as a new version so historical assessments retain their original curriculum.</p>
+                        <h3 className="text-xs font-semibold text-[var(--ink-strong)]">Immutable version</h3>
+                        <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">This version is locked. Corrections must be prepared as a new version so historical assessments retain their original curriculum.</p>
                       </div>
                     ) : null}
                   </aside>
