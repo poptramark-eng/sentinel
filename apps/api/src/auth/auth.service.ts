@@ -14,9 +14,11 @@ import {
   createEmailVerificationToken,
   createPasswordResetToken,
   createRefreshToken,
+  createTeacherInvitationToken,
   hashEmailVerificationToken,
   hashPasswordResetToken,
   hashRefreshToken,
+  hashTeacherInvitationToken,
   signAccessToken,
 } from "./token";
 
@@ -383,6 +385,114 @@ export class AuthService {
     }
 
     return { status: "PASSWORD_RESET" };
+  }
+
+  async acceptTeacherInvitation(rawToken: string, newPassword: string) {
+    const tokenHash = hashTeacherInvitationToken(rawToken);
+    const invitation = await this.prisma.client.teacherInvitationToken.findUnique({
+      where: { tokenHash },
+      include: {
+        account: true,
+        loginIdentifier: true,
+        membership: {
+          include: {
+            registration: {
+              include: { school: true, council: true },
+            },
+          },
+        },
+      },
+    });
+    const now = new Date();
+    if (
+      !invitation ||
+      invitation.consumedAt ||
+      invitation.expiresAt <= now ||
+      invitation.account.status !== "PENDING_VERIFICATION" ||
+      invitation.account.passwordHash !== null ||
+      invitation.loginIdentifier.type !== "EMAIL" ||
+      invitation.loginIdentifier.verifiedAt ||
+      invitation.membership.role !== "TEACHER" ||
+      invitation.membership.status !== "PENDING" ||
+      invitation.membership.endsAt ||
+      invitation.membership.registration.status !== "APPROVED" ||
+      invitation.membership.registration.school.status !== "ACTIVE" ||
+      invitation.membership.registration.council.status !== "ACTIVE"
+    ) {
+      throw new BadRequestException("Teacher invitation is invalid or expired.");
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    try {
+      await this.prisma.client.$transaction(async (tx) => {
+        const consumed = await tx.teacherInvitationToken.updateMany({
+          where: { id: invitation.id, accountId: invitation.accountId, consumedAt: null, expiresAt: { gt: now } },
+          data: { consumedAt: now },
+        });
+        if (consumed.count !== 1) {
+          throw new BadRequestException("Teacher invitation is invalid or expired.");
+        }
+
+        const verified = await tx.loginIdentifier.updateMany({
+          where: { id: invitation.loginIdentifierId, accountId: invitation.accountId, type: "EMAIL", verifiedAt: null },
+          data: { verifiedAt: now },
+        });
+        if (verified.count !== 1) {
+          throw new BadRequestException("Teacher invitation is invalid or expired.");
+        }
+
+        const activated = await tx.userAccount.updateMany({
+          where: { id: invitation.accountId, status: "PENDING_VERIFICATION", passwordHash: null },
+          data: { status: "ACTIVE", passwordHash, authVersion: { increment: 1 } },
+        });
+        if (activated.count !== 1) {
+          throw new BadRequestException("Teacher invitation is invalid or expired.");
+        }
+
+        const membership = await tx.schoolMembership.updateMany({
+          where: {
+            id: invitation.membershipId,
+            registrationId: invitation.registrationId,
+            councilId: invitation.councilId,
+            role: "TEACHER",
+            status: "PENDING",
+            endsAt: null,
+          },
+          data: { status: "ACTIVE", startsAt: now },
+        });
+        if (membership.count !== 1) {
+          throw new BadRequestException("Teacher invitation is invalid or expired.");
+        }
+
+        await tx.teacherInvitationToken.updateMany({
+          where: { accountId: invitation.accountId, consumedAt: null },
+          data: { consumedAt: now },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorAccountId: invitation.accountId,
+            councilId: invitation.councilId,
+            action: "SCHOOL_TEACHER_INVITATION_ACCEPTED",
+            resourceType: "SchoolMembership",
+            resourceId: invitation.membershipId,
+            decision: "ALLOW",
+            metadata: { registrationId: invitation.registrationId, role: "TEACHER" },
+          },
+        });
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? error.code
+          : null;
+      if (code === "P2034" || code === "P2002") {
+        throw new BadRequestException("Teacher invitation is invalid or expired.");
+      }
+      throw error;
+    }
+
+    return { status: "TEACHER_INVITATION_ACCEPTED" };
   }
 
   async verifyEmail(rawToken: string) {
