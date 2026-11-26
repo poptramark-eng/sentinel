@@ -39,3 +39,12 @@ test("non-production environments remain available for synthetic-data developmen
     assert.equal(new ChildDataProcessingGuard().canActivate({}), true);
   });
 });
+
+test("an unknown runtime environment also fails closed", async () => {
+  await withEnvironment({ NODE_ENV: undefined, CHILD_DATA_PROCESSING_ENABLED: undefined }, async () => {
+    assert.throws(
+      () => new ChildDataProcessingGuard().canActivate({}),
+      (error) => error.getStatus() === 503,
+    );
+  });
+});
