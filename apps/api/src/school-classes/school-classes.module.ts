@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
+import { ChildDataProcessingGuard } from "../privacy/child-data-processing.guard";
 import { SchoolClassesController } from "./school-classes.controller";
 import { SchoolClassService } from "./school-class.service";
 import { LearnerEnrollmentController } from "./learner-enrollment.controller";
@@ -14,6 +15,6 @@ import { SchoolAssessmentSubmissionService } from "./school-assessment-submissio
 @Module({
   imports: [AuthModule, DatabaseModule],
   controllers: [SchoolClassesController, LearnerEnrollmentController, SchoolAssessmentMarksController, SchoolTeachingController, SchoolAssessmentSubmissionController],
-  providers: [SchoolClassService, LearnerEnrollmentService, SchoolAssessmentMarkService, SchoolAssessmentSubmissionService],
+  providers: [SchoolClassService, LearnerEnrollmentService, SchoolAssessmentMarkService, SchoolAssessmentSubmissionService, ChildDataProcessingGuard],
 })
 export class SchoolClassesModule {}
