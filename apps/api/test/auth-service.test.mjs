@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { AuthService } from "../dist/auth/auth.service.js";
 import { createLegacyScryptHashForTest } from "./legacy-password-helper.mjs";
-import { hashEmailVerificationToken, hashPasswordResetToken, hashRefreshToken } from "../dist/auth/token.js";
+import { hashEmailVerificationToken, hashPasswordResetToken, hashRefreshToken, hashTeacherInvitationToken } from "../dist/auth/token.js";
 
 process.env.ACCESS_TOKEN_SECRET =
   "test-access-token-secret-should-be-at-least-32-bytes-long";
@@ -452,4 +452,106 @@ test("expired, consumed and replayed password reset tokens are rejected", async 
       (error) => error.getStatus() === 400,
     );
   }
+});
+
+test("teacher invitation acceptance verifies email, activates the account and school membership atomically", async () => {
+  const rawToken = "teacher-invitation-token-for-tests";
+  const invitation = {
+    id: "12121212-1212-4212-8212-121212121212",
+    accountId: account.id,
+    loginIdentifierId: "13131313-1313-4313-8313-131313131313",
+    membershipId: "14141414-1414-4414-8414-141414141414",
+    registrationId: "15151515-1515-4515-8515-151515151515",
+    councilId: "16161616-1616-4616-8616-161616161616",
+    consumedAt: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    account: { ...account, status: "PENDING_VERIFICATION", passwordHash: null },
+    loginIdentifier: { id: "13131313-1313-4313-8313-131313131313", type: "EMAIL", verifiedAt: null },
+    membership: {
+      role: "TEACHER",
+      status: "PENDING",
+      endsAt: null,
+      registration: {
+        status: "APPROVED",
+        school: { status: "ACTIVE" },
+        council: { status: "ACTIVE" },
+      },
+    },
+  };
+  const updates = [];
+  const audits = [];
+  const tx = {
+    teacherInvitationToken: {
+      updateMany: async (input) => { updates.push({ invitation: input }); return { count: 1 }; },
+    },
+    loginIdentifier: {
+      updateMany: async (input) => { updates.push({ identifier: input }); return { count: 1 }; },
+    },
+    userAccount: {
+      updateMany: async (input) => { updates.push({ account: input }); return { count: 1 }; },
+    },
+    schoolMembership: {
+      updateMany: async (input) => { updates.push({ membership: input }); return { count: 1 }; },
+    },
+    auditEvent: {
+      create: async (input) => { audits.push(input); return input; },
+    },
+  };
+  const client = {
+    teacherInvitationToken: {
+      findUnique: async ({ where }) => {
+        assert.equal(where.tokenHash, hashTeacherInvitationToken(rawToken));
+        return invitation;
+      },
+    },
+    $transaction: async (callback, options) => {
+      assert.equal(options.isolationLevel, "Serializable");
+      return callback(tx);
+    },
+  };
+
+  const result = await new AuthService({ client }, {}).acceptTeacherInvitation(rawToken, "a-strong-teacher-password-2026");
+
+  assert.deepEqual(result, { status: "TEACHER_INVITATION_ACCEPTED" });
+  assert.equal(updates.length, 4);
+  assert.equal(updates[0].invitation.where.id, invitation.id);
+  assert.equal(updates[1].identifier.where.verifiedAt, null);
+  assert.equal(updates[2].account.where.status, "PENDING_VERIFICATION");
+  assert.equal(updates[2].account.data.status, "ACTIVE");
+  assert.match(updates[2].account.data.passwordHash, /^\\$argon2id\\$/);
+  assert.equal(updates[3].membership.where.registrationId, invitation.registrationId);
+  assert.equal(updates[3].membership.data.status, "ACTIVE");
+  assert.equal(audits[0].data.action, "SCHOOL_TEACHER_INVITATION_ACCEPTED");
+});
+
+test("teacher invitation acceptance rejects inactive schools before consuming the token", async () => {
+  const invitation = {
+    id: "17171717-1717-4717-8717-171717171717",
+    accountId: account.id,
+    consumedAt: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    account: { ...account, status: "PENDING_VERIFICATION", passwordHash: null },
+    loginIdentifier: { type: "EMAIL", verifiedAt: null },
+    membership: {
+      role: "TEACHER",
+      status: "PENDING",
+      endsAt: null,
+      registration: {
+        status: "APPROVED",
+        school: { status: "INACTIVE" },
+        council: { status: "ACTIVE" },
+      },
+    },
+  };
+  let transactionStarted = false;
+  const client = {
+    teacherInvitationToken: { findUnique: async () => invitation },
+    $transaction: async () => { transactionStarted = true; },
+  };
+
+  await assert.rejects(
+    new AuthService({ client }, {}).acceptTeacherInvitation("invalid-school-invitation", "a-strong-teacher-password-2026"),
+    (error) => error.status === 400 && /invalid or expired/.test(error.message),
+  );
+  assert.equal(transactionStarted, false);
 });
