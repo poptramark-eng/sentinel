@@ -518,7 +518,7 @@ test("teacher invitation acceptance verifies email, activates the account and sc
   assert.equal(updates[1].identifier.where.verifiedAt, null);
   assert.equal(updates[2].account.where.status, "PENDING_VERIFICATION");
   assert.equal(updates[2].account.data.status, "ACTIVE");
-  assert.match(updates[2].account.data.passwordHash, /^\\$argon2id\\$/);
+  assert.equal(updates[2].account.data.passwordHash.startsWith("$argon2id$"), true);
   assert.equal(updates[3].membership.where.registrationId, invitation.registrationId);
   assert.equal(updates[3].membership.data.status, "ACTIVE");
   assert.equal(audits[0].data.action, "SCHOOL_TEACHER_INVITATION_ACCEPTED");
