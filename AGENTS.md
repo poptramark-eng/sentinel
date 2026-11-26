@@ -35,6 +35,7 @@ The root `pnpm build` script builds the database package, API and web app, then 
 ## Data and security safeguards
 
 - Use synthetic learner and assessment data only in development and automated tests.
+- Production learner, candidate, marks and results routes are fail-closed behind `CHILD_DATA_PROCESSING_ENABLED`. Never enable this switch or change its production environment value until every applicable gate in `docs/research/kenya-child-data-privacy-review.md` is evidenced and approved by the responsible privacy/legal owners.
 - Never commit secrets, access tokens, provider credentials, production data, or personal learner information.
 - Do not run migrations against production, change production secrets, create production administrator accounts, or perform destructive production operations without explicit approval.
 - Keep tenant isolation, least privilege, separation of duties, immutable audit history, and fail-closed behavior intact.
