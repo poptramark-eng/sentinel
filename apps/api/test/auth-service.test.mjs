@@ -513,7 +513,7 @@ test("teacher invitation acceptance verifies email, activates the account and sc
   const result = await new AuthService({ client }, {}).acceptTeacherInvitation(rawToken, "a-strong-teacher-password-2026");
 
   assert.deepEqual(result, { status: "TEACHER_INVITATION_ACCEPTED" });
-  assert.equal(updates.length, 4);
+  assert.equal(updates.length, 5);
   assert.equal(updates[0].invitation.where.id, invitation.id);
   assert.equal(updates[1].identifier.where.verifiedAt, null);
   assert.equal(updates[2].account.where.status, "PENDING_VERIFICATION");
@@ -521,6 +521,7 @@ test("teacher invitation acceptance verifies email, activates the account and sc
   assert.equal(updates[2].account.data.passwordHash.startsWith("$argon2id$"), true);
   assert.equal(updates[3].membership.where.registrationId, invitation.registrationId);
   assert.equal(updates[3].membership.data.status, "ACTIVE");
+  assert.equal(updates[4].invitation.where.accountId, invitation.accountId);
   assert.equal(audits[0].data.action, "SCHOOL_TEACHER_INVITATION_ACCEPTED");
 });
 
