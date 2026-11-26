@@ -150,3 +150,24 @@ test("Resend receives an escaped teacher school-membership notification", async 
     assert.ok(request.body.html.includes("https://sentinel.example.org/workspace"));
   });
 });
+
+test("teacher invitation development preview points to the password setup route", async () => {
+  await withEnvironment({
+    NODE_ENV: "development",
+    DEV_EMAIL_PREVIEW: "true",
+    RESEND_API_KEY: undefined,
+    EMAIL_FROM: undefined,
+    WEB_APP_URL: "http://localhost:3000",
+  }, async () => {
+    const result = await new EmailService().sendTeacherInvitationEmail({
+      to: "teacher@example.test",
+      teacherName: "Amina Teacher",
+      schoolName: "Example School",
+      councilName: "Western Council",
+      token: "teacher-invitation-token",
+    });
+    const preview = new URL(result.previewUrl);
+    assert.equal(preview.pathname, "/accept-teacher-invitation");
+    assert.equal(preview.searchParams.get("token"), "teacher-invitation-token");
+  });
+});
