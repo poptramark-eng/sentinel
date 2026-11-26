@@ -12,7 +12,8 @@ export class ChildDataProcessingGuard implements CanActivate {
       return true;
     }
 
-    if (process.env.NODE_ENV !== "production") {
+    const environment = process.env.NODE_ENV?.trim().toLowerCase();
+    if (environment === "development" || environment === "test") {
       return true;
     }
 
