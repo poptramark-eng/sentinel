@@ -317,6 +317,16 @@ export class SchoolTeacherService {
     }
     if (
       existingIdentifier &&
+      existingIdentifier.account.status === "PENDING_VERIFICATION" &&
+      !existingIdentifier.verifiedAt &&
+      existingIdentifier.account.passwordHash !== null
+    ) {
+      throw new ConflictException(
+        "This email already has a pending Sentinel account. Complete its email verification before the School Administrator links it.",
+      );
+    }
+    if (
+      existingIdentifier &&
       (existingIdentifier.account.status !== "PENDING_VERIFICATION" ||
         existingIdentifier.verifiedAt ||
         existingIdentifier.account.platformOperator)
