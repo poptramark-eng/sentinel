@@ -1,10 +1,11 @@
 import { Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from "@nestjs/common";
 import { AccessTokenGuard, AuthenticatedRequest } from "../auth/access-token.guard";
 import { CsrfGuard } from "../auth/csrf.guard";
+import { ChildDataProcessingGuard } from "../privacy/child-data-processing.guard";
 import { SchoolAssessmentSubmissionService } from "./school-assessment-submission.service";
 
 @Controller("school/registrations/:registrationId/assessments")
-@UseGuards(AccessTokenGuard, CsrfGuard)
+@UseGuards(AccessTokenGuard, CsrfGuard, ChildDataProcessingGuard)
 export class SchoolAssessmentSubmissionController {
   constructor(private readonly submissions: SchoolAssessmentSubmissionService) {}
 
