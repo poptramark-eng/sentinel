@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { SchoolAssessmentMarkService } from "../dist/school-classes/school-assessment-mark.service.js";
 
 const actor = { accountId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", personId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
@@ -391,4 +391,27 @@ test("teaching workspace resolves assigned curriculum mappings to assessment sna
   assert.equal(result[0].learningAreas[0].id, mappingId);
   assert.equal(result[0].assessments[0].learningAreas[0].id, snapshotAreaId);
   assert.notEqual(result[0].assessments[0].learningAreas[0].id, mappingId);
+});
+
+test("a class ID from another school cannot be substituted into a mark-sheet request", async () => {
+  const foreignClassId = "99999999-9999-4999-8999-999999999999";
+  let assessmentRead = false;
+  const client = {
+    schoolClass: {
+      findFirst: async ({ where }) => {
+        assert.equal(where.id, foreignClassId);
+        assert.equal(where.registrationId, registrationId);
+        return null;
+      },
+    },
+    assessment: { findFirst: async () => { assessmentRead = true; return null; } },
+  };
+
+  await assert.rejects(
+    new SchoolAssessmentMarkService({ client }).getMarkSheet(
+      actor, registrationId, foreignClassId, assessmentId, areaId,
+    ),
+    (error) => error instanceof NotFoundException,
+  );
+  assert.equal(assessmentRead, false);
 });
