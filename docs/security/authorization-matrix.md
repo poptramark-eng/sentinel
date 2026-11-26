@@ -107,7 +107,7 @@ Additional constraints:
 
 | Action | SchoolAdministrator | Subject Teacher assignment | Class Teacher assignment | Notes |
 |---|---|---|---|---|
-| Create/link teacher identity | Allowed for own approved school | Denied | Denied | Link existing global identity; do not duplicate teacher. |
+| Create/link teacher identity | Allowed for own approved school | Denied | Denied | Reuse an existing verified global teacher identity, or invite a new teacher by email. New invitations create a pending account and school membership; the teacher must accept the one-time seven-day link, verify the email and set their own password before membership activation. |
 | Create/manage SchoolMembership | Allowed for own school | Denied | Denied | Exact membership lifecycle/approval policy remains TBD. |
 | Assign grade/class/learning area duties | Allowed for own school | Denied | Denied | StaffAssignment is school-specific and time-bounded. |
 | View assigned candidates | Scoped to own approved school and permitted assessment | Scoped to assigned class and learning area for mark-entry work only | Denied | Class Teacher assignment does not grant learner roster or candidate-record access. |
