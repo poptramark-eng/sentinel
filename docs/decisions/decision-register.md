@@ -348,16 +348,16 @@ This is best-effort delivery after commit, not a durable notification outbox. A 
 **Decision**
 
 - Teacher identity is global and represented by one Person/UserAccount. School-specific access is represented by a TEACHER SchoolMembership attached to one CouncilSchoolRegistration. The same Person may hold teacher memberships at multiple schools.
-- A School Administrator links an existing Sentinel account using the exact email address that account has verified. No name-only matching, fuzzy matching or automatic Person merge is allowed.
-- The current implementation links only an existing active account with a verified email. New teacher invitation/provisioning remains unimplemented; do not treat public generic account registration as teacher enrollment or ask teachers to self-enroll as a workaround. School Administrators never set passwords on another person's behalf. This preserves account ownership and avoids duplicate global identities.
-- Linking creates a new TEACHER membership or reactivates only a previously REVOKED membership for the selected CouncilSchoolRegistration, after rechecking the caller's active School Administrator scope and the target account's active/verified state in a serializable transaction. PENDING and SUSPENDED memberships require separate governance workflows. A best-effort email notification is sent after commit.
+- A School Administrator may link an existing active Sentinel account using the exact email address that account has verified, or invite a new teacher by email. No name-only matching, fuzzy matching or automatic Person merge is allowed.
+- New-teacher invitations create one global Person/UserAccount and a PENDING teacher membership for the selected school. The invitation token is random, stored only as a keyed hash, one-time and expires after seven days. The teacher accepts the link, verifies control of the email address and sets their own password; account and membership activation occur together in a serializable transaction. School Administrators never set or see another person's password. Public generic account registration is not teacher enrollment.
+- Linking an existing active/verified account creates a TEACHER membership or reactivates only a previously REVOKED membership for the selected CouncilSchoolRegistration, after rechecking the caller's active School Administrator scope and target account in a serializable transaction. A pending self-registered account that already has a password must complete its own email-verification flow before linking; it is not converted into an invitation. PENDING and SUSPENDED memberships otherwise require separate governance workflows. Invitation and membership emails are best-effort post-commit side effects.
 - Teacher membership does not itself grant subject-teacher or class-teacher privileges. Those capabilities require future school-specific StaffAssignment records once grade, class/stream and learning-area models are approved.
 
 **Consequences**
 
 - School onboarding is controlled by School Administrators while authentication credentials remain teacher-owned.
 - A teacher can work across schools without duplicated Person or UserAccount records.
-- The first version links by verified email only and exposes masked email in the school directory. Controlled teacher invitation/provisioning and staff assignments remain future work.
+- The school roster supports verified-account linking and controlled email invitation for new teachers. The directory exposes masked email addresses. Teacher class/subject privileges remain separate, school-specific StaffAssignment capabilities.
 
 ## ADR-018 — KICD source hierarchy and versioned curriculum publication
 
@@ -435,7 +435,7 @@ A School Administrator needs to represent the school's grade/stream structure an
 - Class records are retained when no longer in use; archival is a status change, not deletion. A new academic year creates new class records rather than reusing the prior year's class identity.
 - `StaffAssignment` is separate from `SchoolMembership`. The first supported assignment type is `CLASS_TEACHER`, effective-dated and attached to one class and one active TEACHER membership from the same registration.
 - At most one active Class Teacher may be assigned to a class. Reassignment ends the prior assignment and creates a new assignment row; history is retained.
-- Class Teacher assignment grants coordination only. It does not grant learner roster, marks, subject, assessment or results access. `SUBJECT_TEACHER` will be introduced only after a published curriculum version and Council-enabled grade-learning-area mapping are available.
+- Class Teacher assignment grants coordination only. It does not grant learner roster, marks, subject, assessment or results access. `SUBJECT_TEACHER` assignment is supported only when the relevant grade-learning-area mapping is enabled in the currently published curriculum; it grants marks access only for that class and learning area.
 - No learner records or enrollments are created in this slice. Class and assignment management uses school/teacher account data only.
 - Every class and assignment mutation is transactional and audited. Composite foreign keys enforce that class, assignment, membership and registration all belong to the same Council and registration.
 
