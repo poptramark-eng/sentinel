@@ -14,6 +14,7 @@ import { CouncilAdministratorGuard } from "../auth/council-administrator.guard";
 import { CouncilGovernanceApproverGuard } from "../auth/council-governance-approver.guard";
 import { CouncilRubricReaderGuard } from "../auth/council-rubric-reader.guard";
 import { CsrfGuard } from "../auth/csrf.guard";
+import { ChildDataProcessingGuard } from "../privacy/child-data-processing.guard";
 import { CreateAssessmentDto } from "./dto/create-assessment.dto";
 import { CreateRubricDto, CreateRubricVersionDto, CreateRubricBandDto } from "./dto/create-rubric.dto";
 import { ScheduleAssessmentDto } from "./dto/schedule-assessment.dto";
@@ -111,7 +112,7 @@ export class CouncilAssessmentsController {
   }
 
   @Get("assessments")
-  @UseGuards(CouncilRubricReaderGuard)
+  @UseGuards(CouncilRubricReaderGuard, ChildDataProcessingGuard)
   listAssessments(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
@@ -130,7 +131,7 @@ export class CouncilAssessmentsController {
   }
 
   @Post("assessments/:assessmentId/schedule")
-  @UseGuards(CouncilAdministratorGuard)
+  @UseGuards(CouncilAdministratorGuard, ChildDataProcessingGuard)
   scheduleAssessment(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
@@ -141,7 +142,7 @@ export class CouncilAssessmentsController {
   }
 
   @Post("assessments/:assessmentId/open")
-  @UseGuards(CouncilAdministratorGuard)
+  @UseGuards(CouncilAdministratorGuard, ChildDataProcessingGuard)
   openAssessment(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
@@ -151,7 +152,7 @@ export class CouncilAssessmentsController {
   }
 
   @Post("assessments/:assessmentId/classes/:classId/return-marks")
-  @UseGuards(CouncilGovernanceApproverGuard)
+  @UseGuards(CouncilGovernanceApproverGuard, ChildDataProcessingGuard)
   returnClassMarksForCorrection(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
@@ -169,7 +170,7 @@ export class CouncilAssessmentsController {
   }
 
   @Post("assessments/:assessmentId/classes/:classId/learning-areas/:learningAreaId/return-marks")
-  @UseGuards(CouncilGovernanceApproverGuard)
+  @UseGuards(CouncilGovernanceApproverGuard, ChildDataProcessingGuard)
   returnLearningAreaMarksForCorrection(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
@@ -189,7 +190,7 @@ export class CouncilAssessmentsController {
   }
 
   @Get("assessments/:assessmentId/results")
-  @UseGuards(CouncilRubricReaderGuard)
+  @UseGuards(CouncilRubricReaderGuard, ChildDataProcessingGuard)
   getPublishedAssessmentResults(
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
@@ -198,7 +199,7 @@ export class CouncilAssessmentsController {
   }
 
   @Get("assessments/:assessmentId/results/history")
-  @UseGuards(CouncilRubricReaderGuard)
+  @UseGuards(CouncilRubricReaderGuard, ChildDataProcessingGuard)
   getAssessmentResultPublicationHistory(
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
@@ -207,7 +208,7 @@ export class CouncilAssessmentsController {
   }
 
   @Get("assessments/:assessmentId/results/versions/:version")
-  @UseGuards(CouncilRubricReaderGuard)
+  @UseGuards(CouncilRubricReaderGuard, ChildDataProcessingGuard)
   getAssessmentResultPublicationVersion(
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
     @Param("assessmentId", new ParseUUIDPipe()) assessmentId: string,
@@ -217,7 +218,7 @@ export class CouncilAssessmentsController {
   }
 
   @Get("assessments/:assessmentId/results/preview")
-  @UseGuards(CouncilRubricReaderGuard)
+  @UseGuards(CouncilRubricReaderGuard, ChildDataProcessingGuard)
   previewAssessmentResults(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
@@ -227,7 +228,7 @@ export class CouncilAssessmentsController {
   }
 
   @Post("assessments/:assessmentId/results/publish")
-  @UseGuards(CouncilGovernanceApproverGuard)
+  @UseGuards(CouncilGovernanceApproverGuard, ChildDataProcessingGuard)
   publishAssessmentResults(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
@@ -237,7 +238,7 @@ export class CouncilAssessmentsController {
   }
 
   @Post("assessments/:assessmentId/close")
-  @UseGuards(CouncilAdministratorGuard)
+  @UseGuards(CouncilAdministratorGuard, ChildDataProcessingGuard)
   closeAssessment(
     @Req() request: AuthenticatedRequest,
     @Param("councilId", new ParseUUIDPipe()) councilId: string,
