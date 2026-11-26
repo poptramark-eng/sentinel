@@ -242,3 +242,29 @@ test("CSV learner import rejects duplicate identifiers and malformed rows before
   assert.equal(result.issues.length, 1);
   assert.match(result.issues[0].message, /Duplicate learner number/);
 });
+
+test("a class ID from another school cannot be used to read this school's learner roster", async () => {
+  const foreignClassId = "99999999-9999-4999-8999-999999999999";
+  let membershipRead = false;
+  let rosterRead = false;
+  const client = {
+    schoolClass: {
+      findFirst: async ({ where }) => {
+        assert.equal(where.id, foreignClassId);
+        assert.equal(where.registrationId, registrationId);
+        return null;
+      },
+    },
+    schoolMembership: { findFirst: async () => { membershipRead = true; return null; } },
+    schoolLearnerEnrollment: { findMany: async () => { rosterRead = true; return []; } },
+  };
+
+  await assert.rejects(
+    new LearnerEnrollmentService({ client }).listClassLearners(
+      { accountId, personId }, registrationId, foreignClassId,
+    ),
+    (error) => error.status === 404,
+  );
+  assert.equal(membershipRead, false);
+  assert.equal(rosterRead, false);
+});
