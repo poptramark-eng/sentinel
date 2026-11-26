@@ -38,7 +38,11 @@ export class SchoolTeachersController {
     return this.teachers.invite(
       { accountId: request.auth!.accountId, personId: request.auth!.personId },
       registrationId,
-      { email: body.email, givenName: body.givenName, familyName: body.familyName },
+      {
+        email: body.email,
+        ...(body.givenName !== undefined ? { givenName: body.givenName } : {}),
+        ...(body.familyName !== undefined ? { familyName: body.familyName } : {}),
+      },
     );
   }
 }
