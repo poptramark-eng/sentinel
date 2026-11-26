@@ -77,3 +77,37 @@ test("ending a Subject Teacher assignment preserves its history and audits the c
   assert.equal(f.records.audit.action, "SCHOOL_SUBJECT_TEACHER_ENDED");
   assert.deepEqual(result, { success: true });
 });
+
+test("a class ID from another school cannot receive a subject-teacher assignment", async () => {
+  const foreignClassId = "99999999-9999-4999-8999-999999999999";
+  let mappingRead = false;
+  let assignmentCreated = false;
+  const tx = {
+    schoolMembership: {
+      findFirst: async ({ where }) => where.role === "SCHOOL_ADMINISTRATOR"
+        ? adminScope()
+        : { id: membershipId, person: { givenName: "Amina", familyName: "Teacher", displayName: null } },
+    },
+    schoolClass: {
+      findFirst: async ({ where }) => {
+        assert.equal(where.id, foreignClassId);
+        assert.equal(where.registrationId, registrationId);
+        assert.equal(where.councilId, councilId);
+        return null;
+      },
+    },
+    councilGradeLearningArea: { findFirst: async () => { mappingRead = true; return null; } },
+    staffAssignment: { findFirst: async () => null, create: async () => { assignmentCreated = true; } },
+  };
+  const client = { ...tx, $transaction: async (callback) => callback(tx) };
+
+  await assert.rejects(
+    new SchoolClassService({ client }).assignSubjectTeacher(
+      actor, registrationId, foreignClassId,
+      { membershipId, councilGradeLearningAreaId: mappingId },
+    ),
+    (error) => error instanceof NotFoundException,
+  );
+  assert.equal(mappingRead, false);
+  assert.equal(assignmentCreated, false);
+});
