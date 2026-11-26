@@ -184,3 +184,29 @@ test("teacher roster is limited to the approved school and masks verified email 
   assert.equal(result.teachers[0].email, "t***@example.test");
   assert.equal(result.teachers[0].name, "Taylor Teacher");
 });
+test("a pending self-registered account must verify its email before school linking", async () => {
+  const pendingAccount = {
+    verifiedAt: null,
+    account: {
+      status: "PENDING_VERIFICATION",
+      passwordHash: "existing-password-hash",
+      platformOperator: null,
+    },
+  };
+  const service = new SchoolTeacherService({
+    client: {
+      loginIdentifier: {
+        findUnique: async () => pendingAccount,
+      },
+    },
+  }, {});
+
+  await assert.rejects(
+    service.invite(actor, registrationId, {
+      email: "teacher@example.org",
+      givenName: "Amina",
+      familyName: "Teacher",
+    }),
+    (error) => error.getStatus() === 409 && /Complete its email verification/.test(error.message),
+  );
+});
