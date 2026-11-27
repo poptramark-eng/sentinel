@@ -14,7 +14,7 @@ export default async function LearnersPage({ searchParams }: { searchParams: Pro
     supabase.from("learner_enrollments").select("learner_id,class_id,academic_year_id,status,learners(id,admission_number,given_name,family_name,other_names),classes(display_name,grade_level)").eq("status","active").order("created_at",{ascending:false}).limit(100),
   ]);
   const params = await searchParams;
-  const isAdmin = memberships[0].role === "school_admin";
+  const isAdmin = membership.role === "school_admin";
   return <WorkspaceShell section="Learner records" title="Learners" navigation={[
     { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments" }, { label: "Learners", href: "/workspace/learners", active: true }, ...(isAdmin ? [{label:"Setup",href:"/workspace/settings"}] : []),
   ]} actions={<form action="/auth/signout" method="post"><button className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">Sign out</button></form>}>
