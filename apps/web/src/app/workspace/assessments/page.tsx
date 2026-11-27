@@ -7,14 +7,14 @@ export default async function AssessmentsPage() {
   const supabase = await createClient();
   const { data: auth, error } = await supabase.auth.getClaims();
   if (error || !auth?.claims?.sub) redirect("/login");
-  const { data: memberships } = await supabase.from("school_memberships").select("id").limit(1);
+  const { data: memberships } = await supabase.from("school_memberships").select("id,role").limit(1);
   if (!memberships?.length) redirect("/setup");
   const { data: assessments, error: queryError } = await supabase.from("assessments").select("id,title,assessment_type,status,assessment_date,created_at").order("created_at", { ascending: false });
 
   return <WorkspaceShell section="Assessment management" title="Assessments" navigation={[
     { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments", active: true },
   ]} actions={<form action="/auth/signout" method="post"><button className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">Sign out</button></form>}>
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="cbe-eyebrow">Assessment register</p><h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">Assessments</h1><p className="mt-2 text-sm text-[var(--muted)]">Create and manage formative and summative assessments.</p></div><Link href="/workspace/assessments/new" className="rounded-lg bg-[var(--brand)] px-4 py-3 text-sm font-semibold text-white">New assessment</Link></div>
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="cbe-eyebrow">Assessment register</p><h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">Assessments</h1><p className="mt-2 text-sm text-[var(--muted)]">Create and manage formative and summative assessments.</p></div>{memberships[0].role === "school_admin" ? <Link href="/workspace/assessments/new" className="rounded-lg bg-[var(--brand)] px-4 py-3 text-sm font-semibold text-white">New assessment</Link> : null}</div>
     {queryError ? <p role="alert" className="mt-6 rounded-lg bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]">Could not load assessments. Check your school access.</p> : null}
     <div className="mt-7 overflow-hidden rounded-xl border border-[var(--line)] bg-white">
       <div className="grid grid-cols-[1fr_120px_110px] gap-3 border-b border-[var(--line)] bg-[var(--surface-subtle)] px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]"><span>Assessment</span><span>Type</span><span>Status</span></div>
