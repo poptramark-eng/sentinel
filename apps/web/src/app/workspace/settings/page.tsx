@@ -9,8 +9,9 @@ export default async function SchoolSettingsPage({ searchParams }: { searchParam
   const { data: auth, error } = await supabase.auth.getClaims();
   if (error || !auth?.claims?.sub) redirect("/login");
   const { data: memberships } = await supabase.from("school_memberships").select("id,role").limit(1);
-  if (!memberships?.length) redirect("/setup");
-  if (memberships[0].role !== "school_admin") redirect("/workspace");
+  const membership = memberships?.[0];
+  if (!membership) redirect("/setup");
+  if (membership.role !== "school_admin") redirect("/workspace");
   const [{ data: years }, { data: classes }, { data: areas }] = await Promise.all([
     supabase.from("academic_years").select("id,name,starts_on,ends_on,is_current").order("starts_on", { ascending: false }),
     supabase.from("classes").select("id,display_name,grade_level,stream,academic_year_id").order("grade_level"),
