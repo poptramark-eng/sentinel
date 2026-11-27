@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { BrandLockup } from "../../components/brand-lockup";
 import { createClient } from "../../lib/supabase/client";
 
-type AuthUser = { id: string; email?: string };
+type AuthUser = { id: string; email?: string | undefined };
 
 export default function SetupPage() {
   const router = useRouter();
