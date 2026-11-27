@@ -39,7 +39,7 @@ Keep these as possible future product extensions, not active navigation or opera
 - **Subject Teacher:** enters and corrects marks for assigned learning areas and classes.
 - **Learners:** records only; no login accounts in this release.
 
-Enforce permissions in the API/database. UI navigation is not an authorization boundary. A teacher must not gain access to another class or learning area by changing an identifier.
+Enforce permissions in PostgreSQL RLS and narrowly scoped Edge Functions. UI navigation is not an authorization boundary. A teacher must not gain access to another class or learning area by changing an identifier.
 
 ## Assessment and result rules
 
@@ -60,7 +60,7 @@ Review the reference branch's product discovery, domain workflows, role/permissi
 The accepted direction is Next.js App Router + Supabase as the backend platform (PostgreSQL, Auth, RLS, Storage and narrowly scoped Edge Functions), with Cloudflare as the target app hosting/edge platform subject to compatibility tests, GitHub as source control/CI and this Notion workspace as durable project context. The current NestJS/Fastify API, Prisma layer and custom auth are legacy migration sources, not the target runtime. Before replacing existing code:
 - inspect actual manifests, lockfile, schema, migrations and tests;
 - map current domain behavior and data before migration;
-- use the accepted Supabase Auth decision: Supabase owns identity/session/token issuance; NestJS verifies Supabase-issued access tokens;
+- use the accepted Supabase Auth decision: Supabase owns identity, sessions and token issuance; Next.js uses the official Supabase SSR integration and RLS-protected Supabase clients;
 - design and test Supabase RLS, grants, Storage policies and Edge Function boundaries;
 - validate Next.js deployment compatibility on Cloudflare Workers; do not retain the NestJS API as a permanent backend unless a specific requirement justifies an exception;
 - keep secrets out of Git and use environment-specific secret stores.
@@ -75,7 +75,7 @@ Use synthetic learner and assessment data in development. Real learner-data onbo
 
 1. Baseline audit: inspect current code, database schema/migrations, authorization and tests; inventory council/interschool dependencies.
 2. Single-school domain: define school configuration boundary and remove council/interschool requirements from first-release workflows without data loss.
-3. Supabase foundation: provision/verify schema, migrations, auth decision, RLS policies, storage and Edge Function boundaries.
+3. Supabase foundation: implement the reviewed schema, migrations, Supabase Auth profile mapping, RLS policies, Storage and Edge Function boundaries.
 4. Core school workflows: users, classes, learners, curriculum, assignments.
 5. Internal assessment: authoring, marks entry, validation, review, publication and corrections.
 6. Reporting and exports.
@@ -86,5 +86,5 @@ Use synthetic learner and assessment data in development. Real learner-data onbo
 
 - School name and initial school administrator are to be entered during first-run setup.
 - Supabase Auth is accepted and recorded in Notion; it supersedes the prior first-party JWT direction. Existing custom auth code remains legacy source until the Supabase migration and tests are complete.
-- Hosting split and API runtime must be validated against the actual app and Cloudflare capabilities.
+- Next.js runtime/adapter compatibility with Cloudflare Workers must be validated against the actual app before deployment.
 - Curriculum data and grading rules must be sourced/approved; do not fabricate them.
