@@ -19,6 +19,6 @@ export async function createAssessment(formData: FormData) {
     p_academic_year_id: selectedClass.academic_year_id, p_term_id: null, p_class_id: classId, p_learning_area_ids: learningAreaIds,
   });
   if (error || !data) redirect("/workspace/assessments/new?error=Assessment%20could%20not%20be%20created");
-revalidatePath("/workspace/assessments");
+
   redirect(`/workspace/assessments/${data}`);
 }
