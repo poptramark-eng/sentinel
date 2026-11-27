@@ -60,7 +60,7 @@ Review the reference branch's product discovery, domain workflows, role/permissi
 The user's requested direction is Supabase for backend services and Cloudflare for future deployment/edge delivery, with GitHub as source control and Notion as durable product/architecture context. Before replacing existing code:
 - inspect actual manifests, lockfile, schema, migrations and tests;
 - map current domain behavior and data before migration;
-- explicitly decide Supabase Auth versus retaining first-party auth;
+- use the accepted Supabase Auth decision: Supabase owns identity/session/token issuance; NestJS verifies Supabase-issued access tokens;
 - evaluate Supabase RLS and Edge Functions for authorization/business workflows;
 - validate Next.js deployment compatibility on Cloudflare Workers and choose a compatible runtime for any retained API;
 - keep secrets out of Git and use environment-specific secret stores.
@@ -85,6 +85,6 @@ Use synthetic learner and assessment data in development. Real learner-data onbo
 ## Open items
 
 - School name and initial school administrator are to be entered during first-run setup.
-- Supabase Auth versus first-party JWT requires an explicit architecture record before identity implementation changes.
+- Supabase Auth is accepted and recorded in Notion; it supersedes the prior first-party JWT direction. Existing custom auth code still requires a controlled replacement plan and migration tests.
 - Hosting split and API runtime must be validated against the actual app and Cloudflare capabilities.
 - Curriculum data and grading rules must be sourced/approved; do not fabricate them.
