@@ -2,10 +2,10 @@ import Link from "next/link";
 import { BrandLockup } from "../components/brand-lockup";
 
 const capabilities = [
-  { number: "01", title: "Assessment governance", description: "Configure assessment periods, grades, learning areas and assessment rules with clear ownership." },
-  { number: "02", title: "School operations", description: "Coordinate approved schools, classes, learners and teacher assignments in one connected workspace." },
-  { number: "03", title: "Controlled mark collection", description: "Support focused mark entry, validation, correction and submission without skipping review steps." },
-  { number: "04", title: "Trusted reporting", description: "Review performance and release governed results with traceable publication history." },
+  { number: "01", title: "Assessment governance", description: "Set up your academic year, classes and learning areas before the school term begins." },
+  { number: "02", title: "School operations", description: "Keep learner records, class placement and teacher responsibilities connected." },
+  { number: "03", title: "Controlled mark collection", description: "Give teachers a focused way to enter marks, correct mistakes and track completion." },
+  { number: "04", title: "Trusted reporting", description: "Understand learner progress with reliable class and school-level reports." },
 ];
 const lifecycle = [
   ["01", "Assessment setup", "Configure"],
@@ -23,7 +23,7 @@ export default function HomePage() {
           <BrandLockup />
           <nav aria-label="Main navigation" className="flex items-center gap-2 sm:gap-4">
             <a href="#platform" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-subtle)] sm:inline-flex">Platform</a>
-            <Link href="/register" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--brand-strong)] sm:inline-flex">Create account</Link>
+            <Link href="/setup" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--brand-strong)] sm:inline-flex">Set up school</Link>
             <Link href="/login" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)]">Sign in</Link>
           </nav>
         </div>
@@ -33,7 +33,7 @@ export default function HomePage() {
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-[var(--brand-border)] bg-[var(--brand-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-strong)]"><span className="size-1.5 rounded-full bg-[var(--accent)]" />Assessment operations platform</p>
             <h1 className="mt-7 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-[-0.045em] text-[var(--ink-strong)] sm:text-5xl lg:text-[3.75rem]">Coordinate assessment.<span className="block text-[var(--brand)]">Trust the outcomes.</span></h1>
-            <p className="mt-6 max-w-xl text-base leading-8 text-[var(--muted)]">cbe connects examination councils and schools across assessment setup, learner participation, marks collection, review and results publication.</p>
+            <p className="mt-6 max-w-xl text-base leading-8 text-[var(--muted)]">cbe gives one school a clear workspace for learner records, class operations, internal assessments and academic reporting.</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--brand)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)]">Enter your workspace <span aria-hidden="true" className="ml-2">→</span></Link>
               <a href="#platform" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-subtle)]">Explore the platform</a>
@@ -51,7 +51,7 @@ export default function HomePage() {
         <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--brand-strong)]">One connected platform</p><h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-[var(--ink-strong)] sm:text-4xl">Built around the work councils and schools need to do.</h2><p className="mt-4 text-sm leading-7 text-[var(--muted)]">Each workspace is organised around the responsibilities of its users, with clear feedback and consistent interaction patterns across devices.</p></div>
         <div className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{capabilities.map((item) => <article key={item.number} className="rounded-xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]"><p className="text-xs font-bold tabular-nums text-[var(--brand)]">{item.number}</p><h3 className="mt-5 text-base font-semibold text-[var(--ink-strong)]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.description}</p></article>)}</div>
       </section>
-      <footer className="border-t border-[var(--line)] bg-white"><div className="mx-auto flex w-full max-w-[var(--content-max)] flex-col gap-3 px-5 py-7 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>© {new Date().getFullYear()} cbe. A product by Softflix.</span><span>Assessment operations · School coordination · Trusted results</span></div></footer>
+      <footer className="border-t border-[var(--line)] bg-white"><div className="mx-auto flex w-full max-w-[var(--content-max)] flex-col gap-3 px-5 py-7 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>© {new Date().getFullYear()} cbe. A product by Softflix.</span><span>Assessment operations · School operations · Trusted results</span></div></footer>
     </main>
   );
 }
