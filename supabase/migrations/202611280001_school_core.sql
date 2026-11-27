@@ -6,6 +6,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null default '',
+  email text,
   phone text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -281,6 +282,7 @@ declare
   new_school_id uuid;
   actor_id uuid := auth.uid();
 begin
+  perform pg_advisory_xact_lock(hashtext('sentinel-single-school-bootstrap'));
   if actor_id is null then
     raise exception 'Authentication required';
   end if;
@@ -317,8 +319,8 @@ security definer
 set search_path = public, auth
 as $$
 begin
-  insert into public.profiles (id, display_name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'display_name', ''))
+  insert into public.profiles (id, display_name, email)
+  values (new.id, coalesce(new.raw_user_meta_data->>'display_name', ''), new.email)
   on conflict (id) do nothing;
   return new;
 end;
@@ -364,7 +366,6 @@ using (
     where m.user_id = profiles.id
       and m.school_id = public.current_school_id()
       and m.status = 'active'
-      and public.has_school_role(array['school_admin'])
   )
 );
 create policy profiles_update_self on public.profiles for update to authenticated
@@ -409,7 +410,7 @@ with check (school_id = public.current_school_id() and public.has_school_role(ar
 create policy teacher_assignments_read on public.teacher_assignments for select to authenticated
 using (
   school_id = public.current_school_id()
-  and (public.has_school_role(array['school_admin']) or teacher_id = (select auth.uid()))
+  and (public.has_school_role(array['school_admin']) or teacher_id = (select auth.uid()) or public.can_access_class(class_id))
 );
 create policy teacher_assignments_admin_write on public.teacher_assignments for all to authenticated
 using (school_id = public.current_school_id() and public.has_school_role(array['school_admin']))
