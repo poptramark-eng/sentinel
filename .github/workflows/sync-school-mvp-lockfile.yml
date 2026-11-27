@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - feat/school-mvp-app
-    paths:
-      - "apps/web/package.json"
-      - "package.json"
-      - "pnpm-workspace.yaml"
   workflow_dispatch:
 
 permissions:
