@@ -19,8 +19,8 @@ export async function bootstrapSchool(formData: FormData) {
     school_code: String(formData.get("school_code") ?? "").trim() || null,
     school_county: String(formData.get("county") ?? "").trim() || null,
     school_sub_county: String(formData.get("sub_county") ?? "").trim() || null,
-    school_phone: String(formData.get("phone") ?? "").trim() || null,
-    school_email: String(formData.get("contact_email") ?? "").trim() || null,
+    school_phone: null,
+    school_email: null,
   });
 
   if (error) redirect("/setup?error=School%20setup%20could%20not%20be%20completed");
