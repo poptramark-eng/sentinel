@@ -57,12 +57,12 @@ Review the reference branch's product discovery, domain workflows, role/permissi
 
 ## Architecture direction
 
-The user's requested direction is Supabase for backend services and Cloudflare for future deployment/edge delivery, with GitHub as source control and Notion as durable product/architecture context. Before replacing existing code:
+The accepted direction is Next.js App Router + Supabase as the backend platform (PostgreSQL, Auth, RLS, Storage and narrowly scoped Edge Functions), with Cloudflare as the target app hosting/edge platform subject to compatibility tests, GitHub as source control/CI and this Notion workspace as durable project context. The current NestJS/Fastify API, Prisma layer and custom auth are legacy migration sources, not the target runtime. Before replacing existing code:
 - inspect actual manifests, lockfile, schema, migrations and tests;
 - map current domain behavior and data before migration;
 - use the accepted Supabase Auth decision: Supabase owns identity/session/token issuance; NestJS verifies Supabase-issued access tokens;
-- evaluate Supabase RLS and Edge Functions for authorization/business workflows;
-- validate Next.js deployment compatibility on Cloudflare Workers and choose a compatible runtime for any retained API;
+- design and test Supabase RLS, grants, Storage policies and Edge Function boundaries;
+- validate Next.js deployment compatibility on Cloudflare Workers; do not retain the NestJS API as a permanent backend unless a specific requirement justifies an exception;
 - keep secrets out of Git and use environment-specific secret stores.
 
 No production data migration, destructive schema reset, paid plan purchase or production traffic cutover is authorized by this scope note.
@@ -85,6 +85,6 @@ Use synthetic learner and assessment data in development. Real learner-data onbo
 ## Open items
 
 - School name and initial school administrator are to be entered during first-run setup.
-- Supabase Auth is accepted and recorded in Notion; it supersedes the prior first-party JWT direction. Existing custom auth code still requires a controlled replacement plan and migration tests.
+- Supabase Auth is accepted and recorded in Notion; it supersedes the prior first-party JWT direction. Existing custom auth code remains legacy source until the Supabase migration and tests are complete.
 - Hosting split and API runtime must be validated against the actual app and Cloudflare capabilities.
 - Curriculum data and grading rules must be sourced/approved; do not fabricate them.
