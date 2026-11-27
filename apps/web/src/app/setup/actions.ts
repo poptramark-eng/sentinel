@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 
@@ -24,6 +23,5 @@ export async function bootstrapSchool(formData: FormData) {
   });
 
   if (error) redirect("/setup?error=School%20setup%20could%20not%20be%20completed");
-  revalidatePath("/workspace");
-  redirect("/workspace");
+redirect("/workspace");
 }
