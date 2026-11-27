@@ -19,7 +19,7 @@ export default async function NewAssessmentPage({ searchParams }: { searchParams
   return <WorkspaceShell section="Assessment management" title="New assessment" navigation={[
     { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments", active: true },
   ]}>
-    <div className="max-w-3xl"><Link href="/workspace/assessments" className="text-xs font-semibold text-[var(--brand)]">← Back to assessments</Link><p className="cbe-eyebrow mt-6">Assessment setup</p><h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">Create assessment</h1><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Choose the academic period, class and learning areas. The initial mark scale is 0–100.</p>
+    <div className="max-w-3xl"><Link href="/workspace/assessments" className="text-xs font-semibold text-[var(--brand)]">← Back to assessments</Link><p className="cbe-eyebrow mt-6">Assessment setup</p><h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">Create assessment</h1><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Choose the class and learning areas. The class determines the academic year. Marks use a 0–100 scale.</p>
       {params.error ? <p role="alert" className="mt-5 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">{params.error}</p> : null}
       <form action={createAssessment} className="mt-6 space-y-6 rounded-xl border border-[var(--line)] bg-white p-5 sm:p-7">
         <label className="block"><span className="mb-2 block text-sm font-medium">Assessment title *</span><input name="title" required minLength={2} maxLength={160} className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm" placeholder="e.g. Term 1 Mathematics Assessment" /></label>
