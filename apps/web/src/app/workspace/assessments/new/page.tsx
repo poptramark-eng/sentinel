@@ -9,8 +9,9 @@ export default async function NewAssessmentPage({ searchParams }: { searchParams
   const { data: auth, error } = await supabase.auth.getClaims();
   if (error || !auth?.claims?.sub) redirect("/login");
   const { data: memberships } = await supabase.from("school_memberships").select("id,role").limit(1);
-  if (!memberships?.length) redirect("/setup");
-  if (memberships[0].role !== "school_admin") redirect("/workspace");
+  const membership = memberships?.[0];
+  if (!membership) redirect("/setup");
+  if (membership.role !== "school_admin") redirect("/workspace");
   const [{ data: classes }, { data: areas }] = await Promise.all([
     supabase.from("classes").select("id,display_name,grade_level,academic_year_id").eq("is_active", true).order("grade_level").order("display_name"),
     supabase.from("learning_areas").select("id,name,grade_level").eq("is_active", true).order("name"),
