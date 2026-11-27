@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import { WorkspaceShell } from "../../../components/workspace-shell";
 import { createClient } from "../../../lib/supabase/server";
 import { createLearner } from "./actions";
