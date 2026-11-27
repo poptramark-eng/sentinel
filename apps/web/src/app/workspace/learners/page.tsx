@@ -8,7 +8,8 @@ export default async function LearnersPage({ searchParams }: { searchParams: Pro
   const { data: auth, error } = await supabase.auth.getClaims();
   if (error || !auth?.claims?.sub) redirect("/login");
   const { data: memberships } = await supabase.from("school_memberships").select("id,role").limit(1);
-  if (!memberships?.length) redirect("/setup");
+  const membership = memberships?.[0];
+  if (!membership) redirect("/setup");
   const [{ data: classes }, { data: enrollments }] = await Promise.all([
     supabase.from("classes").select("id,display_name,grade_level,academic_year_id").eq("is_active", true).order("grade_level"),
     supabase.from("learner_enrollments").select("learner_id,class_id,academic_year_id,status,learners(id,admission_number,given_name,family_name,other_names),classes(display_name,grade_level)").eq("status","active").order("created_at",{ascending:false}).limit(100),
