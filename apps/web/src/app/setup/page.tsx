@@ -26,8 +26,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
           <label><span className="mb-2 block text-sm font-medium">School code</span><input name="school_code" maxLength={40} className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm" /></label>
           <label><span className="mb-2 block text-sm font-medium">County</span><input name="county" maxLength={100} className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm" /></label>
           <label><span className="mb-2 block text-sm font-medium">Sub-county</span><input name="sub_county" maxLength={100} className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm" /></label>
-          <label><span className="mb-2 block text-sm font-medium">Phone (optional)</span><input name="phone" type="tel" maxLength={30} className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm" /></label>
-          <label className="sm:col-span-2"><span className="mb-2 block text-sm font-medium">Contact email (stored only)</span><input name="contact_email" type="email" maxLength={254} className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm" /><span className="mt-1 block text-xs text-[var(--subtle)]">No email notifications are sent.</span></label>
+          <p className="sm:col-span-2 text-xs text-[var(--subtle)]">Communication details and messaging integrations are not collected in this release.</p>
           <div className="sm:col-span-2 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-5"><button className="rounded-lg bg-[var(--brand)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--brand-strong)]">Create school workspace</button><Link href="/workspace" className="text-sm text-[var(--muted)]">Cancel</Link></div>
         </form>
       </div>
