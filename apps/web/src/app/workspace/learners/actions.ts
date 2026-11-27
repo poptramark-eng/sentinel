@@ -1,5 +1,4 @@
 "use server";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 
@@ -24,6 +23,5 @@ export async function createLearner(formData: FormData) {
     p_academic_year_id: selectedClass.academic_year_id, p_class_id: classId, p_other_names: other || null, p_gender: gender,
   });
   if (error) redirect("/workspace/learners?error=Learner%20could%20not%20be%20created.%20Check%20the%20admission%20number.");
-  revalidatePath("/workspace"); revalidatePath("/workspace/learners");
-  redirect("/workspace/learners?saved=1");
+redirect("/workspace/learners?saved=1");
 }
