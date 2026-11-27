@@ -8,7 +8,8 @@ export async function createLearner(formData: FormData) {
   const { data: auth, error: authError } = await supabase.auth.getClaims();
   if (authError || !auth?.claims?.sub) redirect("/login");
   const { data: memberships } = await supabase.from("school_memberships").select("role").limit(1);
-  if (!memberships?.length || memberships[0].role !== "school_admin") redirect("/workspace");
+  const membership = memberships?.[0];
+  if (!membership || membership.role !== "school_admin") redirect("/workspace");
   const admission = String(formData.get("admission_number") ?? "").trim();
   const given = String(formData.get("given_name") ?? "").trim();
   const family = String(formData.get("family_name") ?? "").trim();
