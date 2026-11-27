@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   refresh:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'poptramark'
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'poptramark-eng'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
