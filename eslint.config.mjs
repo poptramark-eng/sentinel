@@ -14,5 +14,5 @@ export default defineConfig([
       "@next/next/no-html-link-for-pages": "off",
     },
   },
-  globalIgnores(["**/.next/**", "**/dist/**", "**/node_modules/**", "**/coverage/**"]),
+  globalIgnores(["**/.next/**", "**/.cloudflare/**", "**/.vinext/**", "**/dist/**", "**/node_modules/**", "**/coverage/**"]),
 ]);
