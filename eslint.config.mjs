@@ -7,7 +7,7 @@ export default defineConfig([
   ...nextTs,
   {
     settings: {
-      react: { version: "19.2.4" },
+      react: { version: "19.3.1" },
     },
     rules: {
       // The application uses the App Router; there is no legacy pages directory.
