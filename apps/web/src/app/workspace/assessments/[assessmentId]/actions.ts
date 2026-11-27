@@ -1,5 +1,4 @@
 "use server";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 
@@ -23,7 +22,6 @@ export async function saveAssessmentScore(formData: FormData) {
     p_reason: reason || null,
   });
   if (error) redirect(`/workspace/assessments/${assessmentId}?error=Mark%20not%20saved.%20Check%20your%20assignment%20and%20correction%20reason.`);
-  revalidatePath(`/workspace/assessments/${assessmentId}`);
-  revalidatePath("/workspace");
+
   redirect(`/workspace/assessments/${assessmentId}?saved=1`);
 }
