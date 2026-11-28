@@ -2,7 +2,7 @@ export type AssessmentReportSnapshot = {
   assessment: {
     id: string;
     title: string;
-    assessment_type: "formative" | "summative";
+    assessment_type: string;
     assessment_date: string | null;
     max_score: number;
     academic_year_id: string;
