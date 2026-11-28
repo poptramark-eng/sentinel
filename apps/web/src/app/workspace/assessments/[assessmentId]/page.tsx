@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { notFound, redirect } from "next/navigation";
 import { WorkspaceShell } from "../../../../components/workspace-shell";
 import { createClient } from "../../../../lib/supabase/server";
+import { requireChildDataProcessing } from "../../../../lib/child-data";
 import { saveAssessmentScore } from "./actions";
 
 type Params = { params: Promise<{ assessmentId: string }>; searchParams: Promise<{ error?: string; saved?: string }> };
@@ -14,6 +15,7 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
   const supabase = await createClient();
   const { data: auth, error: authError } = await supabase.auth.getClaims();
   if (authError || !auth?.claims?.sub) redirect("/login");
+  await requireChildDataProcessing(supabase);
 
   const { data: assessment, error } = await supabase.from("assessments")
     .select("id,title,assessment_type,status,assessment_date,max_score,class_id,academic_year_id")
