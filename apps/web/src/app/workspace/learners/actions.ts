@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
+import { requireChildDataProcessing } from "../../../lib/child-data";
 
 export async function createLearner(formData: FormData) {
   const supabase = await createClient();
@@ -9,6 +10,7 @@ export async function createLearner(formData: FormData) {
   const { data: memberships } = await supabase.from("school_memberships").select("role").limit(1);
   const membership = memberships?.[0];
   if (!membership || membership.role !== "school_admin") redirect("/workspace");
+  await requireChildDataProcessing(supabase);
   const admission = String(formData.get("admission_number") ?? "").trim();
   const given = String(formData.get("given_name") ?? "").trim();
   const family = String(formData.get("family_name") ?? "").trim();

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 import { WorkspaceShell } from "../../../components/workspace-shell";
 import { createClient } from "../../../lib/supabase/server";
+import { requireChildDataProcessing } from "../../../lib/child-data";
 import { createLearner } from "./actions";
 
 export default async function LearnersPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
@@ -12,6 +13,7 @@ export default async function LearnersPage({ searchParams }: { searchParams: Pro
   const { data: memberships } = await supabase.from("school_memberships").select("id,role").limit(1);
   const membership = memberships?.[0];
   if (!membership) redirect("/setup");
+  await requireChildDataProcessing(supabase);
   const [{ data: classes }, { data: enrollments }] = await Promise.all([
     supabase.from("classes").select("id,display_name,grade_level,academic_year_id").eq("is_active", true).order("grade_level"),
     supabase.from("learner_enrollments").select("learner_id,class_id,academic_year_id,status,learners(id,admission_number,given_name,family_name,other_names),classes(display_name,grade_level)").eq("status","active").order("created_at",{ascending:false}).limit(100),
@@ -19,7 +21,7 @@ export default async function LearnersPage({ searchParams }: { searchParams: Pro
   const params = await searchParams;
   const isAdmin = membership.role === "school_admin";
   return <WorkspaceShell section="Learner records" title="Learners" navigation={[
-    { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments" }, { label: "Learners", href: "/workspace/learners", active: true }, ...(isAdmin ? [{label:"Setup",href:"/workspace/settings"}] : []),
+    { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments" }, { label: "Learners", href: "/workspace/learners", active: true }, ...(isAdmin ? [{label:"Teachers",href:"/workspace/teachers"},{label:"Setup",href:"/workspace/settings"}] : []),
   ]} actions={<form action="/auth/signout" method="post"><button className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">Sign out</button></form>}>
     <div className="mb-6"><p className="cbe-eyebrow">School register</p><h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">Learners</h1><p className="mt-2 text-sm text-[var(--muted)]">Learner records and academic-year class enrolments.</p></div>
     {params.error ? <p role="alert" className="mb-4 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">{params.error}</p> : null}

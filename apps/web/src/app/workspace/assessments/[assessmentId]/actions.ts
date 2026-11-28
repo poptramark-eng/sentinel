@@ -1,11 +1,13 @@
 "use server";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
+import { requireChildDataProcessing } from "../../../../lib/child-data";
 
 export async function saveAssessmentScore(formData: FormData) {
   const supabase = await createClient();
   const { data: auth, error: authError } = await supabase.auth.getClaims();
   if (authError || !auth?.claims?.sub) redirect("/login");
+  await requireChildDataProcessing(supabase);
   const assessmentId = String(formData.get("assessment_id") ?? "");
   const learnerId = String(formData.get("learner_id") ?? "");
   const learningAreaId = String(formData.get("learning_area_id") ?? "");
