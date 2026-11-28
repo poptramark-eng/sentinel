@@ -55,7 +55,7 @@ Deno.serve(async (request: Request) => {
     return response(403, { error: "Only the School Administrator can create staff accounts." });
   }
 
-  let payload: { email?: unknown; displayName?: unknown };
+  let payload: { email?: unknown; displayName?: unknown; role?: unknown };
   try {
     payload = await request.json();
   } catch {
@@ -69,6 +69,10 @@ Deno.serve(async (request: Request) => {
   }
   if (displayName.length < 2 || displayName.length > 120) {
     return response(400, { error: "Enter the staff member's name." });
+  }
+  const role = payload.role;
+  if (role !== "class_teacher" && role !== "subject_teacher") {
+    return response(400, { error: "Choose a valid teacher role." });
   }
 
   const admin = createClient(supabaseUrl, secretKey, {
@@ -90,15 +94,27 @@ Deno.serve(async (request: Request) => {
   setupUrl.searchParams.set("type", "invite");
   setupUrl.searchParams.set("next", "/login?invite=accepted");
 
+  const { error: membershipInsertError } = await admin.from("school_memberships").insert({
+    school_id: membership.school_id,
+    user_id: invite.user.id,
+    role,
+    status: "active",
+  });
+  if (membershipInsertError) {
+    await admin.auth.admin.deleteUser(invite.user.id);
+    return response(500, { error: "The staff account could not be linked to this school." });
+  }
+
   const { error: auditError } = await admin.from("audit_events").insert({
     school_id: membership.school_id,
     actor_id: userResult.user.id,
     action: "staff.account_invitation_created",
     entity_type: "user",
     entity_id: invite.user.id,
-    details: { email, display_name: displayName, delivery: "manual_link" },
+    details: { email, display_name: displayName, role, delivery: "manual_link" },
   });
   if (auditError) {
+    await admin.from("school_memberships").delete().eq("school_id", membership.school_id).eq("user_id", invite.user.id);
     await admin.auth.admin.deleteUser(invite.user.id);
     return response(500, { error: "The invitation could not be recorded. No staff account was retained." });
   }
@@ -106,6 +122,7 @@ Deno.serve(async (request: Request) => {
   return response(201, {
     email,
     displayName,
+    role,
     actionLink: setupUrl.toString(),
     message: "Account created. Copy the one-time setup link and share it with the staff member using your usual secure channel. Sentinel has not sent an email or message.",
   });
