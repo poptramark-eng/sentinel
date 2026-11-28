@@ -46,6 +46,7 @@ export default async function ReportsPage() {
         { label: "Assessments", href: "/workspace/assessments" },
         { label: "Learners", href: "/workspace/learners" },
         { label: "Teachers", href: "/workspace/teachers" },
+        { label: "Analytics", href: "/workspace/analytics" },
         { label: "Reports", href: "/workspace/reports", active: true },
         { label: "Setup", href: "/workspace/settings" },
       ]}
