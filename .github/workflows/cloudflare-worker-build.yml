@@ -1,6 +1,13 @@
 name: Cloudflare Worker build
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/cloudflare-worker-build.yml"
   pull_request:
     branches: [main]
     paths:
@@ -36,3 +43,22 @@ jobs:
 
       - name: Build the Cloudflare Worker bundle
         run: pnpm --filter @cbe/web run build:vinext
+
+      - name: Check whether Cloudflare deployment is configured
+        id: cloudflare_credentials
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy the sentinel Worker
+        if: ${{ github.event_name == 'push' && steps.cloudflare_credentials.outputs.available == 'true' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 8c18dba23f63bd897b29628ebb67a661
+        run: pnpm --filter @cbe/web run deploy:vinext
