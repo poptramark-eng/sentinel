@@ -4,6 +4,7 @@ import { WorkspaceShell } from "../../../components/workspace-shell";
 import { createClient } from "../../../lib/supabase/server";
 import { requireChildDataProcessing } from "../../../lib/child-data";
 import type { AssessmentReportSnapshot } from "../../../lib/assessment-report";
+import { PublishedReportsTable } from "../../../components/reports-tables";
 
 export const dynamic = "force-dynamic";
 
@@ -56,27 +57,7 @@ export default async function ReportsPage() {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Only approved and published assessment versions appear here. Each report uses the immutable learner and mark snapshot captured at submission.</p>
       </div>
       {queryError ? <p role="alert" className="mb-4 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">Published reports could not be loaded.</p> : null}
-      <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-white">
-        <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
-          <div><h2 className="font-semibold text-[var(--ink-strong)]">Published assessments</h2><p className="mt-1 text-xs text-[var(--muted)]">{reports.length} published report versions</p></div>
-        </div>
-        {reports.length ? (
-          <div className="divide-y divide-[var(--line)]">
-            {reports.map((report) => (
-              <Link key={report.id} href={`/workspace/reports/${report.id}`} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 transition hover:bg-[var(--surface-subtle)]">
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-[var(--ink-strong)]">{report.title}</span>
-                  <span className="mt-1 block text-xs text-[var(--muted)]">Grade {report.grade} · {report.className} · {report.assessmentType} · Version {report.version}</span>
-                </span>
-                <span className="text-right">
-                  <span className="block text-xs font-semibold text-[var(--ink)]">{report.learnerCount} learners</span>
-                  <span className="mt-1 block text-[11px] text-[var(--muted)]">{report.publishedAt ? new Date(report.publishedAt).toLocaleDateString("en-KE") : "Published"}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        ) : <p className="px-5 py-14 text-center text-sm text-[var(--muted)]">No published results yet. Submit, review and approve an assessment, then publish it to create its report.</p>}
-      </section>
+      <PublishedReportsTable reports={reports} />
     </WorkspaceShell>
   );
 }
