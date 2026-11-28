@@ -28,7 +28,7 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
   await requireChildDataProcessing(supabase);
 
   const { data: assessment, error } = await supabase.from("assessments")
-    .select("id,title,assessment_type,status,assessment_date,max_score,class_id,academic_year_id,is_synthetic")
+    .select("id,title,assessment_type,status,assessment_date,max_score,class_id,academic_year_id")
     .eq("id", assessmentId).maybeSingle();
   if (error || !assessment) notFound();
 
@@ -54,7 +54,7 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
   const learnerIds = (enrollments ?? []).map((x) => x.learner_id);
   const [{ data: areas }, { data: learners }] = await Promise.all([
     areaIds.length ? supabase.from("learning_areas").select("id,name").in("id", areaIds).order("name") : Promise.resolve({ data: [] }),
-    learnerIds.length ? supabase.from("learners").select("id,admission_number,given_name,family_name,other_names,is_synthetic").in("id", learnerIds).order("family_name").order("given_name") : Promise.resolve({ data: [] }),
+    learnerIds.length ? supabase.from("learners").select("id,admission_number,given_name,family_name,other_names").in("id", learnerIds).order("family_name").order("given_name") : Promise.resolve({ data: [] }),
   ]);
   const scoreMap = new Map((scores ?? []).map((score) => [`${score.learner_id}:${score.learning_area_id}`, score.score]));
   const editable = assessment.status === "open";
@@ -78,7 +78,6 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
             <p className="cbe-eyebrow">{assessment.assessment_type} assessment · {assessment.assessment_date ?? "No date set"}</p>
             <h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">{assessment.title}</h1>
             <p className="mt-2 text-sm text-[var(--muted)]">Grade {classRow?.grade_level} · {classRow?.display_name ?? "Class"} · {learners?.length ?? 0} active learners</p>
-            {assessment.is_synthetic ? <p className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface-subtle)] px-3 py-2 text-xs font-medium text-[var(--muted)]">Demo assessment — learner identities and marks are fictional sample data.</p> : null}
           </div>
           <span className="rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-xs font-semibold capitalize text-[var(--brand-strong)]">{assessment.status}</span>
         </div>
@@ -160,7 +159,7 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
             {learners?.map((learner) => (
               <tr key={learner.id} className="align-top">
                 <td className="sticky left-0 bg-white px-4 py-3">
-                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--ink-strong)]">{[learner.given_name, learner.other_names, learner.family_name].filter(Boolean).join(" ")}{learner.is_synthetic ? <span className="rounded-full bg-[var(--surface-subtle)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Demo</span> : null}</p>
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--ink-strong)]">{[learner.given_name, learner.other_names, learner.family_name].filter(Boolean).join(" ")}</p>
                   <p className="mt-1 text-[11px] text-[var(--muted)]">{learner.admission_number}</p>
                 </td>
                 {areas?.map((area) => {
