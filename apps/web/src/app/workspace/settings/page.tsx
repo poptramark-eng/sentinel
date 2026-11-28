@@ -21,7 +21,7 @@ export default async function SchoolSettingsPage({ searchParams }: { searchParam
   ]);
   const params = await searchParams;
   return <WorkspaceShell section="School configuration" title="Setup" navigation={[
-    { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments" }, { label: "Learners", href: "/workspace/learners" }, { label: "Teachers", href: "/workspace/teachers" }, { label: "Setup", href: "/workspace/settings", active: true },
+    { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments" }, { label: "Learners", href: "/workspace/learners" }, { label: "Teachers", href: "/workspace/teachers" }, { label: "Reports", href: "/workspace/reports" }, { label: "Setup", href: "/workspace/settings", active: true },
   ]} actions={<form action="/auth/signout" method="post"><button className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">Sign out</button></form>}>
     <div className="mb-6"><p className="cbe-eyebrow">Essential school records</p><h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">School setup</h1><p className="mt-2 text-sm text-[var(--muted)]">Configure only the academic structure needed to run assessments.</p></div>
     {params.error ? <p role="alert" className="mb-4 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">{params.error}</p> : null}

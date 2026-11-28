@@ -38,6 +38,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
         { label: "Assessments", href: "/workspace/assessments" },
         { label: "Learners", href: "/workspace/learners" },
         { label: "Teachers", href: "/workspace/teachers", active: true },
+        { label: "Reports", href: "/workspace/reports" },
         { label: "Setup", href: "/workspace/settings" },
       ]}
       actions={<form action="/auth/signout" method="post"><button className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">Sign out</button></form>}

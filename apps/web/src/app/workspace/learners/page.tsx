@@ -21,7 +21,7 @@ export default async function LearnersPage({ searchParams }: { searchParams: Pro
   const params = await searchParams;
   const isAdmin = membership.role === "school_admin";
   return <WorkspaceShell section="Learner records" title="Learners" navigation={[
-    { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments" }, { label: "Learners", href: "/workspace/learners", active: true }, ...(isAdmin ? [{label:"Teachers",href:"/workspace/teachers"},{label:"Setup",href:"/workspace/settings"}] : []),
+    { label: "Overview", href: "/workspace" }, { label: "Assessments", href: "/workspace/assessments" }, { label: "Learners", href: "/workspace/learners", active: true }, ...(isAdmin ? [{label:"Teachers",href:"/workspace/teachers"},{label:"Reports",href:"/workspace/reports"},{label:"Setup",href:"/workspace/settings"}] : []),
   ]} actions={<form action="/auth/signout" method="post"><button className="rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">Sign out</button></form>}>
     <div className="mb-6"><p className="cbe-eyebrow">School register</p><h1 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">Learners</h1><p className="mt-2 text-sm text-[var(--muted)]">Learner records and academic-year class enrolments.</p></div>
     {params.error ? <p role="alert" className="mb-4 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">{params.error}</p> : null}

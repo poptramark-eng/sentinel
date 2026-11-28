@@ -22,6 +22,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--brand)]">First-time setup</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--ink-strong)]">Set up your school</h1>
         <p className="mt-3 text-sm leading-6 text-[var(--muted)]">This creates the first school workspace and assigns the currently signed-in account as School Administrator. This one-time action is available only while the installation has no school.</p>
+        <p className="mt-3 rounded-lg bg-[var(--surface-subtle)] p-3 text-xs leading-5 text-[var(--muted)]">Security: this setup is restricted to the first account provisioned in Supabase Auth. Create and verify the initial School Administrator account before creating any teacher accounts. Public registration is disabled.</p>
         {params.error ? <p role="alert" className="mt-5 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">{params.error}</p> : null}
         <form action={bootstrapSchool} className="mt-7 grid gap-5 sm:grid-cols-2">
           <label className="sm:col-span-2"><span className="mb-2 block text-sm font-medium">School name *</span><input name="school_name" required minLength={2} maxLength={160} className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm outline-none focus:border-[var(--brand)]" placeholder="e.g. Kisii..." /></label>
