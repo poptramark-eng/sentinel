@@ -21,7 +21,7 @@ export default async function AssessmentReportPage({ params }: { params: Promise
 
   const [{ data: submission }, { data: school }] = await Promise.all([
     supabase.from("assessment_submissions").select("id,version,published_at,snapshot").eq("id", submissionId).eq("status", "published").maybeSingle(),
-    supabase.from("schools").select("name,county,sub_county").eq("id", membership.school_id).maybeSingle(),
+    supabase.from("schools").select("name").eq("id", membership.school_id).maybeSingle(),
   ]);
   if (!submission) notFound();
 
