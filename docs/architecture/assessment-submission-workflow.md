@@ -50,3 +50,4 @@ The active hosted Supabase project has no Auth users, schools, learners or asses
 
 - The submission snapshot also freezes the learner's recorded gender value. Reports show the recorded categories and a separate not-recorded count; the CSV includes gender. No categories are inferred or silently recoded.
 - In production, the Next.js proxy redirects the legacy council, platform, school-registration, school-teaching, invitation and prototype routes to the single-school Supabase workspace/login. Those routes remain available only in non-production for reference.
+- Initial school bootstrap is restricted to the earliest account provisioned in Supabase Auth. The first School Administrator must be created and verified before teacher accounts; public registration remains disabled.
