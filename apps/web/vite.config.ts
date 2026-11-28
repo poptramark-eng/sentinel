@@ -12,13 +12,11 @@ export default defineConfig(({ mode }) => {
     "";
 
   return {
-    // Next-style public variables must be embedded at build time for browser code.
-    // Both values are public Supabase client configuration, never server secrets.
+    // Explicit globals guarantee public Supabase configuration is embedded in every
+    // Vite environment (browser, SSR and RSC) instead of reading process.env at runtime.
     define: {
-      "process.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(supabaseUrl),
-      "process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
-        supabasePublishableKey,
-      ),
+      __NEXT_PUBLIC_SUPABASE_URL__: JSON.stringify(supabaseUrl),
+      __NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY__: JSON.stringify(supabasePublishableKey),
     },
     plugins: [
       vinext(),
