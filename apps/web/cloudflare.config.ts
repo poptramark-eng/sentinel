@@ -12,6 +12,12 @@ export default defineConfig({
     },
     env: {
       ASSETS: bindings.assets(),
+      NEXT_PUBLIC_SUPABASE_URL: bindings.text(
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      ),
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: bindings.text(
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
+      ),
     },
   }),
 });
