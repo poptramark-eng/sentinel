@@ -52,8 +52,19 @@ The Worker is configured with both CDN and data caches disabled. This avoids cac
 ## Current PR validation and child-data release gate
 
 - A dedicated .github/workflows/cloudflare-worker-build.yml now runs the actual build:vinext Worker bundle on relevant pull requests using Node.js 22.18.0 and the repository's pinned pnpm 10.0.0. This complements the compatibility check; compatibility alone is not treated as a successful Worker build.
-- The latest build attempt first exposed a workflow-only pnpm version mismatch (the workflow specified 12.18.0 while the repository pins 10.0.0). The workflow was corrected to use the manifest-pinned 10.0.0; the latest Worker bundle build passed on commit 9c6e636. The vinext compatibility check also passed (12 supported, zero partial, zero issues).
+- The build workflow was corrected to use the manifest-pinned pnpm 10.0.0 and Node.js 22.18.0. The final application change set passed the Cloudflare Worker bundle build on PR #16's final head; the vinext compatibility check passed with 12 supported, zero partial and zero issues. PR #16 is merged to `main` as `2996aac`. PR #17 adds only database security migrations and documentation; its final CI passed and it is merged as `f863b02`.
 - Set CHILD_DATA_PROCESSING_ENABLED=false in both Production and Preview Worker environments. The Supabase database independently defaults app.child_data_processing_enabled to false. Do not set either gate to true before the privacy/legal release checks are evidenced and approved.
 - The first administrator still needs to be provisioned manually in Supabase Auth. The application does not send teacher invitations or other messages.
 - The assessment lifecycle now includes class submission, review, approval, publication, versioned immutable snapshots, a published reports register, Excel-compatible CSV export and browser Print/Save as PDF. These routes remain unavailable while the child-data gate is off.
 - Cloudflare Workers Builds still requires a dedicated account token with Account Workers Builds: Edit and Account Workers Scripts: Edit. Do not reuse the unrelated token that only has Email Routing and Artifacts scopes. No token should be pasted into ChatGPT, GitHub or Notion.
+
+## 28 November 2026 — current deployment handoff
+
+- The application code and assessment/report milestone are merged to `main`; the post-merge CI for `f863b02` is being checked. PR #16's final application tree passed the dedicated Cloudflare Worker build and compatibility checks.
+- The Cloudflare account still has no `cbe` Worker. The only listed script is the unrelated `llm-chat-app-template`.
+- The only listed Workers Builds token is `chanfana-openapi-template build token`, which has Email Routing and Artifacts permissions only. It is not valid for this deployment and must not be reused.
+- The Workers Builds setup requires a dedicated account token with **Account → Workers Builds: Edit** and **Account → Workers Scripts: Edit**. The Cloudflare connector cannot create/read account API tokens in this session; the dashboard token-management page was inaccessible.
+- After an account owner creates the dedicated token, select it in the Workers Builds setup. Configure the repository root, Node.js 22.18.0, build command `pnpm --filter @cbe/web run build:vinext`, deploy command `pnpm --filter @cbe/web run deploy:vinext`, preview command `pnpm --filter @cbe/web run start:vinext`, and public Supabase variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- Keep `CHILD_DATA_PROCESSING_ENABLED=false` for Preview and Production until privacy/legal release checks are evidenced and approved. Do not ask for or store the Supabase service-role key.
+- Vercel Free is still over its 100-deployments-per-day limit. No deployment was made to either provider.
+- Once deployed, smoke-test login, initial school bootstrap, school setup, teacher assignment, learner enrolment, assessment creation, marks, submission/review/approval/publication, report viewing and CSV export. A complete E2E test still requires a separate non-production Supabase environment with synthetic fixtures.
