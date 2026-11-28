@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Sign in is required." }, { status: 401 });
   }
 
-  let body: { email?: unknown; displayName?: unknown };
+  let body: { email?: unknown; displayName?: unknown; role?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await supabase.functions.invoke("provision-staff", {
-    body: { email: body.email, displayName: body.displayName },
+    body: { email: body.email, displayName: body.displayName, role: body.role },
   });
 
   if (error || !data) {
