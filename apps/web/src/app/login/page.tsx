@@ -46,7 +46,7 @@ export default function LoginPage() {
           {error ? <p role="alert" className="rounded-xl border border-[#fecaca] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">{error}</p> : null}
           <button type="submit" disabled={loading} className="flex w-full items-center justify-center rounded-xl bg-[var(--brand)] px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-strong)] disabled:opacity-60">{loading ? "Signing in…" : "Sign in"}</button>
         </form>
-        <p className="mt-6 text-xs leading-5 text-[var(--subtle)]">Accounts are provisioned by the system administrator. Email and SMS notifications are not part of this release.</p>
+        <p className="mt-6 text-xs leading-5 text-[var(--subtle)]">Accounts are issued by the School Administrator. <Link href="/register" className="font-semibold text-[var(--brand)] hover:underline">Need an account?</Link> Email and SMS notifications are not part of this release.</p>
       </div>
       <div className="flex items-center justify-between text-xs text-[var(--subtle)]"><span>© {new Date().getFullYear()} cbe · Softflix</span><Link href="/" className="font-medium text-[var(--muted)] hover:text-[var(--brand)]">Back to home</Link></div>
     </section>

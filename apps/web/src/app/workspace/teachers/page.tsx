@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { WorkspaceShell } from "../../../components/workspace-shell";
 import { createClient } from "../../../lib/supabase/server";
 import { assignTeacher } from "./actions";
+import { CreateStaffAccount } from "./create-staff-account";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,8 @@ export default async function TeachersPage({ searchParams }: PageProps) {
       </div>
       {params.error ? <p role="alert" className="mb-4 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]">{params.error}</p> : null}
       {params.saved ? <p role="status" className="mb-4 rounded-lg bg-[var(--success-soft)] p-3 text-sm text-[var(--success)]">Teacher assignment saved.</p> : null}
+
+      <div className="mb-7"><CreateStaffAccount /></div>
 
       <section className="mb-7 rounded-xl border border-[var(--line)] bg-white p-5 sm:p-6">
         <h2 className="font-semibold text-[var(--ink-strong)]">Assign a teacher</h2>
