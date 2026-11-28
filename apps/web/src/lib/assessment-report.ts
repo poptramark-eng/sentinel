@@ -28,7 +28,9 @@ export type AssessmentReportSnapshot = {
 };
 
 export function csvCell(value: unknown): string {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const raw = String(value ?? "");
+  const safe = /^[\\t\\r ]*[=+@-]/.test(raw) ? `'${raw}` : raw;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 export function assessmentSnapshotToCsv(snapshot: AssessmentReportSnapshot): string {
