@@ -40,6 +40,12 @@ export default async function AssessmentReportPage({ params }: { params: Promise
       lowest: values.length ? Math.min(...values) : null,
     };
   });
+  const genderCounts = new Map<string, number>();
+  for (const learner of snapshot.learners) {
+    const gender = learner.gender ?? "not recorded";
+    genderCounts.set(gender, (genderCounts.get(gender) ?? 0) + 1);
+  }
+  const genderStats = [...genderCounts.entries()].sort(([left], [right]) => left.localeCompare(right));
 
   return (
     <WorkspaceShell
@@ -95,6 +101,7 @@ export default async function AssessmentReportPage({ params }: { params: Promise
                   <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">#</th>
                   <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Learner</th>
                   <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Admission no.</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Gender</th>
                   {snapshot.learning_areas.map((area) => <th key={area.id} className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">{area.name}</th>)}
                   <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Average</th>
                 </tr>
@@ -107,6 +114,7 @@ export default async function AssessmentReportPage({ params }: { params: Promise
                       <td className="px-4 py-3 text-xs tabular-nums text-[var(--muted)]">{index + 1}</td>
                       <td className="px-4 py-3 text-sm font-medium text-[var(--ink-strong)]">{learner.name}</td>
                       <td className="px-4 py-3 text-xs tabular-nums text-[var(--muted)]">{learner.admission_number}</td>
+                      <td className="px-4 py-3 text-xs capitalize text-[var(--muted)]">{learner.gender ?? "Not recorded"}</td>
                       {snapshot.learning_areas.map((area) => <td key={area.id} className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{scoreByArea.get(area.id)?.toFixed(2) ?? "—"}</td>)}
                       <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[var(--ink-strong)]">{learner.average?.toFixed(2) ?? "—"}</td>
                     </tr>
@@ -142,6 +150,33 @@ export default async function AssessmentReportPage({ params }: { params: Promise
                     <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{item.average?.toFixed(2) ?? "—"}</td>
                     <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{item.highest?.toFixed(2) ?? "—"}</td>
                     <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{item.lowest?.toFixed(2) ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="report-card mt-6 overflow-hidden rounded-xl border border-[var(--line)] bg-white">
+          <div className="border-b border-[var(--line)] px-5 py-4">
+            <h2 className="font-semibold text-[var(--ink-strong)]">Learner distribution by gender</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">Counts use the gender recorded on each learner profile; missing values remain separate.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="report-table w-full border-collapse text-left">
+              <thead className="bg-[var(--surface-subtle)]">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Recorded category</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Learners</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Share</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {genderStats.map(([gender, count]) => (
+                  <tr key={gender}>
+                    <td className="px-4 py-3 text-sm capitalize text-[var(--ink-strong)]">{gender}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{count}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{snapshot.learners.length ? `${((count / snapshot.learners.length) * 100).toFixed(1)}%` : "—"}</td>
                   </tr>
                 ))}
               </tbody>
