@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { WorkspaceShell } from "../../../../components/workspace-shell";
 import { PrintButton } from "../../../../components/print-button";
+import { LearnerResultsTable } from "../../../../components/reports-tables";
 import { createClient } from "../../../../lib/supabase/server";
 import { requireChildDataProcessing } from "../../../../lib/child-data";
 import type { AssessmentReportSnapshot } from "../../../../lib/assessment-report";
@@ -89,42 +90,7 @@ export default async function AssessmentReportPage({ params }: { params: Promise
           <article className="report-card rounded-xl border border-[var(--line)] bg-white p-4"><p className="text-xs text-[var(--muted)]">Class average</p><p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--ink-strong)]">{classAverage === null ? "—" : classAverage.toFixed(2)}</p></article>
         </div>
 
-        <section className="report-card report-card-table overflow-hidden rounded-xl border border-[var(--line)] bg-white">
-          <div className="no-print border-b border-[var(--line)] px-5 py-4">
-            <h2 className="font-semibold text-[var(--ink-strong)]">Learner results</h2>
-            <p className="mt-1 text-xs text-[var(--muted)]">Scores are shown out of {snapshot.assessment.max_score}. This report reflects the exact published submission snapshot.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="report-table w-full min-w-[720px] border-collapse text-left">
-              <thead className="bg-[var(--surface-subtle)]">
-                <tr>
-                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">#</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Learner</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Admission no.</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Gender</th>
-                  {snapshot.learning_areas.map((area) => <th key={area.id} className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">{area.name}</th>)}
-                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Average</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {snapshot.learners.map((learner, index) => {
-                  const scoreByArea = new Map(learner.scores.map((score) => [score.learning_area_id, score.score]));
-                  return (
-                    <tr key={learner.id}>
-                      <td className="px-4 py-3 text-xs tabular-nums text-[var(--muted)]">{index + 1}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--ink-strong)]">{learner.name}</td>
-                      <td className="px-4 py-3 text-xs tabular-nums text-[var(--muted)]">{learner.admission_number}</td>
-                      <td className="px-4 py-3 text-xs capitalize text-[var(--muted)]">{learner.gender ?? "Not recorded"}</td>
-                      {snapshot.learning_areas.map((area) => <td key={area.id} className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{scoreByArea.get(area.id)?.toFixed(2) ?? "—"}</td>)}
-                      <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[var(--ink-strong)]">{learner.average?.toFixed(2) ?? "—"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="report-print-only border-t border-[var(--line)] px-4 py-3 text-[10px] text-[var(--muted)]">Generated from published assessment snapshot · Version {submission.version}</p>
-        </section>
+        <LearnerResultsTable learners={snapshot.learners} learningAreas={snapshot.learning_areas} maxScore={snapshot.assessment.max_score} />
 
         <section className="report-card mt-6 overflow-hidden rounded-xl border border-[var(--line)] bg-white">
           <div className="border-b border-[var(--line)] px-5 py-4">
