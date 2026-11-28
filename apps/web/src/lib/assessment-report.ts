@@ -29,7 +29,7 @@ export type AssessmentReportSnapshot = {
 
 export function csvCell(value: unknown): string {
   const raw = String(value ?? "");
-  const safe = /^[\\t\\r ]*[=+@-]/.test(raw) ? `'${raw}` : raw;
+  const safe = /^[\t\r ]*[=+@-]/.test(raw) ? `'${raw}` : raw;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
