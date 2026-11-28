@@ -51,3 +51,12 @@ The active hosted Supabase project has no Auth users, schools, learners or asses
 - The submission snapshot also freezes the learner's recorded gender value. Reports show the recorded categories and a separate not-recorded count; the CSV includes gender. No categories are inferred or silently recoded.
 - In production, the Next.js proxy redirects the legacy council, platform, school-registration, school-teaching, invitation and prototype routes to the single-school Supabase workspace/login. Those routes remain available only in non-production for reference.
 - Initial school bootstrap is restricted to the earliest account provisioned in Supabase Auth. The first School Administrator must be created and verified before teacher accounts; public registration remains disabled.
+
+## RPC security boundary
+
+- Six existing tenant-scoped privileged operations were moved from the exposed `public` schema into the unexposed `private` schema: teacher assignment, initial school bootstrap, academic-year setup, assessment creation, learner enrolment and mark entry.
+- The corresponding `public` PostgREST RPC names remain as thin `SECURITY INVOKER` wrappers to preserve the existing application contract.
+- Authenticated users can execute the wrappers and the private implementations only; anonymous users cannot execute either. The `private` schema remains unavailable as an exposed PostgREST schema.
+- The Supabase Security Advisor returned zero security lints after this change. The privileged implementations still enforce actor identity, school scope, role and operation-specific validation.
+
+- Authenticated clients have read-only access to `audit_events` and `assessment_score_revisions`. Direct INSERT policies and grants were removed so users cannot forge audit events or score-correction history; scoped SECURITY DEFINER functions remain the only write path.
