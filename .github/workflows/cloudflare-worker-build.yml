@@ -45,15 +45,18 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          CHILD_DATA_PROCESSING_ENABLED: ${{ vars.CHILD_DATA_PROCESSING_ENABLED }}
         run: |
           test -n "$NEXT_PUBLIC_SUPABASE_URL" || { echo "::error::NEXT_PUBLIC_SUPABASE_URL repository variable is missing"; exit 1; }
           test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" || { echo "::error::NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY repository variable is missing"; exit 1; }
+          case "$CHILD_DATA_PROCESSING_ENABLED" in true|false) ;; *) echo "::error::CHILD_DATA_PROCESSING_ENABLED must be true or false"; exit 1 ;; esac
           node -e 'const u = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL); if (u.protocol !== "https:" || !u.hostname.endsWith(".supabase.co") || process.env.NEXT_PUBLIC_SUPABASE_URL !== process.env.NEXT_PUBLIC_SUPABASE_URL.trim()) process.exit(1);'
 
       - name: Build the Cloudflare Worker bundle
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          CHILD_DATA_PROCESSING_ENABLED: ${{ vars.CHILD_DATA_PROCESSING_ENABLED }}
         run: pnpm --filter @cbe/web run build:vinext
 
       - name: Check whether Cloudflare deployment is configured
@@ -75,4 +78,5 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: 8c18dba23f63bd897b29628ebb67a661
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          CHILD_DATA_PROCESSING_ENABLED: ${{ vars.CHILD_DATA_PROCESSING_ENABLED }}
         run: pnpm --filter @cbe/web run deploy:vinext
