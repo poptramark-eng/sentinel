@@ -68,3 +68,11 @@ The Worker is configured with both CDN and data caches disabled. This avoids cac
 - Keep `CHILD_DATA_PROCESSING_ENABLED=false` for Preview and Production until privacy/legal release checks are evidenced and approved. Do not ask for or store the Supabase service-role key.
 - Vercel Free is still over its 100-deployments-per-day limit. No deployment was made to either provider.
 - Once deployed, smoke-test login, initial school bootstrap, school setup, teacher assignment, learner enrolment, assessment creation, marks, submission/review/approval/publication, report viewing and CSV export. A complete E2E test still requires a separate non-production Supabase environment with synthetic fixtures.
+
+## 28 November 2026 — existing Worker and deployment automation
+
+- The existing production Worker is named sentinel and is served at https://sentinel.poptramark.workers.dev. The Cloudflare configuration must use worker name sentinel (not the earlier placeholder cbe); apps/web/cloudflare.config.ts has been corrected accordingly.
+- The current production version at this handoff is 68397f1b-b076-4d0b-9fc4-a3e5662edac1, annotated with commit ca8509b. It does not yet include the secure account-provisioning changes merged in PR #19.
+- The repository's Cloudflare Worker workflow now runs on pull requests and pushes to main. It always builds the Worker bundle. On main pushes it deploys only when the repository Actions secret CLOUDFLARE_API_TOKEN is configured; otherwise it safely skips deployment.
+- To enable automated deployment, create a Cloudflare API token with Account Workers Scripts: Edit and Account Settings: Read for this account, then add it as the GitHub repository Actions secret named CLOUDFLARE_API_TOKEN. Never paste the token into chat, source code, workflow YAML, or Notion. The account ID is configured as a non-secret workflow value.
+- No deployment has been claimed from this PR. The next main push after the secret is configured will build and deploy the sentinel Worker through the existing deploy:vinext script. Keep the Supabase service-role/secret key out of Cloudflare public variables.
