@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 import { WorkspaceShell } from "../../../components/workspace-shell";
 import { createClient } from "../../../lib/supabase/server";
+import { requireChildDataProcessing } from "../../../lib/child-data";
 import { createLearner } from "./actions";
 
 export default async function LearnersPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
@@ -12,6 +13,7 @@ export default async function LearnersPage({ searchParams }: { searchParams: Pro
   const { data: memberships } = await supabase.from("school_memberships").select("id,role").limit(1);
   const membership = memberships?.[0];
   if (!membership) redirect("/setup");
+  await requireChildDataProcessing(supabase);
   const [{ data: classes }, { data: enrollments }] = await Promise.all([
     supabase.from("classes").select("id,display_name,grade_level,academic_year_id").eq("is_active", true).order("grade_level"),
     supabase.from("learner_enrollments").select("learner_id,class_id,academic_year_id,status,learners(id,admission_number,given_name,family_name,other_names),classes(display_name,grade_level)").eq("status","active").order("created_at",{ascending:false}).limit(100),
