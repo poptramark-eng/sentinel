@@ -58,3 +58,5 @@ The active hosted Supabase project has no Auth users, schools, learners or asses
 - The corresponding `public` PostgREST RPC names remain as thin `SECURITY INVOKER` wrappers to preserve the existing application contract.
 - Authenticated users can execute the wrappers and the private implementations only; anonymous users cannot execute either. The `private` schema remains unavailable as an exposed PostgREST schema.
 - The Supabase Security Advisor returned zero security lints after this change. The privileged implementations still enforce actor identity, school scope, role and operation-specific validation.
+
+- Authenticated clients have read-only access to `audit_events` and `assessment_score_revisions`. Direct INSERT policies and grants were removed so users cannot forge audit events or score-correction history; scoped SECURITY DEFINER functions remain the only write path.
