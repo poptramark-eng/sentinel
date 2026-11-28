@@ -18,6 +18,7 @@ export type AssessmentReportSnapshot = {
     id: string;
     admission_number: string;
     name: string;
+    gender: "female" | "male" | "other" | "undisclosed" | null;
     average: number | null;
     scores: Array<{
       learning_area_id: string;
@@ -34,12 +35,13 @@ export function csvCell(value: unknown): string {
 }
 
 export function assessmentSnapshotToCsv(snapshot: AssessmentReportSnapshot): string {
-  const header = ["Learner", "Admission number", ...snapshot.learning_areas.map((area) => area.name), "Average"];
+  const header = ["Learner", "Admission number", "Gender", ...snapshot.learning_areas.map((area) => area.name), "Average"];
   const rows = snapshot.learners.map((learner) => {
     const scoreByArea = new Map(learner.scores.map((score) => [score.learning_area_id, score.score]));
     return [
       learner.name,
       learner.admission_number,
+      learner.gender ?? "Not recorded",
       ...snapshot.learning_areas.map((area) => scoreByArea.get(area.id) ?? ""),
       learner.average ?? "",
     ];
