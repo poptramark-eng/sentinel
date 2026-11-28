@@ -47,3 +47,5 @@ published
 ## Verification boundary
 
 The active hosted Supabase project has no Auth users, schools, learners or assessments. The workflow schema and functions were applied and catalog/privilege checks passed, but a complete transition test cannot be run against the production project without creating synthetic user/school/learner data. Do that only in a separate non-production Supabase environment with synthetic fixtures and the database gate enabled.
+
+- The submission snapshot also freezes the learner's recorded gender value. Reports show the recorded categories and a separate not-recorded count; the CSV includes gender. No categories are inferred or silently recoded.
