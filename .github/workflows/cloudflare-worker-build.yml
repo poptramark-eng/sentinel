@@ -41,7 +41,19 @@ jobs:
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate Supabase build configuration
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL" || { echo "::error::NEXT_PUBLIC_SUPABASE_URL repository variable is missing"; exit 1; }
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" || { echo "::error::NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY repository variable is missing"; exit 1; }
+          node -e 'const u = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL); if (u.protocol !== "https:" || !u.hostname.endsWith(".supabase.co") || process.env.NEXT_PUBLIC_SUPABASE_URL !== process.env.NEXT_PUBLIC_SUPABASE_URL.trim()) process.exit(1);'
+
       - name: Build the Cloudflare Worker bundle
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
         run: pnpm --filter @cbe/web run build:vinext
 
       - name: Check whether Cloudflare deployment is configured
