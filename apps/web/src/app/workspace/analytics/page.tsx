@@ -80,7 +80,6 @@ export default async function AnalyticsPage() {
   const gradeRows = [...gradeMap.entries()].map(([grade, item]) => ({
     grade, reports: item.reports, learners: item.learners, average: average(item.averages),
   })).sort((a, b) => a.grade - b.grade);
-  const maxArea = Math.max(1, ...areaRows.map((item) => item.average ?? 0));
 
   return (
     <WorkspaceShell section="School reporting" title="School analytics" navigation={[
