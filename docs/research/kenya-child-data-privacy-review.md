@@ -76,3 +76,17 @@ Privacy information must explain the controller/processor identities, each purpo
 The current SchoolClass and StaffAssignment features do not create learner records and may be developed with synthetic data. Production learner, candidate, marks and results endpoints are protected by `ChildDataProcessingGuard` and fail closed unless `CHILD_DATA_PROCESSING_ENABLED=true` is explicitly configured. The default production state is disabled. The flag must not be enabled until the responsible controllers/processors and privacy/legal owners have evidenced and approved all applicable gates above; setting the flag is an operational release action, not proof that the gates are satisfied. LearnerEnrollment, LearnerIdentity onboarding, candidate scheduling/snapshots, marks persistence, result publication, parent access and production analytics must remain blocked from real data until approval. Non-production environments remain available for synthetic fixtures only; never use real learner information in test fixtures.
 
 This document should be revisited with Kenyan counsel and the relevant Council/school data protection officers before pilot onboarding. It does not determine the legal controller/processor allocation or substitute for registration, contracts, DPIA or legal advice.
+
+
+## Implemented technical release gate (28 November 2026)
+
+The Supabase-backed Next.js workspace now enforces a separate database gate in addition to the existing API `ChildDataProcessingGuard`:
+
+- The internal `private.child_data_processing_enabled()` helper reads the trusted PostgreSQL setting `app.child_data_processing_enabled`. An unset value is treated as **false**.
+- RLS policies on `learners`, `learner_enrollments`, `assessment_scores` and `assessment_score_revisions` require the database gate to be enabled. Learner/mark-related audit entries are also hidden while it is disabled.
+- Database triggers reject inserts, updates and deletes on those child-data tables while the gate is disabled, including writes attempted through SECURITY DEFINER RPCs.
+- The Next.js learner and mark-entry pages/actions require both `CHILD_DATA_PROCESSING_ENABLED=true` in production and a positive read-only database gate check. The workspace displays a locked state rather than a misleading zero-learner count.
+- Authorization helpers used by RLS were moved into the unexposed `private` schema. Direct execution of their former public RPCs is revoked. Sensitive score, revision, learner and audit writes are restricted to the audited database functions.
+- The production database setting has **not** been enabled. No learner, mark or assessment data was seeded. The gate was verified to return false.
+
+For local synthetic-data development only, configure the local PostgreSQL `authenticator` role with `app.child_data_processing_enabled=true` and restart the local Supabase stack. Do not apply this setting to the hosted production project until the release gates above have been evidenced and approved. Setting the Next.js environment variable alone is insufficient because the database independently denies access and writes.
