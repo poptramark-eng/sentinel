@@ -28,6 +28,18 @@ export default async function AssessmentReportPage({ params }: { params: Promise
   const snapshot = submission.snapshot as unknown as AssessmentReportSnapshot;
   const averages = snapshot.learners.map((learner) => learner.average).filter((value): value is number => typeof value === "number");
   const classAverage = averages.length ? averages.reduce((sum, value) => sum + value, 0) / averages.length : null;
+  const areaStats = snapshot.learning_areas.map((area) => {
+    const values = snapshot.learners
+      .map((learner) => learner.scores.find((score) => score.learning_area_id === area.id)?.score)
+      .filter((value): value is number => typeof value === "number");
+    return {
+      area,
+      entries: values.length,
+      average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+      highest: values.length ? Math.max(...values) : null,
+      lowest: values.length ? Math.min(...values) : null,
+    };
+  });
 
   return (
     <WorkspaceShell
@@ -104,6 +116,37 @@ export default async function AssessmentReportPage({ params }: { params: Promise
             </table>
           </div>
           <p className="report-print-only border-t border-[var(--line)] px-4 py-3 text-[10px] text-[var(--muted)]">Generated from published assessment snapshot · Version {submission.version}</p>
+        </section>
+
+        <section className="report-card mt-6 overflow-hidden rounded-xl border border-[var(--line)] bg-white">
+          <div className="border-b border-[var(--line)] px-5 py-4">
+            <h2 className="font-semibold text-[var(--ink-strong)]">Learning-area summary</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">Numeric averages and score ranges only; no rubric boundaries are inferred.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="report-table w-full border-collapse text-left">
+              <thead className="bg-[var(--surface-subtle)]">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Learning area</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Entries</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Average</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Highest</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">Lowest</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line)]">
+                {areaStats.map((item) => (
+                  <tr key={item.area.id}>
+                    <td className="px-4 py-3 text-sm font-medium text-[var(--ink-strong)]">{item.area.name}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{item.entries}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{item.average?.toFixed(2) ?? "—"}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{item.highest?.toFixed(2) ?? "—"}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-[var(--ink)]">{item.lowest?.toFixed(2) ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </WorkspaceShell>
