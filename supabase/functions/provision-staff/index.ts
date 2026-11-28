@@ -78,15 +78,17 @@ Deno.serve(async (request: Request) => {
   const { data: invite, error: inviteError } = await admin.auth.admin.generateLink({
     type: "invite",
     email,
-    options: {
-      data: { display_name: displayName },
-      redirectTo: `${appOrigin}/auth/callback?next=/login?invite=accepted`,
-    },
+    options: { data: { display_name: displayName } },
   });
 
-  if (inviteError || !invite.user || !invite.properties?.action_link) {
+  if (inviteError || !invite.user || !invite.properties?.hashed_token) {
     return response(409, { error: "The account could not be created. Check whether this email already has an account." });
   }
+
+  const setupUrl = new URL("/auth/callback", appOrigin);
+  setupUrl.searchParams.set("token_hash", invite.properties.hashed_token);
+  setupUrl.searchParams.set("type", "invite");
+  setupUrl.searchParams.set("next", "/login?invite=accepted");
 
   const { error: auditError } = await admin.from("audit_events").insert({
     school_id: membership.school_id,
@@ -104,7 +106,7 @@ Deno.serve(async (request: Request) => {
   return response(201, {
     email,
     displayName,
-    actionLink: invite.properties.action_link,
+    actionLink: setupUrl.toString(),
     message: "Account created. Copy the one-time setup link and share it with the staff member using your usual secure channel. Sentinel has not sent an email or message.",
   });
 });
