@@ -91,7 +91,7 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
       {query.published ? <p role="status" className="mb-4 rounded-lg bg-[var(--success-soft)] p-3 text-sm text-[var(--success)]">Assessment published. The report is now available.</p> : null}
       {query.returned ? <p role="status" className="mb-4 rounded-lg bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]">Assessment returned for correction. Mark entry has reopened.</p> : null}
 
-      <section className="mb-6 rounded-xl border border-[var(--line)] bg-white p-5">
+      <section className="mb-5 rounded-lg border border-[var(--line)] bg-white p-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="cbe-eyebrow">Assessment lifecycle</p>
@@ -102,7 +102,7 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
           {assessment.status === "published" && latestSubmission ? <Link href={`/workspace/reports/${latestSubmission.id}`} className="rounded-lg bg-[var(--brand)] px-4 py-2.5 text-xs font-semibold text-white">Open published report</Link> : null}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-start gap-3">
+        <div className="mt-3 flex flex-wrap items-start gap-2">
           {assessment.status === "open" && canSubmit ? (
             <form action={submitAssessment}>
               <input type="hidden" name="assessment_id" value={assessment.id} />
@@ -150,30 +150,30 @@ export default async function AssessmentDetailPage({ params, searchParams }: Par
         <p className="text-xs text-[var(--muted)]">Marks are recorded out of 100. Corrections require a reason and are retained in the revision history.</p>
         <span className="text-xs font-semibold text-[var(--muted)]">{editable ? "Mark entry open" : "Mark entry closed"}</span>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-[var(--line)] bg-white">
-        <table className="w-full min-w-[760px] border-collapse text-left">
-          <thead className="bg-[var(--surface-subtle)]">
-            <tr><th className="sticky left-0 bg-[var(--surface-subtle)] px-4 py-3 text-xs font-semibold text-[var(--muted)]">Learner</th>{areas?.map((area) => <th key={area.id} className="px-4 py-3 text-xs font-semibold text-[var(--muted)]">{area.name}</th>)}</tr>
+      <div className="max-h-[72vh] overflow-auto rounded-lg border border-[var(--line)] bg-white">
+        <table className="w-full min-w-[680px] border-collapse text-left">
+          <thead className="sticky top-0 z-10 bg-[var(--surface-subtle)]">
+            <tr><th className="sticky left-0 z-20 bg-[var(--surface-subtle)] px-3 py-2 text-[11px] font-semibold text-[var(--muted)]">Learner</th>{areas?.map((area) => <th key={area.id} className="px-3 py-2 text-[11px] font-semibold text-[var(--muted)]">{area.name}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-[var(--line)]">
             {learners?.map((learner) => (
               <tr key={learner.id} className="align-top">
-                <td className="sticky left-0 bg-white px-4 py-3">
+                <td className="sticky left-0 z-[1] bg-white px-3 py-2">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--ink-strong)]">{[learner.given_name, learner.other_names, learner.family_name].filter(Boolean).join(" ")}</p>
                   <p className="mt-1 text-[11px] text-[var(--muted)]">{learner.admission_number}</p>
                 </td>
                 {areas?.map((area) => {
                   const current = scoreMap.get(`${learner.id}:${area.id}`);
-                  return <td key={area.id} className="min-w-[190px] px-3 py-3">
-                    {editable ? <form action={saveAssessmentScore} className="space-y-2">
+                  return <td key={area.id} className="min-w-[135px] px-2 py-2">
+                    {editable ? <form action={saveAssessmentScore} className="space-y-1">
                       <input type="hidden" name="assessment_id" value={assessment.id} />
                       <input type="hidden" name="learner_id" value={learner.id} />
                       <input type="hidden" name="learning_area_id" value={area.id} />
                       <div className="flex items-center gap-2">
-                        <input aria-label={`Mark for ${learner.given_name} in ${area.name}`} name="score" type="number" min="0" max="100" step="0.01" required defaultValue={current === undefined ? "" : String(current)} className="w-20 rounded-md border border-[var(--line)] px-2 py-2 text-sm tabular-nums" />
-                        <button className="rounded-md bg-[var(--brand)] px-3 py-2 text-xs font-semibold text-white">Save</button>
+                        <input aria-label={`Mark for ${learner.given_name} in ${area.name}`} name="score" type="number" min="0" max="100" step="0.01" required defaultValue={current === undefined ? "" : String(current)} className="w-[4.25rem] rounded-md border border-[var(--line)] px-2 py-1.5 text-xs tabular-nums" />
+                        <button className="rounded-md bg-[var(--brand)] px-2 py-1.5 text-[11px] font-semibold text-white">Save</button>
                       </div>
-                      <input name="reason" maxLength={500} placeholder={current === undefined ? "" : "Reason for correction"} className="w-full rounded-md border border-[var(--line)] px-2 py-1.5 text-[11px]" />
+                      {current !== undefined ? <details className="text-[10px] text-[var(--muted)]"><summary className="cursor-pointer">Correction reason</summary><input name="reason" maxLength={500} placeholder="Why is this mark changing?" className="mt-1 w-full rounded-md border border-[var(--line)] px-2 py-1.5 text-[11px]" /></details> : null}
                     </form> : <span className="text-sm tabular-nums text-[var(--ink)]">{current === undefined ? "—" : current}</span>}
                   </td>;
                 })}
