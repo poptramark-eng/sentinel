@@ -40,7 +40,7 @@ Read:
 
 ## Production deployment
 
-See [Vercel production setup](docs/deployment/vercel-production-setup.md) for the Vercel frontend, API hosting, environment variables, migrations and end-to-end checklist.
+Sentinel is deployed exclusively to Cloudflare Workers. See [Cloudflare Workers deployment](docs/architecture/cloudflare-workers-deployment.md) for the runtime, build workflow, bindings, production URL and verification checklist. Do not use a separate hosting provider for production deployments.
 
 ## Local development
 
