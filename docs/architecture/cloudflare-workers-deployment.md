@@ -52,7 +52,7 @@ The Worker is configured with both CDN and data caches disabled. This avoids cac
 ## Current PR validation and child-data release gate
 
 - A dedicated .github/workflows/cloudflare-worker-build.yml now runs the actual build:vinext Worker bundle on relevant pull requests using Node.js 22.18.0 and the repository's pinned pnpm 10.0.0. This complements the compatibility check; compatibility alone is not treated as a successful Worker build.
-- The latest build attempt first exposed a workflow-only pnpm version mismatch (the workflow specified 12.18.0 while the repository pins 10.0.0). The workflow was corrected to use the manifest-pinned 10.0.0; the corrected Worker build is running.
+- The latest build attempt first exposed a workflow-only pnpm version mismatch (the workflow specified 12.18.0 while the repository pins 10.0.0). The workflow was corrected to use the manifest-pinned 10.0.0; the latest Worker bundle build passed on commit 9c6e636. The vinext compatibility check also passed (12 supported, zero partial, zero issues).
 - Set CHILD_DATA_PROCESSING_ENABLED=false in both Production and Preview Worker environments. The Supabase database independently defaults app.child_data_processing_enabled to false. Do not set either gate to true before the privacy/legal release checks are evidenced and approved.
 - The first administrator still needs to be provisioned manually in Supabase Auth. The application does not send teacher invitations or other messages.
 - The assessment lifecycle now includes class submission, review, approval, publication, versioned immutable snapshots, a published reports register, Excel-compatible CSV export and browser Print/Save as PDF. These routes remain unavailable while the child-data gate is off.
