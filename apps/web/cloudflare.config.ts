@@ -18,6 +18,9 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: bindings.text(
         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
       ),
+      CHILD_DATA_PROCESSING_ENABLED: bindings.text(
+        process.env.CHILD_DATA_PROCESSING_ENABLED ?? "false",
+      ),
     },
   }),
 });
