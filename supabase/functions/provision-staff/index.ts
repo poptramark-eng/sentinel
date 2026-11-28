@@ -92,7 +92,7 @@ Deno.serve(async (request: Request) => {
   const setupUrl = new URL("/auth/callback", appOrigin);
   setupUrl.searchParams.set("token_hash", invite.properties.hashed_token);
   setupUrl.searchParams.set("type", "invite");
-  setupUrl.searchParams.set("next", "/login?invite=accepted");
+  setupUrl.searchParams.set("next", "/workspace");
 
   const { error: membershipInsertError } = await admin.from("school_memberships").insert({
     school_id: membership.school_id,
